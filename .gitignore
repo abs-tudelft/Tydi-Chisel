@@ -1,2 +1,9 @@
 *.class
 *.log
+
+.bsp/
+.idea/
+.idea/libraries/
+.idea/modules/
+project/target/
+target/
