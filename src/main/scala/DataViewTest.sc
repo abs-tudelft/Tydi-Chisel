@@ -1,6 +1,7 @@
 import chisel3._
 import chisel3.experimental.dataview._
 import chisel3.util.Decoupled
+import circt.stage.ChiselStage.emitCHIRRTL
 
 // Note that both the AW and AR channels look similar and could use the same Bundle definition
 class AXIAddressChannel(val addrWidth: Int) extends Bundle {
@@ -64,3 +65,5 @@ class AXIStub extends RawModule {
     AXI.AWLEN := 1.U
   }
 }
+
+println(emitCHIRRTL(new AXIStub))
