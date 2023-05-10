@@ -13,13 +13,30 @@ class AXIAddressChannel(val addrWidth: Int) extends Bundle {
 }
 
 class VerilogAXIBundle(val addrWidth: Int) extends Bundle {
-  val AWVALID = Output(Bool())
-  val AWREADY = Input(Bool())
-  val AWID = Output(UInt(4.W))
-  val AWADDR = Output(UInt(addrWidth.W))
-  val AWLEN = Output(UInt(2.W))
-  val AWSIZE = Output(UInt(2.W))
-  // The rest of AW and other AXI channels here
+  val AWVALID = Output(Bool()) // Write valid signal for write transactions
+  val AWREADY = Input(Bool()) // Write ready signal for write transactions
+  val AWID = Output(UInt(4.W)) // Write ID signal for write transactions
+  val AWADDR = Output(UInt(addrWidth.W)) // Address bus for write transactions
+  val AWLEN = Output(UInt(2.W)) // Transaction length for burst
+  val AWSIZE = Output(UInt(2.W)) // Maximum number of bytes to transfer in each data transfer
+
+  val ARVALID = Output(Bool()) // Read valid signal for read transactions
+  val ARREADY = Input(Bool()) // Read ready signal for read transactions
+  val ARID = Output(UInt(4.W)) // Read ID signal for read transactions
+  val ARADDR = Output(UInt(addrWidth.W)) // Address bus for read transactions
+  val ARLEN = Output(UInt(2.W)) // Transaction length for burst
+  val ARSIZE = Output(UInt(2.W)) // Maximum number of bytes to transfer in each data transfer
+//  val AWBURST = Output(UInt(2.W)) // Burst type of the transaction
+//  val AWCACHE = Output(UInt(4.W)) // Caching policy
+//  val AWPROT = Output(UInt(3.W)) // Protection level
+  // The rest of AW, AR, and other AXI channels here
+
+  /*
+  * The AXI manual says components must support all combinations of inputs, but do not have
+  * to generate all combinations of outputs. If an output value is default, it can be omitted.
+  * An input signal can be omitted if the master or slave does not need to observe the input
+  * signal for correct functional operation.
+  * */
 }
 
 // Instantiated as
@@ -27,9 +44,11 @@ class my_module extends RawModule {
   val AXI = IO(new VerilogAXIBundle(20))
 }
 
+println(emitCHIRRTL(new my_module))
+
 class AXIBundle(val addrWidth: Int) extends Bundle {
   val aw = Decoupled(new AXIAddressChannel(addrWidth))
-  // val ar = new AXIAddressChannel
+  val ar = Decoupled(new AXIAddressChannel(addrWidth))
   // ... Other channels here ...
 }
 
@@ -47,6 +66,13 @@ object AXIBundle {
     _.AWADDR -> _.aw.bits.addr,
     _.AWLEN -> _.aw.bits.len,
     _.AWSIZE -> _.aw.bits.size,
+
+    _.ARVALID -> _.ar.valid,
+    _.ARREADY -> _.ar.ready,
+    _.ARID -> _.ar.bits.id,
+    _.ARADDR -> _.ar.bits.addr,
+    _.ARLEN -> _.ar.bits.len,
+    _.ARSIZE -> _.ar.bits.size,
     // ...
   )
 }
