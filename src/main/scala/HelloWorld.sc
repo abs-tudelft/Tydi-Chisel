@@ -37,8 +37,23 @@ class PhysicalStream(val e: Element, val n: Int, val d: Int, val c: Int, val u: 
   val strb = Output(UInt(n.W))
 }
 
-class HelloWorldModule extends Module {
+class HelloWorldModuleOut extends Module {
   val io = IO(new PhysicalStream(new BitsEl(8.W), n=6, d=2, c=7, u=new Null()))
 }
 
-println(emitCHIRRTL(new HelloWorldModule))
+class HelloWorldModuleIn extends Module {
+  val io = IO(Flipped(new PhysicalStream(new BitsEl(8.W), n=6, d=2, c=7, u=new Null())))
+}
+
+class TopLevelModule extends Module {
+  val io = IO(new Bundle {
+    val in = Input(UInt(64.W))
+    val out = Output(SInt(128.W))
+  })
+  val helloWorldOut = new HelloWorldModuleOut()
+  val helloWorldIn = new HelloWorldModuleIn()
+
+  helloWorldIn.io := helloWorldOut.io
+}
+
+println(emitCHIRRTL(new TopLevelModule()))
