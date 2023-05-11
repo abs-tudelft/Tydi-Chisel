@@ -5,12 +5,14 @@ import chisel3.internal.firrtl.Width
 import chisel3.util.Decoupled
 import circt.stage.ChiselStage.emitCHIRRTL
 
-class Element() {}
+class Element() {
+  val width: Int = 0
+}
 
 class Null() extends Element {}
 class Group() extends Element {}
 class Union() extends Element {}
-class BitsEl(w: Width) extends Element {}
+class BitsEl(override val width: Int) extends Element {}
 
 class PhysicalStream(val e: Element, val n: Int, val d: Int, val c: Int, val u: Element) extends Bundle {
   require(n >= 1)
@@ -30,7 +32,7 @@ class PhysicalStream(val e: Element, val n: Int, val d: Int, val c: Int, val u: 
 
   private val indexWidth = log2Ceil(n)
 
-  val data = Output(Bits(n.W))
+  val data = Output(Bits((e.width * n).W))
   val last = Output(UInt(d.W))
   val stai = Output(UInt(indexWidth.W))
   val endi = Output(UInt(indexWidth.W))
@@ -38,22 +40,35 @@ class PhysicalStream(val e: Element, val n: Int, val d: Int, val c: Int, val u: 
 }
 
 class HelloWorldModuleOut extends Module {
-  val io = IO(new PhysicalStream(new BitsEl(8.W), n=6, d=2, c=7, u=new Null()))
+  val io = IO(new PhysicalStream(new BitsEl(8), n=6, d=2, c=7, u=new Null()))
 }
 
 class HelloWorldModuleIn extends Module {
-  val io = IO(Flipped(new PhysicalStream(new BitsEl(8.W), n=6, d=2, c=7, u=new Null())))
+  val io = IO(Flipped(new PhysicalStream(new BitsEl(8), n=6, d=2, c=7, u=new Null())))
 }
+
+println(emitCHIRRTL(new HelloWorldModuleOut()))
+println(emitCHIRRTL(new HelloWorldModuleIn()))
 
 class TopLevelModule extends Module {
   val io = IO(new Bundle {
     val in = Input(UInt(64.W))
     val out = Output(SInt(128.W))
   })
-  val helloWorldOut = new HelloWorldModuleOut()
-  val helloWorldIn = new HelloWorldModuleIn()
 
-  helloWorldIn.io := helloWorldOut.io
+  val helloWorldOut = Module(new HelloWorldModuleOut())
+  val helloWorldIn = Module(new HelloWorldModuleIn())
+
+  // Mono-directional "strong connect" operator
+  /*helloWorldIn.io.data := helloWorldOut.io.data
+  helloWorldIn.io.last := helloWorldOut.io.last
+  helloWorldIn.io.stai := helloWorldOut.io.stai
+  helloWorldIn.io.endi := helloWorldOut.io.strb
+  helloWorldIn.io.valid := helloWorldOut.io.valid
+  helloWorldOut.io.ready := helloWorldOut.io.ready*/
+
+  // Bi-directional connection
+  helloWorldIn.io :<>= helloWorldOut.io
 }
 
 println(emitCHIRRTL(new TopLevelModule()))
