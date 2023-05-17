@@ -41,7 +41,20 @@ class PhysicalStream(val e: Element, val n: Int, val d: Int, val c: Int, val u: 
 
 class HelloWorldModuleOut extends Module {
   val io = IO(new PhysicalStream(new BitsEl(8), n=6, d=2, c=7, u=new Null()))
-  io :<= DontCare
+//  io :<= DontCare
+
+  private val sendStr: String = "Hello "
+
+  val helloInts: Seq[Int] = sendStr.map((char: Char) => char.toInt)
+  println("helloInts are ", helloInts)
+  val helloInt: Int = sendStr.foldLeft(0)((num: Int, char: Char) => (num << 1) + char.toInt)
+  println("helloInt is", helloInt)
+  io.data := helloInt.U
+  io.valid := true.B
+  io.strb := Integer.parseInt("111111", 2).U
+  io.stai := 0.U
+  io.endi := 5.U
+  io.last := 0.U
 }
 
 class HelloWorldModuleIn extends Module {
@@ -69,24 +82,23 @@ class TopLevelModule extends Module {
 
   // Bi-directional connection
   helloWorldIn.io :<>= helloWorldOut.io
-  io.out := DontCare
+  io.out := helloWorldOut.io.data.asSInt
 }
 
 object HelloWorld extends App {
+  private val firOpts: Array[String] = Array("-disable-opt", "-O=debug", "-disable-all-randomization", "-strip-debug-info"/*, "-preserve-values=all"*/)
   println("Test123")
 
   println(emitCHIRRTL(new HelloWorldModuleOut()))
+  println(emitSystemVerilog(new HelloWorldModuleOut(), firtoolOpts = firOpts))
+
   println(emitCHIRRTL(new HelloWorldModuleIn()))
+  println(emitSystemVerilog(new HelloWorldModuleIn(), firtoolOpts = firOpts))
 
   println(emitCHIRRTL(new TopLevelModule()))
 
   // These lines generate the Verilog output
-  println(
-    emitSystemVerilog(
-      new TopLevelModule(),
-      firtoolOpts = Array("-disable-all-randomization", "-strip-debug-info")
-    )
-  )
+  println(emitSystemVerilog(new TopLevelModule(), firtoolOpts = firOpts))
 
   println("Done")
 }
