@@ -3,7 +3,7 @@ import chisel3.util.log2Ceil
 import chisel3.experimental.dataview._
 import chisel3.internal.firrtl.Width
 import chisel3.util.Decoupled
-import circt.stage.ChiselStage.emitCHIRRTL
+import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
 
 class Element() {
   val width: Int = 0
@@ -41,14 +41,14 @@ class PhysicalStream(val e: Element, val n: Int, val d: Int, val c: Int, val u: 
 
 class HelloWorldModuleOut extends Module {
   val io = IO(new PhysicalStream(new BitsEl(8), n=6, d=2, c=7, u=new Null()))
+  io :<= DontCare
 }
 
 class HelloWorldModuleIn extends Module {
   val io = IO(Flipped(new PhysicalStream(new BitsEl(8), n=6, d=2, c=7, u=new Null())))
+  io :<= DontCare
+  io.ready := DontCare
 }
-
-println(emitCHIRRTL(new HelloWorldModuleOut()))
-println(emitCHIRRTL(new HelloWorldModuleIn()))
 
 class TopLevelModule extends Module {
   val io = IO(new Bundle {
@@ -69,6 +69,24 @@ class TopLevelModule extends Module {
 
   // Bi-directional connection
   helloWorldIn.io :<>= helloWorldOut.io
+  io.out := DontCare
 }
 
-println(emitCHIRRTL(new TopLevelModule()))
+object HelloWorld extends App {
+  println("Test123")
+
+  println(emitCHIRRTL(new HelloWorldModuleOut()))
+  println(emitCHIRRTL(new HelloWorldModuleIn()))
+
+  println(emitCHIRRTL(new TopLevelModule()))
+
+  // These lines generate the Verilog output
+  println(
+    emitSystemVerilog(
+      new TopLevelModule(),
+      firtoolOpts = Array("-disable-all-randomization", "-strip-debug-info")
+    )
+  )
+
+  println("Done")
+}
