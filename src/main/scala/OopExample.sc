@@ -47,7 +47,7 @@ class AsyncFIFO(depth: Int = 16) extends Module {
   val read_counter = withClock(io.read_clock) { Counter(io.read_enable && !io.empty, depth*2)._1 }
 
   // encode
-  val encoder = new GrayCoder(write_counter.getWidth)
+  val encoder = Module(new GrayCoder(write_counter.getWidth))
   encoder.io.in := write_counter
   encoder.io.encode := true.B
 
@@ -55,7 +55,7 @@ class AsyncFIFO(depth: Int = 16) extends Module {
   val sync = withClock(io.read_clock) { ShiftRegister(encoder.io.out, 2) }
 
   // decode
-  val decoder = new GrayCoder(read_counter.getWidth)
+  val decoder = Module(new GrayCoder(read_counter.getWidth))
   decoder.io.in := sync
   decoder.io.encode := false.B
 

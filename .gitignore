@@ -1,5 +1,6 @@
 *.class
 *.log
+*.anno.json
 
 .bsp/
 .idea/

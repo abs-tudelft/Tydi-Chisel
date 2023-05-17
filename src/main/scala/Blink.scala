@@ -15,7 +15,9 @@ class Blinky(freq: Int, startOn: Boolean = false) extends Module {
   io.led0 := led
 }
 
-object Main extends App {
+object Blink extends App {
+  println("Test123")
+
   // These lines generate the Verilog output
   println(
     ChiselStage.emitSystemVerilog(
