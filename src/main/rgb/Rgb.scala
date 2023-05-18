@@ -9,7 +9,7 @@ import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
 trait Element {
   val elWidth: Int = 0
   def getWidth: Int
-  val data: UInt = Wire(UInt(0.W))
+//  val data: UInt = Wire(UInt(0.W))
 }
 
 class Null() extends Element {
@@ -53,6 +53,7 @@ class PhysicalStream(val e: Element, val n: Int, val d: Int, val c: Int, val u: 
   private val indexWidth = log2Ceil(n)
 
   val data = Output(UInt(e.getWidth.W))
+//  data := e.data
   val last = Output(UInt(d.W))
   val stai = Output(UInt(indexWidth.W))
   val endi = Output(UInt(indexWidth.W))
@@ -65,19 +66,21 @@ class RgbBundle extends Group {
   val g: UInt = UInt(channelWidth)
   val b: UInt = UInt(channelWidth)
 
-  override val data: UInt = Wire(UInt(24.W))
-  data := r ## g ## b
+//  override private val data: UInt = Wire(UInt(24.W))
+//  data := r ## g ## b
 }
 
 class RgbModuleOut extends Module {
-  private val rgbStuff = new RgbBundle
-  val io = IO(new PhysicalStream(rgbStuff, n=1, d=2, c=7, u=new Null()))
+  private val rgbBundle = new RgbBundle
+  val io = IO(new PhysicalStream(rgbBundle, n=1, d=2, c=7, u=new Null()))
 //  io :<= DontCare
 
   private val rgbVal:Seq[Int] = Seq(0, 166, 244)
-  rgbStuff.r := rgbVal(0).U
-  rgbStuff.g := rgbVal(1).U
-  rgbStuff.b := rgbVal(2).U
+  val rgbWire: RgbBundle = Wire(rgbBundle)
+  io.data := rgbWire.r ## rgbWire.g ## rgbWire.b
+  rgbWire.r := rgbVal(0).U
+  rgbWire.g := rgbVal(1).U
+  rgbWire.b := rgbVal(2).U
 
 //  private var count = 0
 //  for (el <- rgbStuff.getElements) {
