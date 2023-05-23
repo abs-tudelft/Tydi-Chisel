@@ -77,7 +77,11 @@ class RgbModuleOut extends Module {
 
   private val rgbVal:Seq[Int] = Seq(0, 166, 244)
   val rgbWire: RgbBundle = Wire(rgbBundle)
-  io.data := rgbWire.r ## rgbWire.g ## rgbWire.b
+//  val bundleEls: Seq[UInt] = rgbWire.getElements.map(_.asUInt)
+//  io.data := bundleEls.tail.foldLeft(bundleEls.head)((prior, next) => Cat(prior, next))
+  io.data := rgbWire.getElements.map(_.asUInt).reduce(Cat(_, _))
+  // Generates
+  // io.data := rgbWire.r ## rgbWire.g ## rgbWire.b
   rgbWire.r := rgbVal(0).U
   rgbWire.g := rgbVal(1).U
   rgbWire.b := rgbVal(2).U
