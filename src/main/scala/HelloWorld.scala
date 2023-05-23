@@ -46,9 +46,9 @@ class HelloWorldModuleOut extends Module {
   private val sendStr: String = "Hello "
 
   val helloInts: Seq[Int] = sendStr.map((char: Char) => char.toInt)
-  println("helloInts are ", helloInts)
-  val helloInt: Int = sendStr.foldLeft(0)((num: Int, char: Char) => (num << 1) + char.toInt)
-  println("helloInt is", helloInt)
+  println(s"helloInts are $helloInts")
+  val helloInt: BigInt = sendStr.foldLeft(BigInt(0))((num: BigInt, char: Char) => (num << 8) + char.toInt)
+  println(s"helloInt is $helloInt")
   io.data := helloInt.U
   io.valid := true.B
   io.strb := Integer.parseInt("111111", 2).U
