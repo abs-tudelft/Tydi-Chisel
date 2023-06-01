@@ -53,7 +53,10 @@ class PhysicalStream(val e: Element, val n: Int, val d: Int, val c: Int, val u: 
   private val indexWidth = log2Ceil(n)
 
   val data = Output(UInt(e.getWidth.W))
-//  data := e.data
+  // data := 50.U // Cannot set data here because data is not yet IO'ified
+//  e match {
+//    case e: Group => data := e.getElements.map(_.asUInt).reduce(Cat(_, _))
+//  }
   val last = Output(UInt(d.W))
   val stai = Output(UInt(indexWidth.W))
   val endi = Output(UInt(indexWidth.W))
@@ -72,11 +75,11 @@ class RgbBundle extends Group {
 
 class RgbModuleOut extends Module {
   private val rgbBundle = new RgbBundle
-  val io = IO(new PhysicalStream(rgbBundle, n=1, d=2, c=7, u=new Null()))
+  val rgbWire: RgbBundle = Wire(rgbBundle)
+  val io = IO(new PhysicalStream(rgbWire, n=1, d=2, c=7, u=new Null()))
 //  io :<= DontCare
 
   private val rgbVal:Seq[Int] = Seq(0, 166, 244)
-  val rgbWire: RgbBundle = Wire(rgbBundle)
 //  val bundleEls: Seq[UInt] = rgbWire.getElements.map(_.asUInt)
 //  io.data := bundleEls.tail.foldLeft(bundleEls.head)((prior, next) => Cat(prior, next))
   io.data := rgbWire.getElements.map(_.asUInt).reduce(Cat(_, _))
@@ -85,14 +88,6 @@ class RgbModuleOut extends Module {
   rgbWire.r := rgbVal(0).U
   rgbWire.g := rgbVal(1).U
   rgbWire.b := rgbVal(2).U
-
-//  private var count = 0
-//  for (el <- rgbStuff.getElements) {
-//    io.data[]
-//    count += el.getWidth
-//  }
-
-//  io.data :=
 
   io.valid := true.B
   io.strb := 1.U
