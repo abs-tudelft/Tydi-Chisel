@@ -32,7 +32,9 @@ class PhysicalStream(val e: Element, val n: Int, val d: Int, val c: Int, val u: 
 
   private val indexWidth = log2Ceil(n)
 
-  val data = Output(Bits((e.width * n).W))
+//  val data = Output(Bits((e.width * n).W))
+  val data = Output(Vec(n, Bits(e.width.W)))
+
   val last = Output(UInt(d.W))
   val stai = Output(UInt(indexWidth.W))
   val endi = Output(UInt(indexWidth.W))
@@ -45,11 +47,13 @@ class HelloWorldModuleOut extends Module {
 
   private val sendStr: String = "Hello "
 
+//  val helloInt: BigInt = sendStr.foldLeft(BigInt(0))((num: BigInt, char: Char) => (num << 8) + char.toInt)
+//  println(s"helloInt is $helloInt")
+//  io.data := helloInt.U
+
   val helloInts: Seq[Int] = sendStr.map((char: Char) => char.toInt)
   println(s"helloInts are $helloInts")
-  val helloInt: BigInt = sendStr.foldLeft(BigInt(0))((num: BigInt, char: Char) => (num << 8) + char.toInt)
-  println(s"helloInt is $helloInt")
-  io.data := helloInt.U
+  io.data := helloInts.map(_.U)
   io.valid := true.B
   io.strb := Integer.parseInt("111111", 2).U
   io.stai := 0.U
@@ -82,11 +86,12 @@ class TopLevelModule extends Module {
 
   // Bi-directional connection
   helloWorldIn.io :<>= helloWorldOut.io
-  io.out := helloWorldOut.io.data.asSInt
+//  io.out := helloWorldOut.io.data.asSInt
+  io.out := helloWorldOut.io.data.asUInt.asSInt
 }
 
 object HelloWorld extends App {
-  private val firOpts: Array[String] = Array("-disable-opt", "-O=debug", "-disable-all-randomization", "-strip-debug-info"/*, "-preserve-values=all"*/)
+  private val firOpts: Array[String] = Array("-disable-opt", /*"-O=debug", */"-disable-all-randomization", "-strip-debug-info"/*, "-preserve-values=all"*/)
   println("Test123")
 
   println(emitCHIRRTL(new HelloWorldModuleOut()))
