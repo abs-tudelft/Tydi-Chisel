@@ -41,8 +41,12 @@ class PhysicalStream(val e: Element, val n: Int, val d: Int, val c: Int, val u: 
   val strb = Output(UInt(n.W))
 }
 
-class HelloWorldModuleOut extends Module {
-  val io = IO(new PhysicalStream(new BitsEl(8), n=6, d=2, c=7, u=new Null()))
+trait myTypes {
+  val HelloWorldStreamType = new PhysicalStream(new BitsEl(8), n = 6, d = 2, c = 7, u = new Null())
+}
+
+class HelloWorldModuleOut extends Module with myTypes {
+  val io = IO(HelloWorldStreamType)
 //  io :<= DontCare
 
   private val sendStr: String = "Hello "
@@ -61,13 +65,13 @@ class HelloWorldModuleOut extends Module {
   io.last := 0.U
 }
 
-class HelloWorldModuleIn extends Module {
-  val io = IO(Flipped(new PhysicalStream(new BitsEl(8), n=6, d=2, c=7, u=new Null())))
+class HelloWorldModuleIn extends Module with myTypes {
+  val io = IO(Flipped(HelloWorldStreamType))
   io :<= DontCare
   io.ready := DontCare
 }
 
-class TopLevelModule extends Module {
+class TopLevelModule extends Module with myTypes {
   val io = IO(new Bundle {
     val in = Input(UInt(64.W))
     val out = Output(SInt(128.W))
