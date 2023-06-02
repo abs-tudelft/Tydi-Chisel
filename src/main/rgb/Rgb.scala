@@ -6,18 +6,15 @@ import chisel3.experimental.dataview._
 import chisel3.internal.firrtl.Width
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
 
-trait Element {
+trait Element extends Bundle {
   val elWidth: Int = 0
   def getWidth: Int
   def getElements: Seq[Data]
 //  val data: UInt = Wire(UInt(0.W))
 }
 
-class Null() extends Element {
-  def getWidth: Int = {
-    elWidth
-  }
-}
+class Null() extends Element {}
+
 class Group() extends Bundle with Element {
 //  def getWidth: Width = {
 //    width
@@ -25,21 +22,25 @@ class Group() extends Bundle with Element {
 }
 
 class Union() extends Element {
-  def getWidth: Int = {
-    elWidth
-  }
+//  def getWidth: Int = {
+//    elWidth
+//  }
+  val tag = UInt(0.W)
+  val value = UInt(0.W)
 
-  def getElements: Seq[Data] = Seq[Data](UInt(elWidth.W))
+//  def getElements: Seq[Data] = Seq[Data](UInt(elWidth.W))
 }
-class BitsEl(override val elWidth: Int) extends Element {
-  def getWidth: Int = {
-    elWidth
-  }
+class BitsEl(override val width: Width) extends Element {
+//  def getWidth: Int = {
+//    elWidth
+//  }
 
-  def getElements: Seq[Data] = Seq[Data](UInt(elWidth.W))
+  val value = Bits(width)
+
+//  def getElements: Seq[Data] = Seq[Data](UInt(elWidth.W))
 }
 
-class PhysicalStream(val e: Element, val n: Int, val d: Int, val c: Int, val u: Element) extends Bundle {
+class PhysicalStream(private val e: Element, val n: Int, val d: Int, val c: Int, private val u: Element) extends Bundle {
   require(n >= 1)
   require(1 <= c && c <= 7)
 
@@ -75,13 +76,27 @@ class TydiStream[T <: Element](val streamType: T = new Null,
 
   val n: Int = throughput.ceil.toInt
 
-  private val _io: PhysicalStream = IO(new PhysicalStream(streamType, n=n, d=dimensionality, c=complexity, u=user))
+  val io: PhysicalStream = IO(new PhysicalStream(streamType, n=n, d=dimensionality, c=complexity, u=user))
 
-  val data: T = Wire(streamType)
+  val data: T = IO(Input(streamType))
+
+  val valid = IO(Input(Bool()))
+  io.valid := valid
+  val ready = IO(Output(Bool()))
+  ready := io.ready
+  val last = IO(Input(io.last.cloneType))
+  io.last := last
+  val stai = IO(Input(io.stai.cloneType))
+  io.stai := stai
+  val endi = IO(Input(io.endi.cloneType))
+  io.endi := endi
+  val strb = IO(Input(io.strb.cloneType))
+  io.strb := strb
+
   // Auto concatenate all data elements
-  _io.data := streamType.getElements.map(_.asUInt).reduce(Cat(_, _))
+  io.data := data.getElements.map(_.asUInt).reduce(Cat(_, _))
 
-  def io(): PhysicalStream = _io
+//  def io(): PhysicalStream = _io
 }
 
 class RgbBundle extends Group {
@@ -98,8 +113,8 @@ class RgbModuleOut extends Module {
   private val rgbBundle = new RgbBundle
 //  val rgbWire: RgbBundle = Wire(rgbBundle)
 //  val io = IO(new PhysicalStream(rgbWire, n=1, d=2, c=7, u=new Null()))
-  val stream = new TydiStream(rgbBundle, 1, complexity = 7)
-  val io = stream.io()
+  val stream = Module(new TydiStream(rgbBundle, 1, complexity = 7))
+  val io = stream.io
 //  io :<= DontCare
 
   private val rgbVal:Seq[Int] = Seq(0, 166, 244)
@@ -111,11 +126,12 @@ class RgbModuleOut extends Module {
   rgbWire.g := rgbVal(1).U
   rgbWire.b := rgbVal(2).U
 
-  io.valid := true.B
-  io.strb := 1.U
-  io.stai := 0.U
-  io.endi := 1.U
-  io.last := 0.U
+  stream.valid := true.B
+  stream.strb := 1.U
+  stream.stai := 0.U
+  stream.endi := 1.U
+  stream.last := 0.U
+  io.ready := DontCare
 }
 
 class RgbModuleIn extends Module {
