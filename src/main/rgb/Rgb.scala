@@ -77,6 +77,7 @@ class TydiStream[T <: Element](val streamType: T = new Null,
   val n: Int = throughput.ceil.toInt
 
   val io: PhysicalStream = IO(new PhysicalStream(streamType, n=n, d=dimensionality, c=complexity, u=user))
+  def ioType: PhysicalStream = io.cloneType
 
   val data: T = IO(Input(streamType))
 
@@ -95,8 +96,6 @@ class TydiStream[T <: Element](val streamType: T = new Null,
 
   // Auto concatenate all data elements
   io.data := data.getElements.map(_.asUInt).reduce(Cat(_, _))
-
-//  def io(): PhysicalStream = _io
 }
 
 class RgbBundle extends Group {
@@ -104,34 +103,29 @@ class RgbBundle extends Group {
   val r: UInt = UInt(channelWidth)
   val g: UInt = UInt(channelWidth)
   val b: UInt = UInt(channelWidth)
-
-//  override private val data: UInt = Wire(UInt(24.W))
-//  data := r ## g ## b
 }
 
 class RgbModuleOut extends Module {
-  private val rgbBundle = new RgbBundle
-//  val rgbWire: RgbBundle = Wire(rgbBundle)
-//  val io = IO(new PhysicalStream(rgbWire, n=1, d=2, c=7, u=new Null()))
-  val stream = Module(new TydiStream(rgbBundle, 1, complexity = 7))
-  val io = stream.io
-//  io :<= DontCare
+  private val rgbBundle = new RgbBundle // Can also be inline
+  // Create Tydi logical stream object
+  val stream: TydiStream[RgbBundle] = Module(new TydiStream(rgbBundle, 1, complexity = 7))
+  // Create and connect physical stream following standard with concatenated data bitvector
+  val tydi_port: PhysicalStream = IO(stream.ioType)
+  tydi_port :<>= stream.io
 
-  private val rgbVal:Seq[Int] = Seq(0, 166, 244)
-//  io.data := rgbWire.getElements.map(_.asUInt).reduce(Cat(_, _))
-  // Generates
-  // io.data := rgbWire.r ## rgbWire.g ## rgbWire.b
-  val rgbWire: RgbBundle = stream.data
-  rgbWire.r := rgbVal(0).U
-  rgbWire.g := rgbVal(1).U
-  rgbWire.b := rgbVal(2).U
+  // Assign values to logical stream group elements directly
+  private val rgbVal:Seq[Int] = Seq(0, 166, 244)  // TU Delft blue
+  stream.data.r := rgbVal(0).U
+  stream.data.g := rgbVal(1).U
+  stream.data.b := rgbVal(2).U
 
+  // Assign some values to the other Tydi signals
+  // We have 1 lane in this case
   stream.valid := true.B
   stream.strb := 1.U
   stream.stai := 0.U
   stream.endi := 1.U
   stream.last := 0.U
-  io.ready := DontCare
 }
 
 class RgbModuleIn extends Module {
@@ -150,8 +144,8 @@ class TopLevelModule extends Module {
   val rgbIn = Module(new RgbModuleIn())
 
   // Bi-directional connection
-  rgbIn.io :<>= rgbOut.io
-  io.out := rgbOut.io.data.asSInt
+  rgbIn.io :<>= rgbOut.tydi_port
+  io.out := rgbOut.tydi_port.data.asSInt
 }
 
 object Rgb extends App {
