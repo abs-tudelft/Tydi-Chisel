@@ -9,6 +9,7 @@ import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
 trait Element {
   val elWidth: Int = 0
   def getWidth: Int
+  def getElements: Seq[Data]
 //  val data: UInt = Wire(UInt(0.W))
 }
 
@@ -27,11 +28,15 @@ class Union() extends Element {
   def getWidth: Int = {
     elWidth
   }
+
+  def getElements: Seq[Data] = Seq[Data](UInt(elWidth.W))
 }
 class BitsEl(override val elWidth: Int) extends Element {
   def getWidth: Int = {
     elWidth
   }
+
+  def getElements: Seq[Data] = Seq[Data](UInt(elWidth.W))
 }
 
 class PhysicalStream(val e: Element, val n: Int, val d: Int, val c: Int, val u: Element) extends Bundle {
@@ -63,6 +68,22 @@ class PhysicalStream(val e: Element, val n: Int, val d: Int, val c: Int, val u: 
   val strb = Output(UInt(n.W))
 }
 
+class TydiStream[T <: Element](val streamType: T = new Null,
+             val throughput: Double = 1.0, val dimensionality: Int = 0, val complexity: Int,
+             val user: Element = new Null, val keep: Boolean = false
+            ) extends RawModule {
+
+  val n: Int = throughput.ceil.toInt
+
+  private val _io: PhysicalStream = IO(new PhysicalStream(streamType, n=n, d=dimensionality, c=complexity, u=user))
+
+  val data: T = Wire(streamType)
+  // Auto concatenate all data elements
+  _io.data := streamType.getElements.map(_.asUInt).reduce(Cat(_, _))
+
+  def io(): PhysicalStream = _io
+}
+
 class RgbBundle extends Group {
   private val channelWidth: Width = 8.W
   val r: UInt = UInt(channelWidth)
@@ -75,16 +96,17 @@ class RgbBundle extends Group {
 
 class RgbModuleOut extends Module {
   private val rgbBundle = new RgbBundle
-  val rgbWire: RgbBundle = Wire(rgbBundle)
-  val io = IO(new PhysicalStream(rgbWire, n=1, d=2, c=7, u=new Null()))
+//  val rgbWire: RgbBundle = Wire(rgbBundle)
+//  val io = IO(new PhysicalStream(rgbWire, n=1, d=2, c=7, u=new Null()))
+  val stream = new TydiStream(rgbBundle, 1, complexity = 7)
+  val io = stream.io()
 //  io :<= DontCare
 
   private val rgbVal:Seq[Int] = Seq(0, 166, 244)
-//  val bundleEls: Seq[UInt] = rgbWire.getElements.map(_.asUInt)
-//  io.data := bundleEls.tail.foldLeft(bundleEls.head)((prior, next) => Cat(prior, next))
-  io.data := rgbWire.getElements.map(_.asUInt).reduce(Cat(_, _))
+//  io.data := rgbWire.getElements.map(_.asUInt).reduce(Cat(_, _))
   // Generates
   // io.data := rgbWire.r ## rgbWire.g ## rgbWire.b
+  val rgbWire: RgbBundle = stream.data
   rgbWire.r := rgbVal(0).U
   rgbWire.g := rgbVal(1).U
   rgbWire.b := rgbVal(2).U
