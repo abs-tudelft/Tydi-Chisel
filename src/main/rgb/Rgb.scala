@@ -98,6 +98,13 @@ class TydiStream[T <: Element](val streamType: T = new Null,
   io.data := data.getElements.map(_.asUInt).reduce(Cat(_, _))
 }
 
+object TydiStream {
+  def apply[T <: Element](streamType: T = new Null,
+                          throughput: Double = 1.0, dimensionality: Int = 0, complexity: Int,
+                          user: Element = new Null, keep: Boolean = false): TydiStream[T] =
+    Module(new TydiStream(streamType, throughput, dimensionality, complexity, user, keep))
+}
+
 class RgbBundle extends Group {
   private val channelWidth: Width = 8.W
   val r: UInt = UInt(channelWidth)
@@ -108,7 +115,7 @@ class RgbBundle extends Group {
 class RgbModuleOut extends Module {
   private val rgbBundle = new RgbBundle // Can also be inline
   // Create Tydi logical stream object
-  val stream: TydiStream[RgbBundle] = Module(new TydiStream(rgbBundle, 1, complexity = 7))
+  val stream: TydiStream[RgbBundle] = TydiStream(rgbBundle, 1, complexity = 7)
   // Create and connect physical stream following standard with concatenated data bitvector
   val tydi_port: PhysicalStream = IO(stream.ioType)
   tydi_port :<>= stream.io
