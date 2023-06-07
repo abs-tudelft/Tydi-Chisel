@@ -106,9 +106,10 @@ object TydiStream {
 }
 
 class TimestampedMessageBundle extends Group {
-  private val channelWidth: Width = 8.W
+  private val charWidth: Width = 8.W
   val time: UInt = UInt(64.W)
-  val message: UInt = UInt(channelWidth)
+//  val message: UInt = UInt(charWidth)
+  val message = TydiStream(new BitsEl(charWidth), 1, complexity = 7)
 }
 
 class TimestampedMessageModuleOut extends Module {
@@ -116,12 +117,14 @@ class TimestampedMessageModuleOut extends Module {
   // Create Tydi logical stream object
   val stream: TydiStream[TimestampedMessageBundle] = TydiStream(timestampedMessageBundle, 1, complexity = 7)
   // Create and connect physical stream following standard with concatenated data bitvector
-  val tydi_port: PhysicalStream = IO(stream.ioType)
-  tydi_port :<>= stream.io
+  val tydi_port_top: PhysicalStream = IO(stream.ioType)
+  val tydi_port_child: PhysicalStream = IO(stream.data.message.ioType)
+  tydi_port_top :<>= stream.io
+  tydi_port_child :<>= stream.io
 
   // Assign values to logical stream group elements directly
   stream.data.time := System.currentTimeMillis().U
-  stream.data.message := 0.U
+  stream.data.message.data.value := 'H'.U(8.W)
 
   // Assign some values to the other Tydi signals
   // We have 1 lane in this case
@@ -133,9 +136,12 @@ class TimestampedMessageModuleOut extends Module {
 }
 
 class TimestampedMessageModuleIn extends Module {
-  val io = IO(Flipped(new PhysicalStream(new TimestampedMessageBundle, n=1, d=2, c=7, u=new Null())))
-  io :<= DontCare
-  io.ready := DontCare
+  val io1 = IO(Flipped(new PhysicalStream(new TimestampedMessageBundle, n=1, d=2, c=7, u=new Null())))
+  val io2 = IO(Flipped(new PhysicalStream(new BitsEl(8.W), n=1, d=2, c=7, u=new Null())))
+  io1 :<= DontCare
+  io1.ready := DontCare
+  io2 :<= DontCare
+  io2.ready := DontCare
 }
 
 class TopLevelModule extends Module {
@@ -148,8 +154,9 @@ class TopLevelModule extends Module {
   val timestampedMessageIn = Module(new TimestampedMessageModuleIn())
 
   // Bi-directional connection
-  timestampedMessageIn.io :<>= timestampedMessageOut.tydi_port
-  io.out := timestampedMessageOut.tydi_port.data.asSInt
+  timestampedMessageIn.io1 :<>= timestampedMessageOut.tydi_port_top
+  timestampedMessageIn.io2 :<>= timestampedMessageOut.tydi_port_child
+  io.out := timestampedMessageOut.tydi_port_top.data.asSInt
 }
 
 object TimestampedMessage extends App {
