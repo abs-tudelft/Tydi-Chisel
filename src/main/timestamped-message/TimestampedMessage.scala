@@ -60,7 +60,7 @@ abstract class PhysicalStreamBase(private val e: Element, val n: Int, val d: Int
   require(n >= 1)
   require(1 <= c && c <= 7)
 
-  /** Indicates that the producer has valid data readyDu
+  /** Indicates that the producer has valid data ready
    *
    * @group Signals
    */
@@ -86,7 +86,19 @@ class PhysicalStream(private val e: Element, n: Int = 1, d: Int = 0, c: Int, pri
   require(n >= 1)
   require(1 <= c && c <= 7)
 
-  val data: UInt = Output(UInt(e.getWidth.W))
+  override val elWidth: Int = e.getDataElementsRec.map(_.getWidth).sum
+  val data: UInt = Output(UInt((elWidth*n).W))
+
+  // Stream mounting function
+  def :=[T <: Element](bundle: PhysicalStreamDetailed[T]): Unit = {
+    this.endi := bundle.endi
+    this.stai := bundle.stai
+    this.strb := bundle.strb
+    this.last := bundle.last
+    this.valid := bundle.valid
+    bundle.ready := this.ready
+    this.data := bundle.data.getDataConcat
+  }
 }
 
 class PhysicalStreamDetailed[T <: Element](private val e: T, n: Int = 1, d: Int = 0, c: Int, private val u: Element = new Null) extends PhysicalStreamBase(e, n, d, c, u) {
@@ -96,7 +108,9 @@ class PhysicalStreamDetailed[T <: Element](private val e: T, n: Int = 1, d: Int 
   val data: T = Output(e)
 
   def toPhysical: PhysicalStream = {
-    IO(new PhysicalStream(e, n, d, c, u))
+    val io = IO(new PhysicalStream(e, n, d, c, u))
+    io := this
+    io
   }
 }
 
@@ -135,25 +149,26 @@ class TimestampedMessageModuleOut extends TydiModule {
   private val timestampedMessageBundle = new TimestampedMessageBundle // Can also be inline
   // Create Tydi logical stream object
   val stream: PhysicalStreamDetailed[TimestampedMessageBundle] = Wire(new PhysicalStreamDetailed(timestampedMessageBundle, 1, c = 7))
-  // Create and connect physical stream following standard with concatenated data bitvector
+  // Create and connect physical streams following standard with concatenated data bitvector
   val tydi_port_top: PhysicalStream = stream.toPhysical
   val tydi_port_child: PhysicalStream = stream.data.message.toPhysical
-  mount(stream, tydi_port_top)
-  mount(stream.data.message, tydi_port_child)
 
-
-  // Assign values to logical stream group elements directly
+  // → Assign values to logical stream group elements directly
   stream.data.time := System.currentTimeMillis().U
+  stream.data.nested := DontCare
   stream.data.message.data.value := 'H'.U(8.W)
 
-  // Assign some values to the other Tydi signals
-  // We have 1 lane in this case
+  // → Assign some values to the other Tydi signals
+  //   We have 1 lane in this case
+
+  // Top stream
   stream.valid := true.B
   stream.strb := 1.U
   stream.stai := 0.U
   stream.endi := 1.U
   stream.last := 0.U
 
+  // Child stream
   stream.data.message.valid := true.B
   stream.data.message.strb := 1.U
   stream.data.message.stai := 0.U
