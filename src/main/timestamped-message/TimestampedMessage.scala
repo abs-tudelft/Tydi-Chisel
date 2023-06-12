@@ -7,6 +7,7 @@ import chisel3.internal.firrtl.Width
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
 
 trait Element extends Bundle {
+  val isStream: Boolean = false
   val elWidth: Int = 0
   def getWidth: Int
   def getElements: Seq[Data]
@@ -40,7 +41,9 @@ class BitsEl(override val width: Width) extends Element {
 //  def getElements: Seq[Data] = Seq[Data](UInt(elWidth.W))
 }
 
-class PhysicalStream(private val e: Element, val n: Int, val d: Int, val c: Int, private val u: Element) extends Bundle {
+abstract class PhysicalStreamBase(private val e: Element, val n: Int, val d: Int, val c: Int, private val u: Element) extends Element {
+  override val isStream: Boolean = true
+
   require(n >= 1)
   require(1 <= c && c <= 7)
 
@@ -48,79 +51,69 @@ class PhysicalStream(private val e: Element, val n: Int, val d: Int, val c: Int,
    *
    * @group Signals
    */
-  val valid = Output(Bool())
+  val valid: Bool = Output(Bool())
 
   /** Indicates that the consumer is ready to accept the data this cycle
    *
    * @group Signals
    */
-  val ready = Input(Bool())
+  val ready: Bool = Input(Bool())
 
   private val indexWidth = log2Ceil(n)
 
-  val data = Output(UInt(e.getWidth.W))
-  // data := 50.U // Cannot set data here because data is not yet IO'ified
-//  e match {
-//    case e: Group => data := e.getElements.map(_.asUInt).reduce(Cat(_, _))
-//  }
-  val last = Output(UInt(d.W))
-  val stai = Output(UInt(indexWidth.W))
-  val endi = Output(UInt(indexWidth.W))
-  val strb = Output(UInt(n.W))
+  val data: Data
+
+  val last: UInt = Output(UInt(d.W))
+  val stai: UInt = Output(UInt(indexWidth.W))
+  val endi: UInt = Output(UInt(indexWidth.W))
+  val strb: UInt = Output(UInt(n.W))
 }
 
-class TydiStream[T <: Element](val streamType: T = new Null,
-             val throughput: Double = 1.0, val dimensionality: Int = 0, val complexity: Int,
-             val user: Element = new Null, val keep: Boolean = false
-            ) extends RawModule {
+class PhysicalStream(private val e: Element, n: Int = 1, d: Int = 0, c: Int, private val u: Element = new Null) extends PhysicalStreamBase(e, n, d, c, u) {
+  require(n >= 1)
+  require(1 <= c && c <= 7)
 
-  val n: Int = throughput.ceil.toInt
-
-  val io: PhysicalStream = IO(new PhysicalStream(streamType, n=n, d=dimensionality, c=complexity, u=user))
-  def ioType: PhysicalStream = io.cloneType
-
-  val data: T = IO(Input(streamType))
-
-  val valid = IO(Input(Bool()))
-  io.valid := valid
-  val ready = IO(Output(Bool()))
-  ready := io.ready
-  val last = IO(Input(io.last.cloneType))
-  io.last := last
-  val stai = IO(Input(io.stai.cloneType))
-  io.stai := stai
-  val endi = IO(Input(io.endi.cloneType))
-  io.endi := endi
-  val strb = IO(Input(io.strb.cloneType))
-  io.strb := strb
-
-  // Auto concatenate all data elements
-  io.data := data.getElements.map(_.asUInt).reduce(Cat(_, _))
+  val data: UInt = Output(UInt(e.getWidth.W))
 }
 
-object TydiStream {
-  def apply[T <: Element](streamType: T = new Null,
-                          throughput: Double = 1.0, dimensionality: Int = 0, complexity: Int,
-                          user: Element = new Null, keep: Boolean = false): TydiStream[T] =
-    Module(new TydiStream(streamType, throughput, dimensionality, complexity, user, keep))
+class PhysicalStreamDetailed[T <: Element](private val e: T, n: Int = 1, d: Int = 0, c: Int, private val u: Element = new Null) extends PhysicalStreamBase(e, n, d, c, u) {
+  require(n >= 1)
+  require(1 <= c && c <= 7)
+
+  val data: T = Output(e)
 }
 
 class TimestampedMessageBundle extends Group {
   private val charWidth: Width = 8.W
   val time: UInt = UInt(64.W)
 //  val message: UInt = UInt(charWidth)
-  val message = TydiStream(new BitsEl(charWidth), 1, complexity = 7)
+  val message = new PhysicalStreamDetailed(new BitsEl(charWidth), d = 1, c = 7)
 }
 
 class TimestampedMessageModuleOut extends Module {
+  def mount[T <: Element](bundle: PhysicalStreamDetailed[T], io: PhysicalStream): Unit = {
+    io.endi := bundle.endi
+    io.stai := bundle.stai
+    io.strb := bundle.strb
+    io.last := bundle.last
+    io.valid := bundle.valid
+    bundle.ready := io.ready
+    var elements = bundle.data.getElements.filter(x => x match {
+      case x: Element => false
+      case _ => true
+    })
+    io.data := elements.map(_.asUInt).reduce((prev, new_) => Cat(prev, new_))
+  }
+
   private val timestampedMessageBundle = new TimestampedMessageBundle // Can also be inline
   // Create Tydi logical stream object
-  val stream: TydiStream[TimestampedMessageBundle] = TydiStream(timestampedMessageBundle, 1, complexity = 7)
+  val stream: PhysicalStreamDetailed[TimestampedMessageBundle] = Wire(new PhysicalStreamDetailed(timestampedMessageBundle, 1, c = 7))
   // Create and connect physical stream following standard with concatenated data bitvector
-  val tydi_port_top: PhysicalStream = IO(stream.ioType)
-  val tydi_port_child: PhysicalStream = IO(stream.data.message.ioType)
-  tydi_port_top :<>= stream.io
-  tydi_port_child :<>= stream.io
+  val tydi_port_top: PhysicalStream = IO(new PhysicalStream(timestampedMessageBundle, 1, c = 7))
+  val tydi_port_child: PhysicalStream = IO(new PhysicalStream(new BitsEl(8.W), 1, c = 7))
+  mount(stream, tydi_port_top)
+  mount(stream.data.message, tydi_port_child)
+
 
   // Assign values to logical stream group elements directly
   stream.data.time := System.currentTimeMillis().U
@@ -133,6 +126,12 @@ class TimestampedMessageModuleOut extends Module {
   stream.stai := 0.U
   stream.endi := 1.U
   stream.last := 0.U
+
+  stream.data.message.valid := true.B
+  stream.data.message.strb := 1.U
+  stream.data.message.stai := 0.U
+  stream.data.message.endi := 1.U
+  stream.data.message.last := 0.U
 }
 
 class TimestampedMessageModuleIn extends Module {
