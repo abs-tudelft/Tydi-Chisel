@@ -11,16 +11,28 @@ trait Element extends Bundle {
   val elWidth: Int = 0
   def getWidth: Int
   def getElements: Seq[Data]
-//  val data: UInt = Wire(UInt(0.W))
+
+  /** Gets data elements without streams. I.e. filters out any `Element`s that are also streams */
+  def getDataElements: Seq[Data] = getElements.filter(x => x match {
+    case x: Element => !x.isStream
+    case _ => true
+  })
+
+  /** Recursive way of getting only the data elements of the stream. */
+  def getDataElementsRec: Seq[Data] = {
+    val els = getDataElements
+    val mapped = els.flatMap(x => x match {
+      case x: Element => x.getDataElementsRec
+      case x: Bundle => x.getElements
+      case _ => x :: Nil
+    })
+    mapped
+  }
 }
 
-class Null() extends Element {}
+class Null() extends Element
 
-class Group() extends Bundle with Element {
-//  def getWidth: Width = {
-//    width
-//  }
-}
+class Group() extends Bundle with Element
 
 class Union() extends Element {
 //  def getWidth: Int = {
@@ -32,12 +44,7 @@ class Union() extends Element {
 //  def getElements: Seq[Data] = Seq[Data](UInt(elWidth.W))
 }
 class BitsEl(override val width: Width) extends Element {
-//  def getWidth: Int = {
-//    elWidth
-//  }
-
   val value = Bits(width)
-
 //  def getElements: Seq[Data] = Seq[Data](UInt(elWidth.W))
 }
 
@@ -83,10 +90,20 @@ class PhysicalStreamDetailed[T <: Element](private val e: T, n: Int = 1, d: Int 
   val data: T = Output(e)
 }
 
+class NestedBundle extends Group {
+  val a: UInt = UInt(8.W)
+  val b: Bool = Bool()
+}
+
 class TimestampedMessageBundle extends Group {
   private val charWidth: Width = 8.W
   val time: UInt = UInt(64.W)
-//  val message: UInt = UInt(charWidth)
+  val nested: Group = new NestedBundle
+  /*// It seems anonymous classes don't work well
+  val nested: Group = new Group {
+    val a: UInt = UInt(8.W)
+    val b: Bool = Bool()
+  }*/
   val message = new PhysicalStreamDetailed(new BitsEl(charWidth), d = 1, c = 7)
 }
 
@@ -98,10 +115,9 @@ class TimestampedMessageModuleOut extends Module {
     io.last := bundle.last
     io.valid := bundle.valid
     bundle.ready := io.ready
-    var elements = bundle.data.getElements.filter(x => x match {
-      case x: Element => false
-      case _ => true
-    })
+    // Filter out any `Element`s that are also streams.
+    // `.asUInt` also does recursive action but we don't want sub-streams to be included.
+    var elements = bundle.data.getDataElementsRec
     io.data := elements.map(_.asUInt).reduce((prev, new_) => Cat(prev, new_))
   }
 
