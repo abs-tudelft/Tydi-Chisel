@@ -28,6 +28,12 @@ trait Element extends Bundle {
     })
     mapped
   }
+
+  def getDataConcat: UInt = {
+    // Filter out any `Element`s that are also streams.
+    // `.asUInt` also does recursive action but we don't want sub-streams to be included.
+    getDataElementsRec.map(_.asUInt).reduce((prev, new_) => Cat(prev, new_))
+  }
 }
 
 class Null() extends Element
@@ -88,6 +94,10 @@ class PhysicalStreamDetailed[T <: Element](private val e: T, n: Int = 1, d: Int 
   require(1 <= c && c <= 7)
 
   val data: T = Output(e)
+
+  def toPhysical: PhysicalStream = {
+    IO(new PhysicalStream(e, n, d, c, u))
+  }
 }
 
 class NestedBundle extends Group {
@@ -107,7 +117,7 @@ class TimestampedMessageBundle extends Group {
   val message = new PhysicalStreamDetailed(new BitsEl(charWidth), d = 1, c = 7)
 }
 
-class TimestampedMessageModuleOut extends Module {
+class TydiModule extends Module {
   def mount[T <: Element](bundle: PhysicalStreamDetailed[T], io: PhysicalStream): Unit = {
     io.endi := bundle.endi
     io.stai := bundle.stai
@@ -115,18 +125,19 @@ class TimestampedMessageModuleOut extends Module {
     io.last := bundle.last
     io.valid := bundle.valid
     bundle.ready := io.ready
-    // Filter out any `Element`s that are also streams.
-    // `.asUInt` also does recursive action but we don't want sub-streams to be included.
-    var elements = bundle.data.getDataElementsRec
-    io.data := elements.map(_.asUInt).reduce((prev, new_) => Cat(prev, new_))
+    io.data := bundle.data.getDataConcat
   }
+}
 
+//////  End lib, start user code  //////
+
+class TimestampedMessageModuleOut extends TydiModule {
   private val timestampedMessageBundle = new TimestampedMessageBundle // Can also be inline
   // Create Tydi logical stream object
   val stream: PhysicalStreamDetailed[TimestampedMessageBundle] = Wire(new PhysicalStreamDetailed(timestampedMessageBundle, 1, c = 7))
   // Create and connect physical stream following standard with concatenated data bitvector
-  val tydi_port_top: PhysicalStream = IO(new PhysicalStream(timestampedMessageBundle, 1, c = 7))
-  val tydi_port_child: PhysicalStream = IO(new PhysicalStream(new BitsEl(8.W), 1, c = 7))
+  val tydi_port_top: PhysicalStream = stream.toPhysical
+  val tydi_port_child: PhysicalStream = stream.data.message.toPhysical
   mount(stream, tydi_port_top)
   mount(stream.data.message, tydi_port_child)
 
