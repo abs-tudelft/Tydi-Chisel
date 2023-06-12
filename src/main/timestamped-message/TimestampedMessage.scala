@@ -122,6 +122,20 @@ object PhysicalStreamDetailed {
   def apply[T <: Element](e: T, n: Int = 1, d: Int = 0, c: Int, u: Element = new Null): PhysicalStreamDetailed[T] = Wire(new PhysicalStreamDetailed(e, n, d, c, u))
 }
 
+class TydiModule extends Module {
+  def mount[T <: Element](bundle: PhysicalStreamDetailed[T], io: PhysicalStream): Unit = {
+    io.endi := bundle.endi
+    io.stai := bundle.stai
+    io.strb := bundle.strb
+    io.last := bundle.last
+    io.valid := bundle.valid
+    bundle.ready := io.ready
+    io.data := bundle.data.getDataConcat
+  }
+}
+
+//////  End lib, start user code  //////
+
 class NestedBundle extends Group {
   val a: UInt = UInt(8.W)
   val b: Bool = Bool()
@@ -138,20 +152,6 @@ class TimestampedMessageBundle extends Group {
   }*/
   val message = new PhysicalStreamDetailed(new BitsEl(charWidth), d = 1, c = 7)
 }
-
-class TydiModule extends Module {
-  def mount[T <: Element](bundle: PhysicalStreamDetailed[T], io: PhysicalStream): Unit = {
-    io.endi := bundle.endi
-    io.stai := bundle.stai
-    io.strb := bundle.strb
-    io.last := bundle.last
-    io.valid := bundle.valid
-    bundle.ready := io.ready
-    io.data := bundle.data.getDataConcat
-  }
-}
-
-//////  End lib, start user code  //////
 
 class TimestampedMessageModuleOut extends TydiModule {
   private val timestampedMessageBundle = new TimestampedMessageBundle // Can also be inline
