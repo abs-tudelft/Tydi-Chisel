@@ -101,6 +101,10 @@ class PhysicalStream(private val e: Element, n: Int = 1, d: Int = 0, c: Int, pri
   }
 }
 
+object PhysicalStream {
+  def apply(e: Element, n: Int = 1, d: Int = 0, c: Int, u: Element = new Null): PhysicalStream = new PhysicalStream(e, n, d, c, u)
+}
+
 class PhysicalStreamDetailed[T <: Element](private val e: T, n: Int = 1, d: Int = 0, c: Int, private val u: Element = new Null) extends PhysicalStreamBase(e, n, d, c, u) {
   require(n >= 1)
   require(1 <= c && c <= 7)
@@ -112,6 +116,10 @@ class PhysicalStreamDetailed[T <: Element](private val e: T, n: Int = 1, d: Int 
     io := this
     io
   }
+}
+
+object PhysicalStreamDetailed {
+  def apply[T <: Element](e: T, n: Int = 1, d: Int = 0, c: Int, u: Element = new Null): PhysicalStreamDetailed[T] = Wire(new PhysicalStreamDetailed(e, n, d, c, u))
 }
 
 class NestedBundle extends Group {
@@ -147,8 +155,10 @@ class TydiModule extends Module {
 
 class TimestampedMessageModuleOut extends TydiModule {
   private val timestampedMessageBundle = new TimestampedMessageBundle // Can also be inline
+
   // Create Tydi logical stream object
-  val stream: PhysicalStreamDetailed[TimestampedMessageBundle] = Wire(new PhysicalStreamDetailed(timestampedMessageBundle, 1, c = 7))
+  val stream: PhysicalStreamDetailed[TimestampedMessageBundle] = PhysicalStreamDetailed(timestampedMessageBundle, 1, c = 7)
+
   // Create and connect physical streams following standard with concatenated data bitvector
   val tydi_port_top: PhysicalStream = stream.toPhysical
   val tydi_port_child: PhysicalStream = stream.data.message.toPhysical
