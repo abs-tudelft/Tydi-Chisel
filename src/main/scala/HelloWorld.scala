@@ -27,7 +27,7 @@ class HelloWorldModuleOut extends Module with myTypes {
 class HelloWorldModuleIn extends Module with myTypes {
   val stream: PhysicalStreamDetailed[BitsEl] = HelloWorldStreamType.flip
   val io: PhysicalStream = stream.toPhysical
-  stream :<= DontCare
+//  stream :<= DontCare
   stream.ready := DontCare
 }
 
