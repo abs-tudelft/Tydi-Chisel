@@ -1,7 +1,7 @@
 package tydi_lib
 
 import chisel3._
-import chisel3.util.{Cat, log2Ceil}
+import chisel3.util.{Cat, PopCount, log2Ceil}
 import chisel3.internal.firrtl.Width
 
 sealed trait Element extends Bundle {
@@ -155,4 +155,30 @@ class TydiModule extends Module {
   def mount[T <: Element](bundle: PhysicalStreamDetailed[T], io: PhysicalStream): Unit = {
     io := bundle
   }
+}
+
+class ComplexityConverter[T <: Element](val in: PhysicalStream) extends TydiModule {
+  private val elWidth = in.elWidth
+  private val n = in.n
+  val stream: PhysicalStreamDetailed[T] = PhysicalStreamDetailed(new T, n = in.n, d = in.d, c = 7, r = true)
+  in := PhysicalStreamDetailed
+
+  val memSize = 20
+  val indexSize: Int = log2Ceil(memSize)
+  val currentIndex: UInt = RegInit(0.U(indexSize.W))
+  val reg: Vec[UInt] = Reg(Vec(n, UInt(elWidth.W)))
+
+  val indexes: Vec[UInt] = Vec(n, UInt(indexSize.W))
+  val lanesSeq: Seq[UInt] = Seq.tabulate(n)(i => in.data(i*(elWidth+1)-1, i*elWidth))
+  val lanes: Vec[UInt] = VecInit(lanesSeq)
+  // val validities: Seq[Bool] = in.strb.asBools
+  indexes.zipWithIndex.foreach(x => {
+    val isValid = in.strb(x._2)
+    // Count which index this lane should get
+    x._1 := currentIndex + PopCount(in.strb(x._2, 0))
+    when(isValid) {
+      reg(x._1) := lanes(x._2)
+    }
+  })
+
 }
