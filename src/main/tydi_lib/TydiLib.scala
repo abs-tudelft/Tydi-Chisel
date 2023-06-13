@@ -89,13 +89,26 @@ class PhysicalStream(private val e: Element, n: Int = 1, d: Int = 0, c: Int, pri
 
   // Stream mounting function
   def :=[T <: Element](bundle: PhysicalStreamDetailed[T]): Unit = {
-    this.endi := bundle.endi
-    this.stai := bundle.stai
-    this.strb := bundle.strb
-    this.last := bundle.last
-    this.valid := bundle.valid
-    bundle.ready := this.ready
-    this.data := bundle.getDataConcat
+    // This could be done with a :<>= but I like being explicit here to catch possible errors.
+    if (!bundle.r) {
+      this.endi := bundle.endi
+      this.stai := bundle.stai
+      this.strb := bundle.strb
+      this.last := bundle.last
+      this.valid := bundle.valid
+      bundle.ready := this.ready
+      this.data := bundle.getDataConcat
+    } else {
+      bundle.endi := this.endi
+      bundle.stai := this.stai
+      bundle.strb := this.strb
+      bundle.last := this.last
+      bundle.valid := this.valid
+      this.ready := bundle.ready
+      // Fixme: Cannot assign to a concatenation of signals. Have to try something else
+      // bundle.getDataConcat := this.data
+      this.data := DontCare
+    }
   }
 }
 
@@ -103,7 +116,7 @@ object PhysicalStream {
   def apply(e: Element, n: Int = 1, d: Int = 0, c: Int, u: Element = new Null): PhysicalStream = new PhysicalStream(e, n, d, c, u)
 }
 
-class PhysicalStreamDetailed[T <: Element](private val e: T, n: Int = 1, d: Int = 0, c: Int, private val u: Element = new Null) extends PhysicalStreamBase(e, n, d, c, u) {
+class PhysicalStreamDetailed[T <: Element](private val e: T, n: Int = 1, d: Int = 0, c: Int, var r: Boolean = false, private val u: Element = new Null) extends PhysicalStreamBase(e, n, d, c, u) {
   require(n >= 1)
   require(1 <= c && c <= 7)
 
@@ -113,15 +126,22 @@ class PhysicalStreamDetailed[T <: Element](private val e: T, n: Int = 1, d: Int 
 
   def el: T = data(0)
 
+  def flip: PhysicalStreamDetailed[T] = {
+    r = !r
+    this
+  }
+
   def toPhysical: PhysicalStream = {
-    val io = IO(new PhysicalStream(e, n, d, c, u))
+    val flip = r
+    val stream = new PhysicalStream(e, n, d, c, u)
+    val io = IO(if (flip) Flipped(stream) else stream)
     io := this
     io
   }
 }
 
 object PhysicalStreamDetailed {
-  def apply[T <: Element](e: T, n: Int = 1, d: Int = 0, c: Int, u: Element = new Null): PhysicalStreamDetailed[T] = Wire(new PhysicalStreamDetailed(e, n, d, c, u))
+  def apply[T <: Element](e: T, n: Int = 1, d: Int = 0, c: Int, r: Boolean = false, u: Element = new Null): PhysicalStreamDetailed[T] = Wire(new PhysicalStreamDetailed(e, n, d, c, r, u))
 }
 
 class TydiModule extends Module {

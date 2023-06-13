@@ -21,12 +21,14 @@ class HelloWorldModuleOut extends Module with myTypes {
   stream.stai := 0.U
   stream.endi := 5.U
   stream.last := 0.U
+  stream.ready := DontCare
 }
 
 class HelloWorldModuleIn extends Module with myTypes {
-  val io: PhysicalStream = Flipped(HelloWorldStreamType.toPhysical)
-  io :<= DontCare
-  io.ready := DontCare
+  val stream: PhysicalStreamDetailed[BitsEl] = HelloWorldStreamType.flip
+  val io: PhysicalStream = stream.toPhysical
+  stream :<= DontCare
+  stream.ready := DontCare
 }
 
 class TopLevelModule extends Module with myTypes {
