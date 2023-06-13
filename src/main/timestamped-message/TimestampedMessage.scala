@@ -97,7 +97,7 @@ class PhysicalStream(private val e: Element, n: Int = 1, d: Int = 0, c: Int, pri
     this.last := bundle.last
     this.valid := bundle.valid
     bundle.ready := this.ready
-    this.data := bundle.data.getDataConcat
+    this.data := bundle.getDataConcat
   }
 }
 
@@ -109,7 +109,11 @@ class PhysicalStreamDetailed[T <: Element](private val e: T, n: Int = 1, d: Int 
   require(n >= 1)
   require(1 <= c && c <= 7)
 
-  val data: T = Output(e)
+  val data: Vec[T] = Output(Vec(n, e))
+
+  override def getDataConcat: UInt = data.map(_.getDataConcat).reduce(Cat(_, _))
+
+  def el: T = data(0)
 
   def toPhysical: PhysicalStream = {
     val io = IO(new PhysicalStream(e, n, d, c, u))
@@ -130,7 +134,7 @@ class TydiModule extends Module {
     io.last := bundle.last
     io.valid := bundle.valid
     bundle.ready := io.ready
-    io.data := bundle.data.getDataConcat
+    io.data := bundle.getDataConcat
   }
 }
 
@@ -150,7 +154,7 @@ class TimestampedMessageBundle extends Group {
     val a: UInt = UInt(8.W)
     val b: Bool = Bool()
   }*/
-  val message = new PhysicalStreamDetailed(new BitsEl(charWidth), d = 1, c = 7)
+  val message = new PhysicalStreamDetailed(new BitsEl(charWidth), n = 3, d = 1, c = 7)
 }
 
 class TimestampedMessageModuleOut extends TydiModule {
@@ -161,12 +165,14 @@ class TimestampedMessageModuleOut extends TydiModule {
 
   // Create and connect physical streams following standard with concatenated data bitvector
   val tydi_port_top: PhysicalStream = stream.toPhysical
-  val tydi_port_child: PhysicalStream = stream.data.message.toPhysical
+  val tydi_port_child: PhysicalStream = stream.el.message.toPhysical
 
   // → Assign values to logical stream group elements directly
-  stream.data.time := System.currentTimeMillis().U
-  stream.data.nested := DontCare
-  stream.data.message.data.value := 'H'.U(8.W)
+  stream.el.time := System.currentTimeMillis().U
+  stream.el.nested := DontCare
+  stream.el.message.data(0).value := 'H'.U
+  stream.el.message.data(1).value := 'e'.U
+  stream.el.message.data(2).value := 'l'.U
 
   // → Assign some values to the other Tydi signals
   //   We have 1 lane in this case
@@ -179,16 +185,16 @@ class TimestampedMessageModuleOut extends TydiModule {
   stream.last := 0.U
 
   // Child stream
-  stream.data.message.valid := true.B
-  stream.data.message.strb := 1.U
-  stream.data.message.stai := 0.U
-  stream.data.message.endi := 1.U
-  stream.data.message.last := 0.U
+  stream.el.message.valid := true.B
+  stream.el.message.strb := 1.U
+  stream.el.message.stai := 0.U
+  stream.el.message.endi := 1.U
+  stream.el.message.last := 0.U
 }
 
 class TimestampedMessageModuleIn extends Module {
   val io1 = IO(Flipped(new PhysicalStream(new TimestampedMessageBundle, n=1, d=2, c=7, u=new Null())))
-  val io2 = IO(Flipped(new PhysicalStream(new BitsEl(8.W), n=1, d=2, c=7, u=new Null())))
+  val io2 = IO(Flipped(new PhysicalStream(new BitsEl(8.W), n=3, d=2, c=7, u=new Null())))
   io1 :<= DontCare
   io1.ready := DontCare
   io2 :<= DontCare
