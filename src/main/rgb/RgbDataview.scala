@@ -1,5 +1,6 @@
-package main.rgb
+package rgb
 
+import tydi_lib._
 import chisel3._
 import chisel3.util.{Cat, Decoupled, log2Ceil}
 import chisel3.experimental.dataview._
