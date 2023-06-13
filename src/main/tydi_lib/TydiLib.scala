@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util.{Cat, log2Ceil}
 import chisel3.internal.firrtl.Width
 
-trait Element extends Bundle {
+sealed trait Element extends Bundle {
   val isStream: Boolean = false
   val elWidth: Int = 0
   def getWidth: Int
@@ -34,7 +34,11 @@ trait Element extends Bundle {
   }
 }
 
-class Null() extends Element
+sealed class Null extends Element
+
+object Null {
+  def apply(): Null = new Null
+}
 
 class Group() extends Bundle with Element
 
@@ -47,9 +51,13 @@ class Union() extends Element {
 
   //  def getElements: Seq[Data] = Seq[Data](UInt(elWidth.W))
 }
+
 class BitsEl(override val width: Width) extends Element {
-  val value = Bits(width)
-  //  def getElements: Seq[Data] = Seq[Data](UInt(elWidth.W))
+  val value: UInt = Bits(width)
+}
+
+object BitsEl {
+  def apply(width: Width): BitsEl = new BitsEl(width)
 }
 
 abstract class PhysicalStreamBase(private val e: Element, val n: Int, val d: Int, val c: Int, private val u: Element) extends Element {
@@ -80,10 +88,7 @@ abstract class PhysicalStreamBase(private val e: Element, val n: Int, val d: Int
   val strb: UInt = Output(UInt(n.W))
 }
 
-class PhysicalStream(private val e: Element, n: Int = 1, d: Int = 0, c: Int, private val u: Element = new Null) extends PhysicalStreamBase(e, n, d, c, u) {
-  require(n >= 1)
-  require(1 <= c && c <= 7)
-
+class PhysicalStream(private val e: Element, n: Int = 1, d: Int = 0, c: Int, private val u: Element = Null()) extends PhysicalStreamBase(e, n, d, c, u) {
   override val elWidth: Int = e.getDataElementsRec.map(_.getWidth).sum
   val data: UInt = Output(UInt((elWidth*n).W))
 
@@ -116,13 +121,10 @@ class PhysicalStream(private val e: Element, n: Int = 1, d: Int = 0, c: Int, pri
 }
 
 object PhysicalStream {
-  def apply(e: Element, n: Int = 1, d: Int = 0, c: Int, u: Element = new Null): PhysicalStream = new PhysicalStream(e, n, d, c, u)
+  def apply(e: Element, n: Int = 1, d: Int = 0, c: Int, u: Element = Null()): PhysicalStream = new PhysicalStream(e, n, d, c, u)
 }
 
-class PhysicalStreamDetailed[T <: Element](private val e: T, n: Int = 1, d: Int = 0, c: Int, var r: Boolean = false, private val u: Element = new Null) extends PhysicalStreamBase(e, n, d, c, u) {
-  require(n >= 1)
-  require(1 <= c && c <= 7)
-
+class PhysicalStreamDetailed[T <: Element](private val e: T, n: Int = 1, d: Int = 0, c: Int, var r: Boolean = false, private val u: Element = Null()) extends PhysicalStreamBase(e, n, d, c, u) {
   val data: Vec[T] = Output(Vec(n, e))
 
   override def getDataConcat: UInt = data.map(_.getDataConcat).reduce(Cat(_, _))
@@ -146,17 +148,11 @@ class PhysicalStreamDetailed[T <: Element](private val e: T, n: Int = 1, d: Int 
 }
 
 object PhysicalStreamDetailed {
-  def apply[T <: Element](e: T, n: Int = 1, d: Int = 0, c: Int, r: Boolean = false, u: Element = new Null): PhysicalStreamDetailed[T] = Wire(new PhysicalStreamDetailed(e, n, d, c, r, u))
+  def apply[T <: Element](e: T, n: Int = 1, d: Int = 0, c: Int, r: Boolean = false, u: Element = Null()): PhysicalStreamDetailed[T] = Wire(new PhysicalStreamDetailed(e, n, d, c, r, u))
 }
 
 class TydiModule extends Module {
   def mount[T <: Element](bundle: PhysicalStreamDetailed[T], io: PhysicalStream): Unit = {
-    io.endi := bundle.endi
-    io.stai := bundle.stai
-    io.strb := bundle.strb
-    io.last := bundle.last
-    io.valid := bundle.valid
-    bundle.ready := io.ready
-    io.data := bundle.getDataConcat
+    io := bundle
   }
 }

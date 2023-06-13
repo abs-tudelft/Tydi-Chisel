@@ -21,7 +21,7 @@ class TimestampedMessageBundle extends Group {
     val a: UInt = UInt(8.W)
     val b: Bool = Bool()
   }*/
-  val message = new PhysicalStreamDetailed(new BitsEl(charWidth), n = 3, d = 1, c = 7)
+  val message = new PhysicalStreamDetailed(BitsEl(charWidth), n = 3, d = 1, c = 7)
 }
 
 class TimestampedMessageModuleOut extends TydiModule {
@@ -61,7 +61,7 @@ class TimestampedMessageModuleOut extends TydiModule {
 
 class TimestampedMessageModuleIn extends Module {
   val io1 = IO(Flipped(new PhysicalStream(new TimestampedMessageBundle, n=1, d=2, c=7, u=new Null())))
-  val io2 = IO(Flipped(new PhysicalStream(new BitsEl(8.W), n=3, d=2, c=7, u=new Null())))
+  val io2 = IO(Flipped(new PhysicalStream(BitsEl(8.W), n=3, d=2, c=7, u=new Null())))
   io1 :<= DontCare
   io1.ready := DontCare
   io2 :<= DontCare
