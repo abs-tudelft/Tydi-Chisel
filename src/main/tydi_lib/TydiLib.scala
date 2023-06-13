@@ -1,7 +1,7 @@
 package tydi_lib
 
 import chisel3._
-import chisel3.util.{Cat, MixedVec, log2Ceil}
+import chisel3.util.{Cat, log2Ceil}
 import chisel3.internal.firrtl.Width
 
 trait Element extends Bundle {
@@ -105,14 +105,10 @@ class PhysicalStream(private val e: Element, n: Int = 1, d: Int = 0, c: Int, pri
       bundle.last := this.last
       bundle.valid := this.valid
       this.ready := bundle.ready
-      // Fixme: Cannot assign to a concatenation of signals. Have to try something else
-//      val temp = Wire(MixedVec(bundle.getDataElementsRec map { el => UInt(el.getWidth.W) }))
-//      temp.zip(bundle.getDataElementsRec).foreach(x => x._2 := x._1)
-      val dataBools = this.data.asBools
+      // Connect data bitvector back to bundle
       bundle.getDataElementsRec.foldLeft(0)((i, data) => {
         val width = data.getWidth
-        val slice = dataBools.slice(i, i+width)
-        data := slice.map(_.asUInt).reduce(Cat(_, _))
+        data := this.data(i+width-1, i)
         i + width
       })
     }
