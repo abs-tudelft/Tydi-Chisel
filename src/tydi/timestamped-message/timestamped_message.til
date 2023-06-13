@@ -1,0 +1,41 @@
+namespace evaluation {
+// Recreating the timestamped message example from the Tydi-spec paper
+// Root<Group<Bits<64>,Dim<Bits<8>>>>
+
+    type chars = Stream (
+        data: Bits(8),
+        throughput: 2,
+        dimensionality: 1,
+        synchronicity: Sync,
+        complexity: 1,
+    );
+
+    type timestamped_message = Stream (
+        data: Group (
+            time: Bits(64),
+            message: chars,
+        ),
+        throughput: 2,
+        dimensionality: 0,
+        synchronicity: Sync,
+        complexity: 1,
+    );
+
+    streamlet child = (
+        timestamped_message_in: in timestamped_message,
+        timestamped_message_out: out timestamped_message,
+    );
+
+    streamlet example = (
+        timestamped_message_in: in timestamped_message,
+        timestamped_message_out: out timestamped_message,
+    ) {
+        impl: {
+            a = child;
+            b = child;
+            timestamped_message_in -- a.timestamped_message_in;
+            a.timestamped_message_out -- b.timestamped_message_in;
+            b.timestamped_message_out -- timestamped_message_out;
+        }
+    };
+}
