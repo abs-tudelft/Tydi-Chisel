@@ -66,6 +66,8 @@ abstract class PhysicalStreamBase(private val e: Element, val n: Int, val d: Int
   require(n >= 1)
   require(1 <= c && c <= 7)
 
+  def elementType = e.cloneType
+
   /** Indicates that the producer has valid data ready
    *
    * @group Signals
@@ -157,21 +159,23 @@ class TydiModule extends Module {
   }
 }
 
-class ComplexityConverter[T <: Element](val in: PhysicalStream) extends TydiModule {
-  private val elWidth = in.elWidth
-  private val n = in.n
-  val stream: PhysicalStreamDetailed[T] = PhysicalStreamDetailed(new T, n = in.n, d = in.d, c = 7, r = true)
-  in := PhysicalStreamDetailed
+class ComplexityConverter[T <: Element](val template: PhysicalStream) extends TydiModule {
+  private val elWidth = template.elWidth
+  private val n = template.n
+  private val d = template.d
+  val elType = template.elementType
+  val in: PhysicalStream = IO(Flipped(PhysicalStream(elType, n, d = d, c = template.c)))
+  val out: PhysicalStream = IO(PhysicalStream(elType, n, d = d, c = 1))
 
   val memSize = 20
   val indexSize: Int = log2Ceil(memSize)
   val currentIndex: UInt = RegInit(0.U(indexSize.W))
   val reg: Vec[UInt] = Reg(Vec(n, UInt(elWidth.W)))
 
-  val indexes: Vec[UInt] = Vec(n, UInt(indexSize.W))
-  val lanesSeq: Seq[UInt] = Seq.tabulate(n)(i => in.data(i*(elWidth+1)-1, i*elWidth))
+  val indexes: Vec[UInt] = Wire(Vec(n, UInt(indexSize.W)))
+  val lanesSeq: Seq[UInt] = Seq.tabulate(n)(i => in.data((i+1)*elWidth-1, i*elWidth))
   val lanes: Vec[UInt] = VecInit(lanesSeq)
-  // val validities: Seq[Bool] = in.strb.asBools
+
   indexes.zipWithIndex.foreach(x => {
     val isValid = in.strb(x._2)
     // Count which index this lane should get

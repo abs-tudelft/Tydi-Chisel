@@ -40,16 +40,12 @@ class TopLevelModule extends Module with myTypes {
   val helloWorldOut = Module(new HelloWorldModuleOut())
   val helloWorldIn = Module(new HelloWorldModuleIn())
 
-  // Mono-directional "strong connect" operator
-  /*helloWorldIn.io.data := helloWorldOut.io.data
-  helloWorldIn.io.last := helloWorldOut.io.last
-  helloWorldIn.io.stai := helloWorldOut.io.stai
-  helloWorldIn.io.endi := helloWorldOut.io.strb
-  helloWorldIn.io.valid := helloWorldOut.io.valid
-  helloWorldOut.io.ready := helloWorldOut.io.ready*/
+  val converter = Module(new ComplexityConverter(helloWorldOut.io))
+  converter.in :<>= helloWorldOut.io
+  helloWorldIn.io :<>= converter.out
 
   // Bi-directional connection
-  helloWorldIn.io :<>= helloWorldOut.io
+//  helloWorldIn.io :<>= helloWorldOut.io
 //  io.out := helloWorldOut.io.data.asSInt
   io.out := helloWorldOut.io.data.asUInt.asSInt
 }
