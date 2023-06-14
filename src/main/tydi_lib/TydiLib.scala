@@ -1,7 +1,7 @@
 package tydi_lib
 
 import chisel3._
-import chisel3.util.{Cat, PopCount, log2Ceil}
+import chisel3.util.{Cat, PopCount, PriorityEncoder, log2Ceil}
 import chisel3.internal.firrtl.Width
 
 sealed trait Element extends Bundle {
@@ -84,7 +84,8 @@ abstract class PhysicalStreamBase(private val e: Element, val n: Int, val d: Int
 
   val data: Data
 
-  val last: UInt = Output(UInt(d.W))
+  val lastWidth: Int = if (c == 7) d * n else d
+  val last: UInt = Output(UInt(lastWidth.W))
   val stai: UInt = Output(UInt(indexWidth.W))
   val endi: UInt = Output(UInt(indexWidth.W))
   val strb: UInt = Output(UInt(n.W))
@@ -177,7 +178,7 @@ class ComplexityConverter[T <: Element](val template: PhysicalStream) extends Ty
   val memSize = 20
   val indexSize: Int = log2Ceil(memSize)
   val currentIndex: UInt = RegInit(0.U(indexSize.W))
-  val lastWidth: Int = template.last.getWidth / n  // Assuming c = 7 here, or that this is the case for all complexities. Todo: Should still verify that.
+  val lastWidth: Int = d  // Assuming c = 7 here, or that this is the case for all complexities. Todo: Should still verify that.
   val bufferType = new Buffer(elWidth.W, lastWidth.W)
   // Create actual element storage
   val reg: Vec[Buffer] = Reg(Vec(n, bufferType))
@@ -190,6 +191,9 @@ class ComplexityConverter[T <: Element](val template: PhysicalStream) extends Ty
   val lanes: Vec[UInt] = VecInit(lanesSeq)
   val lasts: Vec[UInt] = VecInit(lastSeq)
 
+  /** Register that stores how many first dimension data-series are stored */
+  val seriesStored: UInt = RegInit(0.U(indexSize.W))
+
   // Calculate & set write indexes
   indexes.zipWithIndex.foreach(x => {
     val isValid = in.strb(x._2)
@@ -200,5 +204,33 @@ class ComplexityConverter[T <: Element](val template: PhysicalStream) extends Ty
       reg(x._1).last := lasts(x._2)
     }
   })
+
+  // Fixme: Can I assume that last will not be high if it is not valid?
+  seriesStored := seriesStored + lasts.map(_(0, 0)).reduce(_+_)
+
+  val transferCount: UInt = UInt(indexSize.W)
+  transferCount := 0.U
+
+  // When we have at least one series stored
+  when (seriesStored > 0.U) {
+    val stored = VecInit(reg.slice(0, n))
+    val storedLasts = stored.map(_.last)
+    val lastLastBitIndex: Int = lastWidth-1
+    /** Stores the contents of the least significant bits */
+    val leastSignificantLast = storedLasts.map(_(lastLastBitIndex))
+    // Todo: Check orientation
+    val transferLength = PriorityEncoder(leastSignificantLast.reverse)
+
+    // When transferLength is 0 it means the end will come later, transfer all
+    out.valid := true.B
+    out.data := stored.map(_.data).reduce(Cat(_, _))  // Re-concatenate all the data lanes
+    transferCount := Mux(transferLength === 0.U, n.U, transferLength)
+    out.endi := transferCount
+    // This should be okay since you cannot have an end to a higher dimension without an end to a lower dimension first
+    out.last := stored(transferLength).last
+  } .otherwise {
+    out.valid := false.B
+  }
+  out.stai := 0.U
 
 }
