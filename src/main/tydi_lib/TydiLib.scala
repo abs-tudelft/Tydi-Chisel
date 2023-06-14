@@ -159,29 +159,45 @@ class TydiModule extends Module {
   }
 }
 
+class Buffer(dataWidth: Width, lastWidth: Width) extends Bundle {
+  val data: UInt = UInt(dataWidth)
+  val last: UInt = UInt(lastWidth)
+}
+
 class ComplexityConverter[T <: Element](val template: PhysicalStream) extends TydiModule {
+  // Get some information from the template
   private val elWidth = template.elWidth
   private val n = template.n
   private val d = template.d
   val elType = template.elementType
+  // Create in- and output IO streams based on template
   val in: PhysicalStream = IO(Flipped(PhysicalStream(elType, n, d = d, c = template.c)))
   val out: PhysicalStream = IO(PhysicalStream(elType, n, d = d, c = 1))
 
   val memSize = 20
   val indexSize: Int = log2Ceil(memSize)
   val currentIndex: UInt = RegInit(0.U(indexSize.W))
-  val reg: Vec[UInt] = Reg(Vec(n, UInt(elWidth.W)))
+  val lastWidth: Int = template.last.getWidth / n  // Assuming c = 7 here, or that this is the case for all complexities. Todo: Should still verify that.
+  val bufferType = new Buffer(elWidth.W, lastWidth.W)
+  // Create actual element storage
+  val reg: Vec[Buffer] = Reg(Vec(n, bufferType))
 
+  /** Signal for storing the indexes the current incoming lanes should write to */
   val indexes: Vec[UInt] = Wire(Vec(n, UInt(indexSize.W)))
+  // Split incoming data and last signals into indexable vectors
   val lanesSeq: Seq[UInt] = Seq.tabulate(n)(i => in.data((i+1)*elWidth-1, i*elWidth))
+  val lastSeq: Seq[UInt] = Seq.tabulate(n)(i => in.last((i+1)*lastWidth-1, i*lastWidth))
   val lanes: Vec[UInt] = VecInit(lanesSeq)
+  val lasts: Vec[UInt] = VecInit(lastSeq)
 
+  // Calculate & set write indexes
   indexes.zipWithIndex.foreach(x => {
     val isValid = in.strb(x._2)
     // Count which index this lane should get
     x._1 := currentIndex + PopCount(in.strb(x._2, 0))
     when(isValid) {
-      reg(x._1) := lanes(x._2)
+      reg(x._1).data := lanes(x._2)
+      reg(x._1).last := lasts(x._2)
     }
   })
 
