@@ -165,7 +165,7 @@ class Buffer(dataWidth: Width, lastWidth: Width) extends Bundle {
   val last: UInt = UInt(lastWidth)
 }
 
-class ComplexityConverter[T <: Element](val template: PhysicalStream) extends TydiModule {
+class ComplexityConverter[T <: Element](val template: PhysicalStream, val memSize: Int) extends TydiModule {
   // Get some information from the template
   private val elWidth = template.elWidth
   private val n = template.n
@@ -175,13 +175,21 @@ class ComplexityConverter[T <: Element](val template: PhysicalStream) extends Ty
   val in: PhysicalStream = IO(Flipped(PhysicalStream(elType, n, d = d, c = template.c)))
   val out: PhysicalStream = IO(PhysicalStream(elType, n, d = d, c = 1))
 
-  val memSize = 20
+  /** How many bits are required to represent an index of memSize */
   val indexSize: Int = log2Ceil(memSize)
+  /** Stores index to write new data to in the register */
   val currentIndex: UInt = RegInit(0.U(indexSize.W))
   val lastWidth: Int = d  // Assuming c = 7 here, or that this is the case for all complexities. Todo: Should still verify that.
   val bufferType = new Buffer(elWidth.W, lastWidth.W)
   // Create actual element storage
   val reg: Vec[Buffer] = Reg(Vec(n, bufferType))
+  /** How many elements/lanes are being transferred *out* this cycle */
+  val transferCount: UInt = Wire(UInt(indexSize.W))
+
+  // Shift the whole register file by `transferCount` places by default
+  reg.zipWithIndex.foreach { case (r, i) =>
+    r := reg(i.U + transferCount)
+  }
 
   /** Signal for storing the indexes the current incoming lanes should write to */
   val indexes: Vec[UInt] = Wire(Vec(n, UInt(indexSize.W)))
@@ -205,26 +213,29 @@ class ComplexityConverter[T <: Element](val template: PhysicalStream) extends Ty
     }
   })
 
+  // Index for new cycle is the one after the last index of last cycle - how many lanes we shifted out
+  currentIndex := indexes.last + 1.U - transferCount
+
   // Fixme: Can I assume that last will not be high if it is not valid?
+  // Series transferred is the number of last lanes with high MSB
   seriesStored := seriesStored + lasts.map(_(0, 0)).reduce(_+_)
 
-  val transferCount: UInt = UInt(indexSize.W)
-  transferCount := 0.U
+  transferCount := 0.U  // Default, overwritten below
 
   // When we have at least one series stored
   when (seriesStored > 0.U) {
     val stored = VecInit(reg.slice(0, n))
     val storedLasts = stored.map(_.last)
-    val lastLastBitIndex: Int = lastWidth-1
     /** Stores the contents of the least significant bits */
-    val leastSignificantLast = storedLasts.map(_(lastLastBitIndex))
+    val leastSignificantLast = storedLasts.map(_(lastWidth-1))
     // Todo: Check orientation
     val transferLength = PriorityEncoder(leastSignificantLast.reverse)
+    // When transferLength is 0 (no last found) it means the end will come later, transfer n items
+    transferCount := Mux(transferLength === 0.U, n.U, transferLength)
 
-    // When transferLength is 0 it means the end will come later, transfer all
+    // Set out stream signals
     out.valid := true.B
     out.data := stored.map(_.data).reduce(Cat(_, _))  // Re-concatenate all the data lanes
-    transferCount := Mux(transferLength === 0.U, n.U, transferLength)
     out.endi := transferCount
     // This should be okay since you cannot have an end to a higher dimension without an end to a lower dimension first
     out.last := stored(transferLength).last

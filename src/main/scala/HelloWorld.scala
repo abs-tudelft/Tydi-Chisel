@@ -40,7 +40,7 @@ class TopLevelModule extends Module with myTypes {
   val helloWorldOut = Module(new HelloWorldModuleOut())
   val helloWorldIn = Module(new HelloWorldModuleIn())
 
-  val converter = Module(new ComplexityConverter(helloWorldOut.io))
+  val converter = Module(new ComplexityConverter(helloWorldOut.io, memSize = 20))
   converter.in :<>= helloWorldOut.io
   helloWorldIn.io :<>= converter.out
 
