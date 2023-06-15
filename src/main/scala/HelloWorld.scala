@@ -51,19 +51,30 @@ class TopLevelModule extends Module with myTypes {
 }
 
 object HelloWorld extends App {
-  private val firOpts: Array[String] = Array("-disable-opt", /*"-O=debug", */"-disable-all-randomization", "-strip-debug-info"/*, "-preserve-values=all"*/)
   println("Test123")
 
   println(emitCHIRRTL(new HelloWorldModuleOut()))
-  println(emitSystemVerilog(new HelloWorldModuleOut(), firtoolOpts = firOpts))
+  println(emitSystemVerilog(new HelloWorldModuleOut(), firtoolOpts = firNoOptimizationOpts))
 
   println(emitCHIRRTL(new HelloWorldModuleIn()))
-  println(emitSystemVerilog(new HelloWorldModuleIn(), firtoolOpts = firOpts))
+  println(emitSystemVerilog(new HelloWorldModuleIn(), firtoolOpts = firNoOptimizationOpts))
 
   println(emitCHIRRTL(new TopLevelModule()))
 
   // These lines generate the Verilog output
-  println(emitSystemVerilog(new TopLevelModule(), firtoolOpts = firOpts))
+  private val noOptimizationVerilog: String = emitSystemVerilog(new TopLevelModule(), firtoolOpts = firNoOptimizationOpts)
+  private val normalVerilog: String = emitSystemVerilog(new TopLevelModule(), firtoolOpts = firNormalOpts)
+  private val optimizedVerilog: String = emitSystemVerilog(new TopLevelModule(), firtoolOpts = firReleaseOpts)
+//  println("\n\n\n")
+//  println(noOptimizationVerilog)
+  println("\n\n\n")
+  println(normalVerilog)
+  println("\n\n\n")
+  println(optimizedVerilog)
+  println("\n\n\n")
+  println(s"No optimization: ${noOptimizationVerilog.lines.count()} lines")
+  println(s"Debug optimization: ${normalVerilog.lines.count()} lines")
+  println(s"Release optimization: ${optimizedVerilog.lines.count()} lines")
 
   println("Done")
 }
