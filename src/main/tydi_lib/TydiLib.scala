@@ -160,11 +160,6 @@ class TydiModule extends Module {
   }
 }
 
-class Buffer(dataWidth: Width, lastWidth: Width) extends Bundle {
-  val data: UInt = UInt(dataWidth)
-  val last: UInt = UInt(lastWidth)
-}
-
 class ComplexityConverter[T <: Element](val template: PhysicalStream, val memSize: Int) extends TydiModule {
   // Get some information from the template
   private val elWidth = template.elWidth
@@ -180,15 +175,19 @@ class ComplexityConverter[T <: Element](val template: PhysicalStream, val memSiz
   /** Stores index to write new data to in the register */
   val currentIndex: UInt = RegInit(0.U(indexSize.W))
   val lastWidth: Int = d  // Assuming c = 7 here, or that this is the case for all complexities. Todo: Should still verify that.
-  val bufferType = new Buffer(elWidth.W, lastWidth.W)
+
   // Create actual element storage
-  val reg: Vec[Buffer] = Reg(Vec(n, bufferType))
+  val dataReg: Vec[UInt] = Reg(Vec(memSize, UInt(elWidth.W)))
+  val lastReg: Vec[UInt] = Reg(Vec(memSize, UInt(lastWidth.W)))
   /** How many elements/lanes are being transferred *out* this cycle */
   val transferCount: UInt = Wire(UInt(indexSize.W))
 
   // Shift the whole register file by `transferCount` places by default
-  reg.zipWithIndex.foreach { case (r, i) =>
-    r := reg(i.U + transferCount)
+  dataReg.zipWithIndex.foreach { case (r, i) =>
+    r := dataReg(i.U + transferCount)
+  }
+  lastReg.zipWithIndex.foreach { case (r, i) =>
+    r := lastReg(i.U + transferCount)
   }
 
   /** Signal for storing the indexes the current incoming lanes should write to */
@@ -208,8 +207,8 @@ class ComplexityConverter[T <: Element](val template: PhysicalStream, val memSiz
     // Count which index this lane should get
     x._1 := currentIndex + PopCount(in.strb(x._2, 0))
     when(isValid) {
-      reg(x._1).data := lanes(x._2)
-      reg(x._1).last := lasts(x._2)
+      dataReg(x._1) := lanes(x._2)
+      lastReg(x._1) := lasts(x._2)
     }
   })
 
@@ -226,8 +225,8 @@ class ComplexityConverter[T <: Element](val template: PhysicalStream, val memSiz
 
   // When we have at least one series stored and sink is ready
   when (seriesStored > 0.U && in.ready) {
-    val stored = VecInit(reg.slice(0, n))
-    val storedLasts = stored.map(_.last)
+    val storedData = VecInit(dataReg.slice(0, n))
+    val storedLasts = VecInit(lastReg.slice(0, n))
     /** Stores the contents of the least significant bits */
     val leastSignificantLast = storedLasts.map(_(lastWidth-1))
     // Todo: Check orientation
@@ -237,11 +236,11 @@ class ComplexityConverter[T <: Element](val template: PhysicalStream, val memSiz
 
     // Set out stream signals
     out.valid := true.B
-    out.data := stored.map(_.data).reduce(Cat(_, _))  // Re-concatenate all the data lanes
+    out.data := storedData.reduce(Cat(_, _))  // Re-concatenate all the data lanes
     out.endi := transferCount
     out.strb := (1.U << transferCount) - 1.U
     // This should be okay since you cannot have an end to a higher dimension without an end to a lower dimension first
-    out.last := stored(transferLength).last
+    out.last := storedLasts(transferLength)
   } .otherwise {
     out.valid := false.B
     out.last := DontCare
