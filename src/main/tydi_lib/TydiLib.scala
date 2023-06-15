@@ -160,7 +160,12 @@ class TydiModule extends Module {
   }
 }
 
-class ComplexityConverter[T <: Element](val template: PhysicalStream, val memSize: Int) extends TydiModule {
+/**
+ * Component that can be used to convert a high complexity stream to a low complexity stream.
+ * @param template Physical stream to use as a reference for the input stream and partially the output stream.
+ * @param memSize Size of the buffer in terms of total items/lanes.
+ */
+class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extends TydiModule {
   // Get some information from the template
   private val elWidth = template.elWidth
   private val n = template.n
