@@ -216,14 +216,16 @@ class ComplexityConverter[T <: Element](val template: PhysicalStream, val memSiz
   // Index for new cycle is the one after the last index of last cycle - how many lanes we shifted out
   currentIndex := indexes.last + 1.U - transferCount
 
+  in.ready := currentIndex < (memSize-n).U  // We are ready as long as we have enough space left for a full transfer
+
   // Fixme: Can I assume that last will not be high if it is not valid?
   // Series transferred is the number of last lanes with high MSB
   seriesStored := seriesStored + lasts.map(_(0, 0)).reduce(_+_)
 
   transferCount := 0.U  // Default, overwritten below
 
-  // When we have at least one series stored
-  when (seriesStored > 0.U) {
+  // When we have at least one series stored and sink is ready
+  when (seriesStored > 0.U && in.ready) {
     val stored = VecInit(reg.slice(0, n))
     val storedLasts = stored.map(_.last)
     /** Stores the contents of the least significant bits */
@@ -237,10 +239,15 @@ class ComplexityConverter[T <: Element](val template: PhysicalStream, val memSiz
     out.valid := true.B
     out.data := stored.map(_.data).reduce(Cat(_, _))  // Re-concatenate all the data lanes
     out.endi := transferCount
+    out.strb := (1.U << transferCount) - 1.U
     // This should be okay since you cannot have an end to a higher dimension without an end to a lower dimension first
     out.last := stored(transferLength).last
   } .otherwise {
     out.valid := false.B
+    out.last := DontCare
+    out.endi := DontCare
+    out.strb := DontCare
+    out.data := DontCare
   }
   out.stai := 0.U
 
