@@ -8,6 +8,7 @@ lazy val root = (project in file("."))
   .settings(
     name := "chisel-initial-test",
     libraryDependencies += "org.chipsalliance" %% "chisel" % chiselVersion,
+    libraryDependencies += "edu.berkeley.cs" %% "chiseltest" % "0.6.0",
     scalacOptions ++= Seq(
       "-deprecation",
       "-encoding", "UTF-8",
