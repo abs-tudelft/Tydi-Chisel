@@ -228,14 +228,15 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
 
   transferCount := 0.U  // Default, overwritten below
 
+  val storedData: Vec[UInt] = VecInit(dataReg.slice(0, n))
+  val storedLasts: Vec[UInt] = VecInit(lastReg.slice(0, n))
+  /** Stores the contents of the least significant bits */
+  val leastSignificantLasts: Seq[Bool] = storedLasts.map(_(lastWidth - 1))
+  // Todo: Check orientation
+  val transferLength: UInt = PriorityEncoder(leastSignificantLasts.reverse)
+
   // When we have at least one series stored and sink is ready
-  when (seriesStored > 0.U && in.ready) {
-    val storedData = VecInit(dataReg.slice(0, n))
-    val storedLasts = VecInit(lastReg.slice(0, n))
-    /** Stores the contents of the least significant bits */
-    val leastSignificantLast = storedLasts.map(_(lastWidth-1))
-    // Todo: Check orientation
-    val transferLength = PriorityEncoder(leastSignificantLast.reverse)
+  when (seriesStored > 0.U && out.ready) {
     // When transferLength is 0 (no last found) it means the end will come later, transfer n items
     transferCount := Mux(transferLength === 0.U, n.U, transferLength)
 
