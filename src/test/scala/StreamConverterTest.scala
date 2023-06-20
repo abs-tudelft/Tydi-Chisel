@@ -34,6 +34,13 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
       c.in.strb.poke(1.U)
       c.in.stai.poke(0.U)
       c.in.endi.poke(0.U)
+      c.in.valid.poke(false.B)
+      c.in.data.poke(555.U)
+      c.exposed_currentIndex.expect(0.U) // No items yet
+      c.clock.step()
+
+      c.exposed_currentIndex.expect(0.U) // No items yet
+
       // Set some data
       c.in.valid.poke(true.B)
       c.in.data.poke(555.U)

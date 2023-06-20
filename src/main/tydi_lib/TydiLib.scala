@@ -208,7 +208,7 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
 
   // Calculate & set write indexes
   indexes.zipWithIndex.foreach(x => {
-    val isValid = in.strb(x._2)
+    val isValid = in.strb(x._2) && in.valid
     // Count which index this lane should get
     x._1 := currentIndex + PopCount(in.strb(x._2, 0))
     when(isValid) {
@@ -218,7 +218,11 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
   })
 
   // Index for new cycle is the one after the last index of last cycle - how many lanes we shifted out
-  currentIndex := indexes.last + 1.U - transferCount
+  when (in.valid) {
+    currentIndex := indexes.last + 1.U - transferCount
+  } otherwise {
+    currentIndex := currentIndex - transferCount
+  }
 
   in.ready := currentIndex < (memSize-n).U  // We are ready as long as we have enough space left for a full transfer
 
