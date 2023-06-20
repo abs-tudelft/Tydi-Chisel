@@ -29,12 +29,13 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
 
     // test case body here
     test(new ComplexityConverterWrapper(stream, 10)) { c =>
-      // test body here
-      c.in.valid.poke(true.B)
+      // Initialize signals
       c.in.last.poke(0.U)
       c.in.strb.poke(1.U)
       c.in.stai.poke(0.U)
-      c.in.endi.poke(1.U)
+      c.in.endi.poke(0.U)
+      // Set some data
+      c.in.valid.poke(true.B)
       c.in.data.poke(555.U)
       c.exposed_currentIndex.expect(0.U) // No items yet
       c.clock.step()
@@ -45,10 +46,12 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
       c.in.data.poke(0xABC.U)
       c.in.strb.poke(1.U)
       c.in.last.poke(1.U)
+      c.out.ready.expect(0.U) // No full series stored yet
       c.clock.step()
 
       c.in.last.poke(0.U)
       c.in.valid.poke(false.B)
+      c.out.ready.expect(1.U) // No full series stored yet
       c.exposed_currentIndex.expect(2.U)
       c.exposed_seriesStored.expect(1.U)
     }
