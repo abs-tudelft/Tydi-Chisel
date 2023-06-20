@@ -207,13 +207,15 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
   val seriesStored: UInt = RegInit(0.U(indexSize.W))
 
   // Calculate & set write indexes
-  indexes.zipWithIndex.foreach(x => {
-    val isValid = in.strb(x._2) && in.valid
-    // Count which index this lane should get
-    x._1 := currentIndex + PopCount(in.strb(x._2, 0))
-    when(isValid) {
-      dataReg(x._1) := lanes(x._2)
-      lastReg(x._1) := lasts(x._2)
+  indexes.zipWithIndex.foreach({ case (indexWire, i) => {
+      // Count which index this lane should get
+      // The strobe bit adds 1 for each item, which is why we can remove 1 here, or we would not fill the first slot.
+      indexWire := currentIndex + PopCount(in.strb(i, 0)) - 1.U
+      val isValid = in.strb(i) && in.valid
+      when(isValid) {
+        dataReg(indexWire) := lanes(i)
+        lastReg(indexWire) := lasts(i)
+      }
     }
   })
 
@@ -246,9 +248,11 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
   }
 
   // When we have at least one series stored and sink is ready
-  when (seriesStored > 0.U && out.ready) {
-    // When transferLength is 0 (no last found) it means the end will come later, transfer n items
-    transferCount := Mux(transferLength === 0.U, n.U, transferLength)
+  when (seriesStored > 0.U) {
+    when (out.ready) {
+      // When transferLength is 0 (no last found) it means the end will come later, transfer n items
+      transferCount := Mux(transferLength === 0.U, n.U, transferLength)
+    }
 
     // Set out stream signals
     out.valid := true.B
