@@ -237,21 +237,18 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
   val storedData: Vec[UInt] = VecInit(dataReg.slice(0, n))
   val storedLasts: Vec[UInt] = VecInit(lastReg.slice(0, n))
   var transferLength: UInt = Wire(UInt(indexSize.W))
-  if (n > 1) {
-    /** Stores the contents of the least significant bits */
-    val leastSignificantLasts: Seq[Bool] = storedLasts.map(_(lastWidth - 1))
-    // Todo: Check orientation
-    transferLength := PriorityEncoder(leastSignificantLasts.reverse)
-  } else {
-    // Exposing the signal does not work with the above for n=1
-    transferLength := storedLasts(lastWidth - 1)
-  }
+
+  /** Stores the contents of the least significant bits */
+  // The extra true concatenation is to fix the undefined PriorityEncoder behaviour when everything is 0
+  val leastSignificantLasts: Seq[Bool] = Seq(true.B) ++ storedLasts.map(_(lastWidth - 1))
+  // Todo: Check orientation
+  transferLength := PriorityEncoder(leastSignificantLasts.reverse)
 
   // When we have at least one series stored and sink is ready
   when (seriesStored > 0.U) {
     when (out.ready) {
       // When transferLength is 0 (no last found) it means the end will come later, transfer n items
-      transferCount := Mux(transferLength === 0.U, n.U, transferLength)
+      transferCount := transferLength
     }
 
     // Set out stream signals

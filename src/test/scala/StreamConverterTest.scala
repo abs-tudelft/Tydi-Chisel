@@ -30,11 +30,12 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "ComplexityConverter"
   // test class body here
 
-  it should "initialize" in {
+  it should "work with n=1" in {
     val stream = PhysicalStream(new MyEl, n = 1, d = 1, c = 7)
 
     // test case body here
     test(new ComplexityConverterWrapper(stream, 10)) { c =>
+      println("N=1 test")
       // Initialize signals
       println("Initializing signals")
       c.in.last.poke(0.U)
@@ -82,15 +83,17 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
       c.exposed_seriesStored.expect(1.U) // Still outputting first series
       c.out.valid.expect(1.U) // ... means valid output
       c.exposed_currentIndex.expect(1.U)
+      println("N=1 test done")
     }
   }
 
-  it should "do something" in {
+  it should "work with n=2" in {
     val stream = PhysicalStream(new MyEl, n=2, d=1, c=7)
 
     // test case body here
     test(new ComplexityConverterWrapper(stream, 10)) { c =>
-      // test body here
+      println("N=2 test")
+
       c.in.valid.poke(true.B)
       c.in.data.poke(555.U)
       c.in.strb.poke(1.U)
@@ -102,13 +105,27 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
       c.exposed_currentIndex.expect(1.U)
       c.in.data.poke(0xABCDEF.U)
       c.in.strb.poke(b("11"))
-      c.in.last.poke(b("0011"))
+      c.in.last.poke(b("10"))
       c.clock.step()
 
+      println(s"Data: ${c.exposed_storedData.peek()}")
+      println(s"Last: ${c.exposed_storedLasts.peek()}")
       c.in.last.poke(0.U)
       c.in.valid.poke(false.B)
       c.exposed_currentIndex.expect(3.U)
       c.exposed_seriesStored.expect(1.U)
+      c.out.ready.poke(true.B)
+      c.exposed_transferLength.expect(2.U)
+      c.exposed_transferCount.expect(2.U)
+      c.clock.step()
+
+      println(s"Data: ${c.exposed_storedData.peek()}")
+      println(s"Last: ${c.exposed_storedLasts.peek()}")
+      c.exposed_currentIndex.expect(1.U)
+      c.exposed_seriesStored.expect(1.U)
+      c.exposed_transferCount.expect(1.U)
+      c.exposed_transferLength.expect(1.U)
+      println("N=2 test done")
     }
   }
 }
