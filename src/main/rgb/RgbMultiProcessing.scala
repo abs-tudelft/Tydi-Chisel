@@ -2,6 +2,7 @@ package rgb
 
 import tydi_lib._
 import chisel3._
+import chisel3.util.{Cat}
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
 
 /**
@@ -9,10 +10,10 @@ import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
  */
 class SubProcessor extends TydiModule {
   // Declare streams
-  private val inStream = PhysicalStreamDetailed(new RgbBundle, n = 1, d = 0, c = 1, r = false)
-  private val outStream = PhysicalStreamDetailed(new RgbBundle, n = 1, d = 0, c = 1, r = true)
-  val in: PhysicalStream = inStream.toPhysical
+  private val outStream = PhysicalStreamDetailed(new RgbBundle, n = 1, d = 0, c = 1, r = false)
+  private val inStream = PhysicalStreamDetailed(new RgbBundle, n = 1, d = 0, c = 1, r = true)
   val out: PhysicalStream = outStream.toPhysical
+  val in: PhysicalStream = inStream.toPhysical
 
   // Do some data processing
   outStream.el.r := outStream.el.r * 2.U
@@ -20,7 +21,7 @@ class SubProcessor extends TydiModule {
   outStream.el.b := outStream.el.b * 2.U
 
   // Connect streams
-  in :<>= out
+  out :<>= in
 
   // Set static signals
   outStream.strb := 1.U
@@ -40,27 +41,23 @@ class MainProcessor(val n: Int = 6) extends TydiModule {
 
   val elSize: Int = (new RgbBundle).elWidth
 
-  private val subProcessors = Seq.tabulate(n)(i => Module(new SubProcessor))
-  // Set static signals
-  subProcessors.foreach(mod => {
-    // stai and endi are 0-length
-    mod.in.strb := 1.U
-  })
+  private val subProcessors = for (i <- 0 until n) yield {
+    val processor = Module(new SubProcessor)
+    // Set static signals
+    processor.in.strb := 1.U
+//    outStream.strb(i) := processor.out.ready // Top lane is valid when sub is ready Todo: factor in out ready here
+    processor.in.valid := inStream.valid(i)  // Sub input is valid when lane is valid
+    processor.in.data := in.data((elSize*i+1)-1, elSize*i)  // Set data
+    processor
+  }
 
   private val inputReadies = subProcessors.map(_.in.ready)
   inStream.ready := inputReadies.reduce(_&&_)  // Top input is ready when all the modules are ready
 
-  private val inputDatas = subProcessors.map(_.in.data)
-  for ((elem, i) <- inputDatas.zipWithIndex) {
-    // Assign data lane to sub processor
-    elem := in.data((elSize*i+1)-1, elSize*i)
-  }
-
-  private val valids = subProcessors.map(_.in.valid)
-  inStream.strb.asBools.zip(valids).foreach({ case (strb, valid) => strb := valid })  // Sub input is valid when lane is valid
-
-  private val outputReadies = subProcessors.map(_.out.ready)
-  outStream.strb.asBools.zip(outputReadies).foreach({ case (strb, ready) => strb := ready })  // Top lane is valid when sub is ready Todo: factor in out ready here
+  // Top lane is valid when sub is ready Todo: factor in out ready here
+  outStream.strb := subProcessors.map(_.out.strb).reduce(Cat(_,_))
+  // Re-concat all processor output data
+  out.data := subProcessors.map(_.out.data).reduce(Cat(_, _))
 }
 
 
