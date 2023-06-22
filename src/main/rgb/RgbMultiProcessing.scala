@@ -19,12 +19,17 @@ class SubProcessor extends TydiModule {
   outStream.el.r := outStream.el.r * 2.U
   outStream.el.g := outStream.el.g * 2.U
   outStream.el.b := outStream.el.b * 2.U
+  outStream.last := DontCare
+  outStream.valid := true.B // Fixme
+  inStream.ready := true.B
 
   // Connect streams
   out :<>= in
 
   // Set static signals
   outStream.strb := 1.U
+  outStream.stai := 0.U
+  outStream.endi := 0.U
   // stai and endi are 0-length
 }
 
@@ -35,26 +40,33 @@ class SubProcessor extends TydiModule {
  */
 class MainProcessor(val n: Int = 6) extends TydiModule {
   private val e = new RgbBundle
-  private val outStream = PhysicalStreamDetailed(e, n=n, d=0, c=7, r=false)
-  private val inStream = PhysicalStreamDetailed(e, n=n, d=0, c=7, r=true)
-  val out: PhysicalStream = outStream.toPhysical
-  val in: PhysicalStream = inStream.toPhysical
+  val out: PhysicalStream = IO(new PhysicalStream(e, n=n, d=0, c=7))
+  val in: PhysicalStream = IO(Flipped(new PhysicalStream(e, n=n, d=0, c=7)))
 
   val elSize: Int = (new RgbBundle).elWidth
+
+  out.valid := true.B
+  out.last := 0.U
+  out.stai := 0.U
+  out.endi := 0.U
 
   private val subProcessors = for (i <- 0 until n) yield {
     val processor = Module(new SubProcessor)
     processor.in.strb := 1.U  // Static signal
-    processor.in.valid := inStream.strb(i)  // Sub input is valid when lane is valid
+    processor.in.stai := 0.U  // Static signal
+    processor.in.endi := 0.U  // Static signal
+    processor.in.valid := in.strb(i)  // Sub input is valid when lane is valid
+    processor.in.last := DontCare
     processor.in.data := in.data((elSize*i+1)-1, elSize*i)  // Set data
+    processor.out.ready := out.ready
     processor
   }
 
   private val inputReadies = subProcessors.map(_.in.ready)
-  inStream.ready := inputReadies.reduce(_&&_)  // Top input is ready when all the modules are ready
+  in.ready := inputReadies.reduce(_&&_)  // Top input is ready when all the modules are ready
 
   // Top lane is valid when sub is ready Todo: factor in out ready here
-  outStream.strb := subProcessors.map(_.out.strb).reduce(Cat(_,_))
+  out.strb := subProcessors.map(_.out.strb).reduce(Cat(_,_))
   // Re-concat all processor output data
   out.data := subProcessors.map(_.out.data).reduce(Cat(_, _))
 }
