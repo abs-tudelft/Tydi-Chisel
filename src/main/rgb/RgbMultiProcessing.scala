@@ -16,9 +16,9 @@ class SubProcessor extends TydiModule {
   val in: PhysicalStream = inStream.toPhysical
 
   // Do some data processing
-  outStream.el.r := outStream.el.r * 2.U
-  outStream.el.g := outStream.el.g * 2.U
-  outStream.el.b := outStream.el.b * 2.U
+  outStream.el.r := inStream.el.r * 2.U
+  outStream.el.g := inStream.el.g * 2.U
+  outStream.el.b := inStream.el.b * 2.U
   outStream.last := DontCare
   outStream.valid := true.B // Fixme
   inStream.ready := true.B
