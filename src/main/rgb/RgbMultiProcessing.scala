@@ -45,7 +45,7 @@ class MainProcessor(val n: Int = 6) extends TydiModule {
   val out: PhysicalStream = IO(new PhysicalStream(e, n=n, d=0, c=7))
   val in: PhysicalStream = IO(Flipped(new PhysicalStream(e, n=n, d=0, c=7)))
 
-  val elSize: Int = (new RgbBundle).elWidth
+  val elSize: Int = (new RgbBundle).getWidth
 
   out.valid := true.B
   out.last := 0.U
