@@ -284,14 +284,16 @@ abstract class SubProcessorSignalDef extends TydiModule {
 
 /**
  * Basis of a SubProcessor definition that already includes the stream definitions and some base connections.
- * @param e Element type to use for the streams
- * @tparam T Element type of the stream
+ * @param eIn Element type to use for input stream
+ * @param eOut Element type to use for output stream
+ * @tparam Tin Element type of the input stream
+ * @tparam Tout Element type of the output stream
  */
 @instantiable
-abstract class SubProcessorBase[T <: TydiEl](val e: T) extends SubProcessorSignalDef {
+abstract class SubProcessorBase[Tin <: TydiEl, Tout <: TydiEl](val eIn: Tin, eOut: Tout) extends SubProcessorSignalDef {
   // Declare streams
-  val outStream: PhysicalStreamDetailed[T] = PhysicalStreamDetailed(e, n = 1, d = 0, c = 1, r = false)
-  val inStream: PhysicalStreamDetailed[T] = PhysicalStreamDetailed(e, n = 1, d = 0, c = 1, r = true)
+  val outStream: PhysicalStreamDetailed[Tout] = PhysicalStreamDetailed(eIn, n = 1, d = 0, c = 1, r = false)
+  val inStream: PhysicalStreamDetailed[Tin] = PhysicalStreamDetailed(eOut, n = 1, d = 0, c = 1, r = true)
   val out: PhysicalStream = outStream.toPhysical
   val in: PhysicalStream = inStream.toPhysical
 
@@ -307,15 +309,16 @@ abstract class SubProcessorBase[T <: TydiEl](val e: T) extends SubProcessorSigna
 
 /**
  * A MIMO processor that divides work over multiple sub-processors.
- * @param e Element type to use for streams
+ * @param eIn Element type to use for input stream
+ * @param eOut Element type to use for output stream
  * @param n Number of lanes/sub-processors
  * @param processorDef Definition of sub-processor
  */
-class MultiProcessorGeneral(val e: TydiEl, val processorDef: Definition[SubProcessorSignalDef], val n: Int = 6) extends TydiModule {
-  val out: PhysicalStream = IO(new PhysicalStream(e, n=n, d=0, c=7))
-  val in: PhysicalStream = IO(Flipped(new PhysicalStream(e, n=n, d=0, c=7)))
+class MultiProcessorGeneral(val eIn: TydiEl, val eOut: TydiEl, val processorDef: Definition[SubProcessorSignalDef], val n: Int = 6) extends TydiModule {
+  val in: PhysicalStream = IO(Flipped(PhysicalStream(eIn, n=n, d=0, c=7)))
+  val out: PhysicalStream = IO(PhysicalStream(eOut, n=n, d=0, c=7))
 
-  val elSize: Int = e.getWidth
+  val elSize: Int = eIn.getWidth
 
   out.valid := true.B
   out.last := 0.U

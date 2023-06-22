@@ -9,7 +9,7 @@ import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
 /**
  * A simple rgb pixel processor with a 1-lane low complexity input stream.
  */
-class SubProcessor extends SubProcessorBase(new RgbBundle) {
+class SubProcessor extends SubProcessorBase(new RgbBundle, new RgbBundle) {
   // Do some data processing
   outStream.el.r := inStream.el.r * 2.U
   outStream.el.g := inStream.el.g * 2.U
@@ -23,7 +23,7 @@ class SubProcessor extends SubProcessorBase(new RgbBundle) {
 /**
  * A MIMO pixel processor that consists of multiple sub-processors.
  */
-class MainProcessor extends MultiProcessorGeneral(new RgbBundle, Definition(new SubProcessor), 6)
+class MainProcessor extends MultiProcessorGeneral(new RgbBundle, new RgbBundle, Definition(new SubProcessor), 6)
 
 
 object RgbMultiProcessing extends App {
