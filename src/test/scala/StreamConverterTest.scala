@@ -25,6 +25,7 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
     val exposed_storedData: Vec[UInt] = expose(storedData)
     val exposed_storedLasts: Vec[UInt] = expose(storedLasts)
     val exposed_indexes: Vec[UInt] = expose(indexes)
+    val exposed_lasts: UInt = expose(leastSignificantLastSignal)
   }
 
   behavior of "ComplexityConverter"
@@ -46,7 +47,6 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
       c.in.data.poke(555.U)
       c.exposed_currentIndex.expect(0.U) // No items yet
       println(s"Indexes: ${c.exposed_indexes.peek()}")
-      println(s"Indexes: ${c.exposed_indexes.peek()}")
       println("Step clock")
       c.clock.step()
 
@@ -62,6 +62,7 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
 
       println(s"Data: ${c.exposed_storedData(0).peek()}")
       println(s"Last: ${c.exposed_storedLasts(0).peek()}")
+      println(s"Last: ${c.exposed_lasts.peek().litValue.toInt.toBinaryString}")
       c.exposed_currentIndex.expect(1.U)
       c.exposed_transferCount.expect(0.U) // Not transferring yet because output is not ready
       c.exposed_seriesStored.expect(0.U)
@@ -78,11 +79,19 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
       c.exposed_seriesStored.expect(1.U) // One series stored
       c.out.valid.expect(1.U) // ... means valid output
       c.exposed_currentIndex.expect(2.U)
+      println(s"Last: ${c.exposed_storedLasts.peek()}")
+      println(s"Last: ${c.exposed_lasts.peek().litValue.toInt.toBinaryString}")
+      c.exposed_transferLength.expect(1.U)
       println("Step clock")
       c.clock.step()
+
+      println(s"Data: ${c.exposed_storedData.peek()}")
+      println(s"Last: ${c.exposed_storedLasts.peek()}")
+      println(s"Last: ${c.exposed_lasts.peek().litValue.toInt.toBinaryString}")
       c.exposed_seriesStored.expect(1.U) // Still outputting first series
       c.out.valid.expect(1.U) // ... means valid output
       c.exposed_currentIndex.expect(1.U)
+      c.exposed_transferLength.expect(1.U)
       println("N=1 test done")
     }
   }
@@ -110,6 +119,7 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
 
       println(s"Data: ${c.exposed_storedData.peek()}")
       println(s"Last: ${c.exposed_storedLasts.peek()}")
+      println(s"Last: ${c.exposed_lasts.peek().litValue.toInt.toBinaryString}")
       c.in.last.poke(0.U)
       c.in.valid.poke(false.B)
       c.exposed_currentIndex.expect(3.U)
@@ -121,10 +131,11 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
 
       println(s"Data: ${c.exposed_storedData.peek()}")
       println(s"Last: ${c.exposed_storedLasts.peek()}")
+      println(s"Last: ${c.exposed_lasts.peek().litValue.toInt.toBinaryString}")
       c.exposed_currentIndex.expect(1.U)
       c.exposed_seriesStored.expect(1.U)
-      c.exposed_transferCount.expect(1.U)
       c.exposed_transferLength.expect(1.U)
+      c.exposed_transferCount.expect(1.U)
       println("N=2 test done")
     }
   }

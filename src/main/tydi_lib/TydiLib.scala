@@ -240,9 +240,11 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
 
   /** Stores the contents of the least significant bits */
   // The extra true concatenation is to fix the undefined PriorityEncoder behaviour when everything is 0
-  val leastSignificantLasts: Seq[Bool] = Seq(true.B) ++ storedLasts.map(_(lastWidth - 1))
+  val leastSignificantLasts: Seq[Bool] = Seq(false.B) ++ storedLasts.map(_(lastWidth - 1)) ++ Seq(true.B)
+  val leastSignificantLastSignal: UInt = leastSignificantLasts.map(_.asUInt).reduce(Cat(_, _))
   // Todo: Check orientation
-  transferLength := PriorityEncoder(leastSignificantLasts.reverse)
+  val temp: UInt = PriorityEncoder(leastSignificantLasts)
+  transferLength := Mux(temp > n.U, n.U, temp)
 
   // When we have at least one series stored and sink is ready
   when (seriesStored > 0.U) {
@@ -254,7 +256,7 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
     // Set out stream signals
     out.valid := true.B
     out.data := storedData.reduce(Cat(_, _))  // Re-concatenate all the data lanes
-    out.endi := transferCount
+    out.endi := transferCount - 1.U  // Encodes the index of the last valid lane.
     out.strb := (1.U << transferCount) - 1.U
     // This should be okay since you cannot have an end to a higher dimension without an end to a lower dimension first
     out.last := storedLasts(transferLength)
