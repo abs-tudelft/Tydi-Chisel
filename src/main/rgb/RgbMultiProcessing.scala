@@ -7,30 +7,19 @@ import chisel3.util.Cat
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
 
 @instantiable
-abstract class SubProcessorGeneral extends TydiModule {
+abstract class SubProcessorSignalDef extends TydiModule {
   // Declare streams
   @public val out: PhysicalStream
   @public val in: PhysicalStream
 }
 
-/**
- * A simple rgb pixel processor with a 1-lane low complexity input stream.
- */
 @instantiable
-class SubProcessor extends SubProcessorGeneral {
+abstract class SubProcessorBase[T <: TydiEl](val e: T) extends SubProcessorSignalDef {
   // Declare streams
-  private val outStream = PhysicalStreamDetailed(new RgbBundle, n = 1, d = 0, c = 1, r = false)
-  private val inStream = PhysicalStreamDetailed(new RgbBundle, n = 1, d = 0, c = 1, r = true)
-  override val out: PhysicalStream = outStream.toPhysical
-  override val in: PhysicalStream = inStream.toPhysical
-
-  // Do some data processing
-  outStream.el.r := inStream.el.r * 2.U
-  outStream.el.g := inStream.el.g * 2.U
-  outStream.el.b := inStream.el.b * 2.U
-  outStream.last := DontCare
-  outStream.valid := true.B // Fixme
-  inStream.ready := true.B
+  val outStream: PhysicalStreamDetailed[T] = PhysicalStreamDetailed(e, n = 1, d = 0, c = 1, r = false)
+  val inStream: PhysicalStreamDetailed[T] = PhysicalStreamDetailed(e, n = 1, d = 0, c = 1, r = true)
+  val out: PhysicalStream = outStream.toPhysical
+  val in: PhysicalStream = inStream.toPhysical
 
   // Connect streams
   out :<>= in
@@ -40,6 +29,20 @@ class SubProcessor extends SubProcessorGeneral {
   outStream.stai := 0.U
   outStream.endi := 0.U
   // stai and endi are 0-length
+}
+
+/**
+ * A simple rgb pixel processor with a 1-lane low complexity input stream.
+ */
+@instantiable
+class SubProcessor extends SubProcessorBase(new RgbBundle) {
+  // Do some data processing
+  outStream.el.r := inStream.el.r * 2.U
+  outStream.el.g := inStream.el.g * 2.U
+  outStream.el.b := inStream.el.b * 2.U
+  outStream.last := DontCare
+  outStream.valid := true.B // Fixme
+  inStream.ready := true.B
 }
 
 
@@ -52,7 +55,7 @@ class MainProcessor extends MultiProcessorGeneral(new RgbBundle, Definition(new 
  * A MIMO pixel processor that consists of multiple sub-processors.
  * @param n Number of lanes/sub-processors
  */
-class MultiProcessorGeneral(val e: TydiEl, val processorDef: Definition[SubProcessorGeneral], val n: Int = 6) extends TydiModule {
+class MultiProcessorGeneral(val e: TydiEl, val processorDef: Definition[SubProcessorSignalDef], val n: Int = 6) extends TydiModule {
   val out: PhysicalStream = IO(new PhysicalStream(e, n=n, d=0, c=7))
   val in: PhysicalStream = IO(Flipped(new PhysicalStream(e, n=n, d=0, c=7)))
 
@@ -64,7 +67,7 @@ class MultiProcessorGeneral(val e: TydiEl, val processorDef: Definition[SubProce
   out.endi := 0.U
 
   private val subProcessors = for (i <- 0 until n) yield {
-    val processor: Instance[SubProcessorGeneral] = Instance(processorDef)
+    val processor: Instance[SubProcessorSignalDef] = Instance(processorDef)
     //    val processor: SubProcessor = Module(new SubProcessor)
     processor.in.strb := 1.U  // Static signal
     processor.in.stai := 0.U  // Static signal
