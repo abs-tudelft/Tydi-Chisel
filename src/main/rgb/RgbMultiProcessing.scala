@@ -2,18 +2,20 @@ package rgb
 
 import tydi_lib._
 import chisel3._
-import chisel3.util.{Cat}
+import chisel3.experimental.hierarchy._
+import chisel3.util.Cat
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
 
 /**
  * A simple rgb pixel processor with a 1-lane low complexity input stream.
  */
+@instantiable
 class SubProcessor extends TydiModule {
   // Declare streams
   private val outStream = PhysicalStreamDetailed(new RgbBundle, n = 1, d = 0, c = 1, r = false)
   private val inStream = PhysicalStreamDetailed(new RgbBundle, n = 1, d = 0, c = 1, r = true)
-  val out: PhysicalStream = outStream.toPhysical
-  val in: PhysicalStream = inStream.toPhysical
+  @public val out: PhysicalStream = outStream.toPhysical
+  @public val in: PhysicalStream = inStream.toPhysical
 
   // Do some data processing
   outStream.el.r := inStream.el.r * 2.U
@@ -50,8 +52,10 @@ class MainProcessor(val n: Int = 6) extends TydiModule {
   out.stai := 0.U
   out.endi := 0.U
 
+  private val processorDef = Definition(new SubProcessor)
   private val subProcessors = for (i <- 0 until n) yield {
-    val processor = Module(new SubProcessor)
+    val processor: Instance[SubProcessor] = Instance(processorDef)
+//    val processor: SubProcessor = Module(new SubProcessor)
     processor.in.strb := 1.U  // Static signal
     processor.in.stai := 0.U  // Static signal
     processor.in.endi := 0.U  // Static signal
