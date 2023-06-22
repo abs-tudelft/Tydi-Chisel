@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util.{Cat, PopCount, PriorityEncoder, log2Ceil}
 import chisel3.internal.firrtl.Width
 
-sealed trait Element extends Bundle {
+sealed trait TydiEl extends Bundle {
   val isStream: Boolean = false
   val elWidth: Int = 0
   def getWidth: Int
@@ -12,7 +12,7 @@ sealed trait Element extends Bundle {
 
   /** Gets data elements without streams. I.e. filters out any `Element`s that are also streams */
   def getDataElements: Seq[Data] = getElements.filter(x => x match {
-    case x: Element => !x.isStream
+    case x: TydiEl => !x.isStream
     case _ => true
   })
 
@@ -20,7 +20,7 @@ sealed trait Element extends Bundle {
   def getDataElementsRec: Seq[Data] = {
     val els = getDataElements
     val mapped = els.flatMap(x => x match {
-      case x: Element => x.getDataElementsRec
+      case x: TydiEl => x.getDataElementsRec
       case x: Bundle => x.getElements
       case _ => x :: Nil
     })
@@ -34,15 +34,15 @@ sealed trait Element extends Bundle {
   }
 }
 
-sealed class Null extends Element
+sealed class Null extends TydiEl
 
 object Null {
   def apply(): Null = new Null
 }
 
-class Group() extends Bundle with Element
+class Group() extends Bundle with TydiEl
 
-class Union() extends Element {
+class Union() extends TydiEl {
   //  def getWidth: Int = {
   //    elWidth
   //  }
@@ -52,7 +52,7 @@ class Union() extends Element {
   //  def getElements: Seq[Data] = Seq[Data](UInt(elWidth.W))
 }
 
-class BitsEl(override val width: Width) extends Element {
+class BitsEl(override val width: Width) extends TydiEl {
   val value: UInt = Bits(width)
 }
 
@@ -60,7 +60,7 @@ object BitsEl {
   def apply(width: Width): BitsEl = new BitsEl(width)
 }
 
-abstract class PhysicalStreamBase(private val e: Element, val n: Int, val d: Int, val c: Int, private val u: Element) extends Element {
+abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int, val c: Int, private val u: TydiEl) extends TydiEl {
   override val isStream: Boolean = true
 
   require(n >= 1)
@@ -91,12 +91,12 @@ abstract class PhysicalStreamBase(private val e: Element, val n: Int, val d: Int
   val strb: UInt = Output(UInt(n.W))
 }
 
-class PhysicalStream(private val e: Element, n: Int = 1, d: Int = 0, c: Int, private val u: Element = Null()) extends PhysicalStreamBase(e, n, d, c, u) {
+class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, private val u: TydiEl = Null()) extends PhysicalStreamBase(e, n, d, c, u) {
   override val elWidth: Int = e.getDataElementsRec.map(_.getWidth).sum
   val data: UInt = Output(UInt((elWidth*n).W))
 
   // Stream mounting function
-  def :=[T <: Element](bundle: PhysicalStreamDetailed[T]): Unit = {
+  def :=[T <: TydiEl](bundle: PhysicalStreamDetailed[T]): Unit = {
     // This could be done with a :<>= but I like being explicit here to catch possible errors.
     if (!bundle.r) {
       this.endi := bundle.endi
@@ -124,10 +124,10 @@ class PhysicalStream(private val e: Element, n: Int = 1, d: Int = 0, c: Int, pri
 }
 
 object PhysicalStream {
-  def apply(e: Element, n: Int = 1, d: Int = 0, c: Int, u: Element = Null()): PhysicalStream = new PhysicalStream(e, n, d, c, u)
+  def apply(e: TydiEl, n: Int = 1, d: Int = 0, c: Int, u: TydiEl = Null()): PhysicalStream = new PhysicalStream(e, n, d, c, u)
 }
 
-class PhysicalStreamDetailed[T <: Element](private val e: T, n: Int = 1, d: Int = 0, c: Int, var r: Boolean = false, private val u: Element = Null()) extends PhysicalStreamBase(e, n, d, c, u) {
+class PhysicalStreamDetailed[T <: TydiEl](private val e: T, n: Int = 1, d: Int = 0, c: Int, var r: Boolean = false, private val u: TydiEl = Null()) extends PhysicalStreamBase(e, n, d, c, u) {
   val data: Vec[T] = Output(Vec(n, e))
 
   override def getDataConcat: UInt = data.map(_.getDataConcat).reduce(Cat(_, _))
@@ -151,11 +151,11 @@ class PhysicalStreamDetailed[T <: Element](private val e: T, n: Int = 1, d: Int 
 }
 
 object PhysicalStreamDetailed {
-  def apply[T <: Element](e: T, n: Int = 1, d: Int = 0, c: Int, r: Boolean = false, u: Element = Null()): PhysicalStreamDetailed[T] = Wire(new PhysicalStreamDetailed(e, n, d, c, r, u))
+  def apply[T <: TydiEl](e: T, n: Int = 1, d: Int = 0, c: Int, r: Boolean = false, u: TydiEl = Null()): PhysicalStreamDetailed[T] = Wire(new PhysicalStreamDetailed(e, n, d, c, r, u))
 }
 
 class TydiModule extends Module {
-  def mount[T <: Element](bundle: PhysicalStreamDetailed[T], io: PhysicalStream): Unit = {
+  def mount[T <: TydiEl](bundle: PhysicalStreamDetailed[T], io: PhysicalStream): Unit = {
     io := bundle
   }
 }

@@ -6,16 +6,23 @@ import chisel3.experimental.hierarchy._
 import chisel3.util.Cat
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
 
+@instantiable
+abstract class SubProcessorGeneral extends TydiModule {
+  // Declare streams
+  @public val out: PhysicalStream
+  @public val in: PhysicalStream
+}
+
 /**
  * A simple rgb pixel processor with a 1-lane low complexity input stream.
  */
 @instantiable
-class SubProcessor extends TydiModule {
+class SubProcessor extends SubProcessorGeneral {
   // Declare streams
   private val outStream = PhysicalStreamDetailed(new RgbBundle, n = 1, d = 0, c = 1, r = false)
   private val inStream = PhysicalStreamDetailed(new RgbBundle, n = 1, d = 0, c = 1, r = true)
-  @public val out: PhysicalStream = outStream.toPhysical
-  @public val in: PhysicalStream = inStream.toPhysical
+  override val out: PhysicalStream = outStream.toPhysical
+  override val in: PhysicalStream = inStream.toPhysical
 
   // Do some data processing
   outStream.el.r := inStream.el.r * 2.U
@@ -38,24 +45,27 @@ class SubProcessor extends TydiModule {
 
 /**
  * A MIMO pixel processor that consists of multiple sub-processors.
+ */
+class MainProcessor extends MultiProcessorGeneral(new RgbBundle, Definition(new SubProcessor), 6)
+
+/**
+ * A MIMO pixel processor that consists of multiple sub-processors.
  * @param n Number of lanes/sub-processors
  */
-class MainProcessor(val n: Int = 6) extends TydiModule {
-  private val e = new RgbBundle
+class MultiProcessorGeneral(val e: TydiEl, val processorDef: Definition[SubProcessorGeneral], val n: Int = 6) extends TydiModule {
   val out: PhysicalStream = IO(new PhysicalStream(e, n=n, d=0, c=7))
   val in: PhysicalStream = IO(Flipped(new PhysicalStream(e, n=n, d=0, c=7)))
 
-  val elSize: Int = (new RgbBundle).getWidth
+  val elSize: Int = e.getWidth
 
   out.valid := true.B
   out.last := 0.U
   out.stai := 0.U
   out.endi := 0.U
 
-  private val processorDef = Definition(new SubProcessor)
   private val subProcessors = for (i <- 0 until n) yield {
-    val processor: Instance[SubProcessor] = Instance(processorDef)
-//    val processor: SubProcessor = Module(new SubProcessor)
+    val processor: Instance[SubProcessorGeneral] = Instance(processorDef)
+    //    val processor: SubProcessor = Module(new SubProcessor)
     processor.in.strb := 1.U  // Static signal
     processor.in.stai := 0.U  // Static signal
     processor.in.endi := 0.U  // Static signal
