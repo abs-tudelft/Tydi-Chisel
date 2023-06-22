@@ -34,19 +34,18 @@ class SubProcessor extends TydiModule {
  * @param n Number of lanes/sub-processors
  */
 class MainProcessor(val n: Int = 6) extends TydiModule {
-  private val inStream = PhysicalStreamDetailed(new RgbBundle, n=n, d=0, c=7, r=false)
-  private val outStream = inStream.flip
-  val in: PhysicalStream = inStream.toPhysical
+  private val e = new RgbBundle
+  private val outStream = PhysicalStreamDetailed(e, n=n, d=0, c=7, r=false)
+  private val inStream = PhysicalStreamDetailed(e, n=n, d=0, c=7, r=true)
   val out: PhysicalStream = outStream.toPhysical
+  val in: PhysicalStream = inStream.toPhysical
 
   val elSize: Int = (new RgbBundle).elWidth
 
   private val subProcessors = for (i <- 0 until n) yield {
     val processor = Module(new SubProcessor)
-    // Set static signals
-    processor.in.strb := 1.U
-//    outStream.strb(i) := processor.out.ready // Top lane is valid when sub is ready Todo: factor in out ready here
-    processor.in.valid := inStream.valid(i)  // Sub input is valid when lane is valid
+    processor.in.strb := 1.U  // Static signal
+    processor.in.valid := inStream.strb(i)  // Sub input is valid when lane is valid
     processor.in.data := in.data((elSize*i+1)-1, elSize*i)  // Set data
     processor
   }
