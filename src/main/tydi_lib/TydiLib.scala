@@ -1,10 +1,11 @@
 package tydi_lib
 
 import chisel3._
+import chisel3.experimental.hierarchy.{Definition, Instance, instantiable, public}
 import chisel3.util.{Cat, PopCount, PriorityEncoder, log2Ceil}
 import chisel3.internal.firrtl.Width
 
-sealed trait Element extends Bundle {
+sealed trait TydiEl extends Bundle {
   val isStream: Boolean = false
   val elWidth: Int = 0
   def getWidth: Int
@@ -12,7 +13,7 @@ sealed trait Element extends Bundle {
 
   /** Gets data elements without streams. I.e. filters out any `Element`s that are also streams */
   def getDataElements: Seq[Data] = getElements.filter(x => x match {
-    case x: Element => !x.isStream
+    case x: TydiEl => !x.isStream
     case _ => true
   })
 
@@ -20,7 +21,7 @@ sealed trait Element extends Bundle {
   def getDataElementsRec: Seq[Data] = {
     val els = getDataElements
     val mapped = els.flatMap(x => x match {
-      case x: Element => x.getDataElementsRec
+      case x: TydiEl => x.getDataElementsRec
       case x: Bundle => x.getElements
       case _ => x :: Nil
     })
@@ -34,15 +35,15 @@ sealed trait Element extends Bundle {
   }
 }
 
-sealed class Null extends Element
+sealed class Null extends TydiEl
 
 object Null {
   def apply(): Null = new Null
 }
 
-class Group() extends Bundle with Element
+class Group() extends Bundle with TydiEl
 
-class Union() extends Element {
+class Union() extends TydiEl {
   //  def getWidth: Int = {
   //    elWidth
   //  }
@@ -52,7 +53,7 @@ class Union() extends Element {
   //  def getElements: Seq[Data] = Seq[Data](UInt(elWidth.W))
 }
 
-class BitsEl(override val width: Width) extends Element {
+class BitsEl(override val width: Width) extends TydiEl {
   val value: UInt = Bits(width)
 }
 
@@ -60,7 +61,7 @@ object BitsEl {
   def apply(width: Width): BitsEl = new BitsEl(width)
 }
 
-abstract class PhysicalStreamBase(private val e: Element, val n: Int, val d: Int, val c: Int, private val u: Element) extends Element {
+abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int, val c: Int, private val u: TydiEl) extends TydiEl {
   override val isStream: Boolean = true
 
   require(n >= 1)
@@ -91,12 +92,12 @@ abstract class PhysicalStreamBase(private val e: Element, val n: Int, val d: Int
   val strb: UInt = Output(UInt(n.W))
 }
 
-class PhysicalStream(private val e: Element, n: Int = 1, d: Int = 0, c: Int, private val u: Element = Null()) extends PhysicalStreamBase(e, n, d, c, u) {
+class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, private val u: TydiEl = Null()) extends PhysicalStreamBase(e, n, d, c, u) {
   override val elWidth: Int = e.getDataElementsRec.map(_.getWidth).sum
   val data: UInt = Output(UInt((elWidth*n).W))
 
   // Stream mounting function
-  def :=[T <: Element](bundle: PhysicalStreamDetailed[T]): Unit = {
+  def :=[T <: TydiEl](bundle: PhysicalStreamDetailed[T]): Unit = {
     // This could be done with a :<>= but I like being explicit here to catch possible errors.
     if (!bundle.r) {
       this.endi := bundle.endi
@@ -124,10 +125,10 @@ class PhysicalStream(private val e: Element, n: Int = 1, d: Int = 0, c: Int, pri
 }
 
 object PhysicalStream {
-  def apply(e: Element, n: Int = 1, d: Int = 0, c: Int, u: Element = Null()): PhysicalStream = new PhysicalStream(e, n, d, c, u)
+  def apply(e: TydiEl, n: Int = 1, d: Int = 0, c: Int, u: TydiEl = Null()): PhysicalStream = new PhysicalStream(e, n, d, c, u)
 }
 
-class PhysicalStreamDetailed[T <: Element](private val e: T, n: Int = 1, d: Int = 0, c: Int, var r: Boolean = false, private val u: Element = Null()) extends PhysicalStreamBase(e, n, d, c, u) {
+class PhysicalStreamDetailed[T <: TydiEl](private val e: T, n: Int = 1, d: Int = 0, c: Int, var r: Boolean = false, private val u: TydiEl = Null()) extends PhysicalStreamBase(e, n, d, c, u) {
   val data: Vec[T] = Output(Vec(n, e))
 
   override def getDataConcat: UInt = data.map(_.getDataConcat).reduce(Cat(_, _))
@@ -151,11 +152,11 @@ class PhysicalStreamDetailed[T <: Element](private val e: T, n: Int = 1, d: Int 
 }
 
 object PhysicalStreamDetailed {
-  def apply[T <: Element](e: T, n: Int = 1, d: Int = 0, c: Int, r: Boolean = false, u: Element = Null()): PhysicalStreamDetailed[T] = Wire(new PhysicalStreamDetailed(e, n, d, c, r, u))
+  def apply[T <: TydiEl](e: T, n: Int = 1, d: Int = 0, c: Int, r: Boolean = false, u: TydiEl = Null()): PhysicalStreamDetailed[T] = Wire(new PhysicalStreamDetailed(e, n, d, c, r, u))
 }
 
 class TydiModule extends Module {
-  def mount[T <: Element](bundle: PhysicalStreamDetailed[T], io: PhysicalStream): Unit = {
+  def mount[T <: TydiEl](bundle: PhysicalStreamDetailed[T], io: PhysicalStream): Unit = {
     io := bundle
   }
 }
@@ -269,4 +270,79 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
   }
   out.stai := 0.U
 
+}
+
+/**
+ * Base definition for SubProcessor that only includes signal definitions used in [[MultiProcessorGeneral]]
+ */
+@instantiable
+abstract class SubProcessorSignalDef extends TydiModule {
+  // Declare streams
+  @public val out: PhysicalStream
+  @public val in: PhysicalStream
+}
+
+/**
+ * Basis of a SubProcessor definition that already includes the stream definitions and some base connections.
+ * @param eIn Element type to use for input stream
+ * @param eOut Element type to use for output stream
+ * @tparam Tin Element type of the input stream
+ * @tparam Tout Element type of the output stream
+ */
+@instantiable
+abstract class SubProcessorBase[Tin <: TydiEl, Tout <: TydiEl](val eIn: Tin, eOut: Tout) extends SubProcessorSignalDef {
+  // Declare streams
+  val outStream: PhysicalStreamDetailed[Tout] = PhysicalStreamDetailed(eIn, n = 1, d = 0, c = 1, r = false)
+  val inStream: PhysicalStreamDetailed[Tin] = PhysicalStreamDetailed(eOut, n = 1, d = 0, c = 1, r = true)
+  val out: PhysicalStream = outStream.toPhysical
+  val in: PhysicalStream = inStream.toPhysical
+
+  // Connect streams
+  out :<>= in
+
+  // Set static signals
+  outStream.strb := 1.U
+  outStream.stai := 0.U
+  outStream.endi := 0.U
+  // stai and endi are 0-length
+}
+
+/**
+ * A MIMO processor that divides work over multiple sub-processors.
+ * @param eIn Element type to use for input stream
+ * @param eOut Element type to use for output stream
+ * @param n Number of lanes/sub-processors
+ * @param processorDef Definition of sub-processor
+ */
+class MultiProcessorGeneral(val eIn: TydiEl, val eOut: TydiEl, val processorDef: Definition[SubProcessorSignalDef], val n: Int = 6) extends TydiModule {
+  val in: PhysicalStream = IO(Flipped(PhysicalStream(eIn, n=n, d=0, c=7)))
+  val out: PhysicalStream = IO(PhysicalStream(eOut, n=n, d=0, c=7))
+
+  val elSize: Int = eIn.getWidth
+
+  out.valid := true.B
+  out.last := 0.U
+  out.stai := 0.U
+  out.endi := 0.U
+
+  private val subProcessors = for (i <- 0 until n) yield {
+    val processor: Instance[SubProcessorSignalDef] = Instance(processorDef)
+    //    val processor: SubProcessor = Module(new SubProcessor)
+    processor.in.strb := 1.U  // Static signal
+    processor.in.stai := 0.U  // Static signal
+    processor.in.endi := 0.U  // Static signal
+    processor.in.valid := in.strb(i)  // Sub input is valid when lane is valid
+    processor.in.last := DontCare
+    processor.in.data := in.data((elSize*i+1)-1, elSize*i)  // Set data
+    processor.out.ready := out.ready
+    processor
+  }
+
+  private val inputReadies = subProcessors.map(_.in.ready)
+  in.ready := inputReadies.reduce(_&&_)  // Top input is ready when all the modules are ready
+
+  // Top lane is valid when sub is ready Todo: factor in out ready here
+  out.strb := subProcessors.map(_.out.strb).reduce(Cat(_,_))
+  // Re-concat all processor output data
+  out.data := subProcessors.map(_.out.data).reduce(Cat(_, _))
 }
