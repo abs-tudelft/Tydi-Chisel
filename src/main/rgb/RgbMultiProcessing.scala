@@ -23,7 +23,7 @@ class SubProcessor extends SubProcessorBase(new RgbBundle, new RgbBundle) {
 /**
  * A MIMO pixel processor that consists of multiple sub-processors.
  */
-class MainProcessor extends MultiProcessorGeneral(new RgbBundle, new RgbBundle, Definition(new SubProcessor), 6)
+class MainProcessor extends MultiProcessorGeneral(Definition(new SubProcessor), 6, new RgbBundle, new RgbBundle)
 
 
 object RgbMultiProcessing extends App {

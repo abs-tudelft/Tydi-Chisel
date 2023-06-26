@@ -33,7 +33,7 @@ class TimestampedMessageModuleOut extends TydiModule {
   private val timestampedMessageBundle = new TimestampedMessageBundle // Can also be inline
 
   // Create Tydi logical stream object
-  val stream: PhysicalStreamDetailed[TimestampedMessageBundle] = PhysicalStreamDetailed(timestampedMessageBundle, 1, c = 7)
+  val stream: PhysicalStreamDetailed[TimestampedMessageBundle, Null] = PhysicalStreamDetailed(timestampedMessageBundle, 1, c = 7)
 
   // Create and connect physical streams following standard with concatenated data bitvector
   val tydi_port_top: PhysicalStream = stream.toPhysical

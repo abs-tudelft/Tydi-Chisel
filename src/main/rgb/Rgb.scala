@@ -15,7 +15,7 @@ class RgbBundle extends Group {
 class RgbModuleOut extends Module {
   private val rgbBundle = new RgbBundle // Can also be inline
   // Create Tydi logical stream object
-  val stream: PhysicalStreamDetailed[RgbBundle] = PhysicalStreamDetailed(rgbBundle, 1, c = 7)
+  val stream: PhysicalStreamDetailed[RgbBundle, Null] = PhysicalStreamDetailed(rgbBundle, 1, c = 7)
   // Create and connect physical stream following standard with concatenated data bitvector
   val tydi_port: PhysicalStream = stream.toPhysical
 

@@ -129,14 +129,19 @@ abstract class SubProcessorSignalDef extends TydiModule {
  * Basis of a SubProcessor definition that already includes the stream definitions and some base connections.
  * @param eIn Element type to use for input stream
  * @param eOut Element type to use for output stream
- * @tparam Tin Element type of the input stream
- * @tparam Tout Element type of the output stream
+ * @param uIn Element type to use for input stream's user signals
+ * @param uOut Element type to use for output stream's user signals
+ * @tparam Tinel Element type of the input stream
+ * @tparam Toutel Element type of the output stream
+ * @tparam Tinus Element type of the input stream's user signals
+ * @tparam Toutus Element type of the output stream's user signals
  */
 @instantiable
-abstract class SubProcessorBase[Tin <: TydiEl, Tout <: TydiEl](val eIn: Tin, eOut: Tout) extends SubProcessorSignalDef {
+abstract class SubProcessorBase[Tinel <: TydiEl, Toutel <: TydiEl, Tinus <: TydiEl, Toutus <: TydiEl]
+(val eIn: Tinel, eOut: Toutel, val uIn: Tinus = Null(), val uOut: Toutus = Null()) extends SubProcessorSignalDef {
   // Declare streams
-  val outStream: PhysicalStreamDetailed[Tout] = PhysicalStreamDetailed(eOut, n = 1, d = 0, c = 1, r = false)
-  val inStream: PhysicalStreamDetailed[Tin] = PhysicalStreamDetailed(eIn, n = 1, d = 0, c = 1, r = true)
+  val outStream: PhysicalStreamDetailed[Toutel, Toutus] = PhysicalStreamDetailed(eOut, n = 1, d = 0, c = 1, r = false, u=uOut)
+  val inStream: PhysicalStreamDetailed[Tinel, Tinus] = PhysicalStreamDetailed(eIn, n = 1, d = 0, c = 1, r = true, u=uIn)
   val out: PhysicalStream = outStream.toPhysical
   val in: PhysicalStream = inStream.toPhysical
 
@@ -152,14 +157,16 @@ abstract class SubProcessorBase[Tin <: TydiEl, Tout <: TydiEl](val eIn: Tin, eOu
 
 /**
  * A MIMO processor that divides work over multiple sub-processors.
+ * @param processorDef Definition of sub-processor
+ * @param n Number of lanes/sub-processors
  * @param eIn Element type to use for input stream
  * @param eOut Element type to use for output stream
- * @param n Number of lanes/sub-processors
- * @param processorDef Definition of sub-processor
+ * @param usIn Element type to use for input stream's `user` signals. Each sub-processor receives the same `user` signals.
+ * @param usOut Element type to use for output stream's `user` signals. The output is set by the first sub-processor's `user` signals.
  */
-class MultiProcessorGeneral(val eIn: TydiEl, val eOut: TydiEl, val processorDef: Definition[SubProcessorSignalDef], val n: Int = 6) extends TydiModule {
-  val in: PhysicalStream = IO(Flipped(PhysicalStream(eIn, n=n, d=0, c=7)))
-  val out: PhysicalStream = IO(PhysicalStream(eOut, n=n, d=0, c=7))
+class MultiProcessorGeneral(val processorDef: Definition[SubProcessorSignalDef], val n: Int = 6, val eIn: TydiEl, val eOut: TydiEl, val usIn: Data = Null(), val usOut: Data = Null()) extends TydiModule {
+  val in: PhysicalStream = IO(Flipped(PhysicalStream(eIn, n=n, d=0, c=7, u=usIn)))
+  val out: PhysicalStream = IO(PhysicalStream(eOut, n=n, d=0, c=7, u=usOut))
 
   val elSize: Int = eIn.getWidth
 
@@ -177,9 +184,12 @@ class MultiProcessorGeneral(val eIn: TydiEl, val eOut: TydiEl, val processorDef:
     processor.in.valid := in.strb(i)  // Sub input is valid when lane is valid
     processor.in.last := DontCare
     processor.in.data := in.data((elSize*i+1)-1, elSize*i)  // Set data
+    processor.in.user := in.user
     processor.out.ready := out.ready
     processor
   }
+
+  out.user := subProcessors(0).out.user
 
   private val inputReadies = subProcessors.map(_.in.ready)
   in.ready := inputReadies.reduce(_&&_)  // Top input is ready when all the modules are ready

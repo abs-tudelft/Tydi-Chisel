@@ -3,11 +3,11 @@ import chisel3._
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
 
 trait myTypes {
-  def HelloWorldStreamType: PhysicalStreamDetailed[BitsEl] = PhysicalStreamDetailed(BitsEl(8.W), n = 6, d = 2, c = 7, u = new Null())
+  def HelloWorldStreamType: PhysicalStreamDetailed[BitsEl, Null] = PhysicalStreamDetailed(BitsEl(8.W), n = 6, d = 2, c = 7, u = new Null())
 }
 
 class HelloWorldModuleOut extends Module with myTypes {
-  val stream: PhysicalStreamDetailed[BitsEl] = HelloWorldStreamType
+  val stream: PhysicalStreamDetailed[BitsEl, Null] = HelloWorldStreamType
   val io: PhysicalStream = stream.toPhysical
 
   private val sendStr: String = "Hello "
@@ -25,7 +25,7 @@ class HelloWorldModuleOut extends Module with myTypes {
 }
 
 class HelloWorldModuleIn extends Module with myTypes {
-  val stream: PhysicalStreamDetailed[BitsEl] = HelloWorldStreamType.flip
+  val stream: PhysicalStreamDetailed[BitsEl, Null] = HelloWorldStreamType.flip
   val io: PhysicalStream = stream.toPhysical
 //  stream :<= DontCare
   stream.ready := DontCare

@@ -78,7 +78,15 @@ object BitsEl {
   def apply(width: Width): BitsEl = new BitsEl(width)
 }
 
-abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int, val c: Int, private val u: TydiEl) extends TydiEl {
+/**
+ * Physical stream signal definitions.
+ * @param e Element type
+ * @param n Number of lanes
+ * @param d Dimensionality
+ * @param c Complexity
+ * @param u User signals
+ */
+abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int, val c: Int, private val u: Data) extends TydiEl {
   override val isStream: Boolean = true
 
   require(n >= 1)
@@ -101,6 +109,7 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
   private val indexWidth = log2Ceil(n)
 
   val data: Data
+  val user: Data
 
   val lastWidth: Int = if (c == 7) d * n else d
   val last: UInt = Output(UInt(lastWidth.W))
@@ -109,12 +118,23 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
   val strb: UInt = Output(UInt(n.W))
 }
 
-class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, private val u: TydiEl = Null()) extends PhysicalStreamBase(e, n, d, c, u) {
+/**
+ * A physical stream as defined in the Tydi specification.
+ * https://abs-tudelft.github.io/tydi/specification/physical.html
+ * @param e Element type
+ * @param n Number of lanes
+ * @param d Dimensionality
+ * @param c Complexity
+ * @param u User signals
+ */
+class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, private val u: Data = Null()) extends PhysicalStreamBase(e, n, d, c, u) {
   override val elWidth: Int = e.getDataElementsRec.map(_.getWidth).sum
+  val userElWidth: Int = u.getWidth
   val data: UInt = Output(UInt((elWidth*n).W))
+  val user: UInt = Output(UInt(userElWidth.W))
 
   // Stream mounting function
-  def :=[T <: TydiEl](bundle: PhysicalStreamDetailed[T]): Unit = {
+  def :=[Tel <: TydiEl, Tus <: Data](bundle: PhysicalStreamDetailed[Tel, Tus]): Unit = {
     // This could be done with a :<>= but I like being explicit here to catch possible errors.
     if (!bundle.r) {
       this.endi := bundle.endi
@@ -124,6 +144,7 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
       this.valid := bundle.valid
       bundle.ready := this.ready
       this.data := bundle.getDataConcat
+      this.user := bundle.getUserConcat
     } else {
       bundle.endi := this.endi
       bundle.stai := this.stai
@@ -132,9 +153,17 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
       bundle.valid := this.valid
       this.ready := bundle.ready
       // Connect data bitvector back to bundle
-      bundle.getDataElementsRec.foldLeft(0)((i, data) => {
-        val width = data.getWidth
-        data := this.data(i+width-1, i)
+      bundle.getDataElementsRec.foldLeft(0)((i, dataField) => {
+        val width = dataField.getWidth
+        dataField := this.data(i+width-1, i)
+        i + width
+      })
+      // Connect user bitvector back to bundle
+      // Todo: Investigate if this is really necessary or if connecting as Data Bundle/Vector directly is fine,
+      //  since user signals are unspecified by the standard.
+      bundle.getUserElements.foldLeft(0)((i, userField) => {
+        val width = userField.getWidth
+        userField := this.user(i+width-1, i)
         i + width
       })
     }
@@ -142,19 +171,38 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
 }
 
 object PhysicalStream {
-  def apply(e: TydiEl, n: Int = 1, d: Int = 0, c: Int, u: TydiEl = Null()): PhysicalStream = new PhysicalStream(e, n, d, c, u)
+  def apply(e: TydiEl, n: Int = 1, d: Int = 0, c: Int, u: Data = Null()): PhysicalStream = new PhysicalStream(e, n, d, c, u)
 }
 
-class PhysicalStreamDetailed[T <: TydiEl](private val e: T, n: Int = 1, d: Int = 0, c: Int, var r: Boolean = false, private val u: TydiEl = Null()) extends PhysicalStreamBase(e, n, d, c, u) {
-  val data: Vec[T] = Output(Vec(n, e))
+/**
+ * High level stream abstraction, closer to the logical stream idea.
+ * @param e Element type
+ * @param n Number of lanes
+ * @param d Dimensionality
+ * @param c Complexity
+ * @param r Direction
+ * @param u User signals
+ * @tparam Tel Element type, must be a [[TydiEl]]. Can include other streams
+ * @tparam Tus User type, can be any [[Data]] signal.
+ */
+class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: Int = 1, d: Int = 0, c: Int, var r: Boolean = false, private val u: Tus = Null()) extends PhysicalStreamBase(e, n, d, c, u) {
+  val data: Vec[Tel] = Output(Vec(n, e))
+  val user: Tus = Output(u)
 
   override def getDataConcat: UInt = data.map(_.getDataConcat).reduce(Cat(_, _))
 
+  def getUserConcat: UInt = user.asUInt
+
   override def getDataElementsRec: Seq[Data] = data.flatMap(_.getDataElementsRec)
 
-  def el: T = data(0)
+  def getUserElements: Seq[Data] = user match {
+    case x: Bundle => x.getElements
+    case x: Data => x :: Nil
+  }
 
-  def flip: PhysicalStreamDetailed[T] = {
+  def el: Tel = data(0)
+
+  def flip: PhysicalStreamDetailed[Tel, Tus] = {
     r = !r
     this
   }
@@ -169,11 +217,11 @@ class PhysicalStreamDetailed[T <: TydiEl](private val e: T, n: Int = 1, d: Int =
 }
 
 object PhysicalStreamDetailed {
-  def apply[T <: TydiEl](e: T, n: Int = 1, d: Int = 0, c: Int, r: Boolean = false, u: TydiEl = Null()): PhysicalStreamDetailed[T] = Wire(new PhysicalStreamDetailed(e, n, d, c, r, u))
+  def apply[Tel <: TydiEl, Tus <: Data](e: Tel, n: Int = 1, d: Int = 0, c: Int, r: Boolean = false, u: Tus = Null()): PhysicalStreamDetailed[Tel, Tus] = Wire(new PhysicalStreamDetailed(e, n, d, c, r, u))
 }
 
 class TydiModule extends Module {
-  def mount[T <: TydiEl](bundle: PhysicalStreamDetailed[T], io: PhysicalStream): Unit = {
+  def mount[Tel <: TydiEl, Tus <: Data](bundle: PhysicalStreamDetailed[Tel, Data], io: PhysicalStream): Unit = {
     io := bundle
   }
 }
