@@ -43,14 +43,32 @@ object Null {
 
 class Group() extends Bundle with TydiEl
 
-class Union() extends TydiEl {
-  //  def getWidth: Int = {
-  //    elWidth
-  //  }
-  val tag = UInt(0.W)
-  val value = UInt(0.W)
+/**
+ * A `Union` is similar to a [[Group]], but has an additional `tag` signal that defines which of the other signals is
+ * relevant/valid.
+ * @param n Number of items
+ */
+class Union(val n: Int) extends TydiEl {
+  private val tagWidth = log2Ceil(n)
+  val tag: UInt = UInt(tagWidth.W)
 
-  //  def getElements: Seq[Data] = Seq[Data](UInt(elWidth.W))
+  /**
+   * Generates code for an Enum object that contains `tag` value literals.
+   * @return String with code.
+   */
+  def createEnum: String = {
+    val name = this.getClass.getSimpleName
+    var str: String = s"object ${name}Choices {\n"
+    var i = 0
+    for (elName <- elements.keys.toList.reverse) {
+      if (elName != "tag") {
+        str += s"  val ${elName}: UInt = ${i}.U(${tagWidth}.W)\n"
+        i += 1
+      }
+    }
+    str += "}"
+    str
+  }
 }
 
 class BitsEl(override val width: Width) extends TydiEl {
