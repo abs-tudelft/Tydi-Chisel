@@ -292,8 +292,8 @@ abstract class SubProcessorSignalDef extends TydiModule {
 @instantiable
 abstract class SubProcessorBase[Tin <: TydiEl, Tout <: TydiEl](val eIn: Tin, eOut: Tout) extends SubProcessorSignalDef {
   // Declare streams
-  val outStream: PhysicalStreamDetailed[Tout] = PhysicalStreamDetailed(eIn, n = 1, d = 0, c = 1, r = false)
-  val inStream: PhysicalStreamDetailed[Tin] = PhysicalStreamDetailed(eOut, n = 1, d = 0, c = 1, r = true)
+  val outStream: PhysicalStreamDetailed[Tout] = PhysicalStreamDetailed(eOut, n = 1, d = 0, c = 1, r = false)
+  val inStream: PhysicalStreamDetailed[Tin] = PhysicalStreamDetailed(eIn, n = 1, d = 0, c = 1, r = true)
   val out: PhysicalStream = outStream.toPhysical
   val in: PhysicalStream = inStream.toPhysical
 
