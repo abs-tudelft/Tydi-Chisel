@@ -5,8 +5,7 @@ import chisel3.Data
 object ReverseTranspiler {
   implicit class BitsTranspile(e: Data) extends TranspileExtend {
     def tydiCode: String = {
-      val name = e.getClass.getName
-      var str = s"$name = Bit(${e.getWidth}); // $fingerprint"
+      var str = s"$fingerprint = Bit(${e.getWidth}); // ${e.toString}"
       str
     }
 
@@ -18,6 +17,6 @@ object ReverseTranspiler {
       m
     }
 
-    def fingerprint: String = e.toString
+    def fingerprint: String = "bits_" + e.toString.hashCode.toHexString
   }
 }

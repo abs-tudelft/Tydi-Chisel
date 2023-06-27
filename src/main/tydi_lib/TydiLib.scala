@@ -164,7 +164,7 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
 
   def tydiCode: String = {
     val elName = e.fingerprint
-    var str = s"$elName = Stream($elName, t=${n}, d=${d}, c=${c})"
+    var str = s"$fingerprint = Stream($elName, t=${n}, d=${d}, c=${c})"
     str
   }
 
@@ -177,7 +177,7 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
     m
   }
 
-  override def fingerprint: String = this.className
+  override def fingerprint: String = s"${e.fingerprint}_${u.fingerprint}_stream"
 }
 
 /**
@@ -305,7 +305,7 @@ class TydiModule extends Module {
       val instanceName = elem.instanceName
       val direction = instanceName.toLowerCase.contains("out")
       val dirWord = if (direction) "out" else "in"
-      str += s"    $instanceName : ${moduleName}_$instanceName $dirWord;\n"
+      str += s"    $instanceName : ${elem.fingerprint} $dirWord;\n"
     }
     str += "}"
     map += (streamletName -> str)
