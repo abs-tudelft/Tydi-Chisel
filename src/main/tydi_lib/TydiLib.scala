@@ -220,8 +220,42 @@ object PhysicalStreamDetailed {
   def apply[Tel <: TydiEl, Tus <: Data](e: Tel, n: Int = 1, d: Int = 0, c: Int, r: Boolean = false, u: Tus = Null()): PhysicalStreamDetailed[Tel, Tus] = Wire(new PhysicalStreamDetailed(e, n, d, c, r, u))
 }
 
+object StringUtils {
+  implicit class ExtraStringMethods(s: Data) {
+    def dir = s.specifiedDirection
+  }
+}
+
 class TydiModule extends Module {
   def mount[Tel <: TydiEl, Tus <: Data](bundle: PhysicalStreamDetailed[Tel, Data], io: PhysicalStream): Unit = {
     io := bundle
+  }
+
+  def reverseTranspile(): String = {
+    val ports = getModulePorts.filter {
+      case _: PhysicalStream => true
+      case _ => false
+    }
+    val moduleName = this.name
+    this.getModulePortsAndLocators()
+    var str = s"streamlet ${moduleName}_interface {\n"
+    for (elem <- ports) {
+      val named = elem.toNamed
+      val t2 = elem.toPrintable
+      val t3 = elem.toString
+      val pathName = elem.pathName
+      val instanceName = elem.instanceName
+      val direction = elem.specifiedDirection
+      str += s"    ${instanceName} : ${moduleName}_${instanceName} out;\n"
+    }
+    str += s"}\n\nimpl ${moduleName} of ${moduleName}_interface {\n"
+    for (elem <- ports) {
+      val instanceName = elem.instanceName
+      val target = elem.toAbsoluteTarget
+      str += s"    self.${instanceName} => ...;\n"
+    }
+    str += "}\n"
+    println(ports)
+    str
   }
 }
