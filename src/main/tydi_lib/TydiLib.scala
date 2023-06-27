@@ -5,8 +5,10 @@ import chisel3.util.{Cat, log2Ceil}
 import chisel3.internal.firrtl.Width
 import tydi_lib.ReverseTranspiler._
 
+import scala.collection.mutable
+
 trait TranspileExtend {
-  def transpile(map: Map[String, String]): Map[String, String]
+  def transpile(map: mutable.LinkedHashMap[String, String]): mutable.LinkedHashMap[String, String]
   def tydiCode: String
   def fingerprint: String
 }
@@ -42,7 +44,7 @@ sealed trait TydiEl extends Bundle with TranspileExtend {
 
   def fingerprint: String = this.instanceName
 
-  def transpile(map: Map[String, String]): Map[String, String] = {
+  def transpile(map: mutable.LinkedHashMap[String, String]): mutable.LinkedHashMap[String, String] = {
     var m = map
     val s = fingerprint
     if (m.contains(s)) return m
@@ -69,7 +71,7 @@ class Group() extends Bundle with TydiEl {
     str
   }
 
-  override def transpile(map: Map[String, String]): Map[String, String] = {
+  override def transpile(map: mutable.LinkedHashMap[String, String]): mutable.LinkedHashMap[String, String] = {
     var m = map
     // Add all group elements to the map
     for (el <- this.getElements) {
@@ -168,7 +170,7 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
     str
   }
 
-  override def transpile(map: Map[String, String]): Map[String, String] = {
+  override def transpile(map: mutable.LinkedHashMap[String, String]): mutable.LinkedHashMap[String, String] = {
     var m = map
     m = e.transpile(m)
     val s = fingerprint
@@ -293,7 +295,7 @@ class TydiModule extends Module {
       case _ => false
     }.map(_.asInstanceOf[PhysicalStream])
 
-    var map = Map[String, String]()
+    var map = mutable.LinkedHashMap[String, String]()
     for (elem <- ports) {
       map = elem.transpile(map)
     }

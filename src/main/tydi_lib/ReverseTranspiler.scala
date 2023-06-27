@@ -1,6 +1,7 @@
 package tydi_lib
 
 import chisel3.Data
+import scala.collection.mutable
 
 object ReverseTranspiler {
   implicit class BitsTranspile(e: Data) extends TranspileExtend {
@@ -9,7 +10,7 @@ object ReverseTranspiler {
       str
     }
 
-    def transpile(map: Map[String, String]): Map[String, String] = {
+    def transpile(map: mutable.LinkedHashMap[String, String]): mutable.LinkedHashMap[String, String] = {
       var m = map
       val s = fingerprint
       if (m.contains(s)) return m
