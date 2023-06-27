@@ -5,7 +5,13 @@ import chisel3.util.{Cat, log2Ceil}
 import chisel3.internal.firrtl.Width
 import tydi_lib.ReverseTranspiler._
 
-sealed trait TydiEl extends Bundle {
+trait TranspileExtend {
+  def transpile(map: Map[String, String]): Map[String, String]
+  def tydiCode: String
+  def fingerprint: String
+}
+
+sealed trait TydiEl extends Bundle with TranspileExtend {
   val isStream: Boolean = false
   val elWidth: Int = 0
   def getWidth: Int
@@ -33,22 +39,57 @@ sealed trait TydiEl extends Bundle {
     // `.asUInt` also does recursive action but we don't want sub-streams to be included.
     getDataElementsRec.map(_.asUInt).reduce((prev, new_) => Cat(prev, new_))
   }
+
+  def fingerprint: String = this.instanceName
+
+  def transpile(map: Map[String, String]): Map[String, String] = {
+    var m = map
+    val s = fingerprint
+    if (m.contains(s)) return m
+    m += (fingerprint -> tydiCode)
+    m
+  }
 }
 
-sealed class Null extends TydiEl
+sealed class Null extends TydiEl {
+  override def tydiCode: String = s"${fingerprint} = Null;"
+}
 
 object Null {
   def apply(): Null = new Null
 }
 
-class Group() extends Bundle with TydiEl
+class Group() extends Bundle with TydiEl {
+  def tydiCode: String = {
+    var str = s"Group $fingerprint {\n"
+    for ((elName, el) <- this.elements) {
+      str += s"    $elName: ${el.fingerprint};\n"
+    }
+    str += "}"
+    str
+  }
+
+  override def transpile(map: Map[String, String]): Map[String, String] = {
+    var m = map
+    // Add all group elements to the map
+    for (el <- this.getElements) {
+      m = el.transpile(m)
+    }
+    val s = fingerprint
+    if (map.contains(s)) return m
+    m += (fingerprint -> tydiCode)
+    m
+  }
+
+  override def fingerprint: String = this.className
+}
 
 /**
  * A `Union` is similar to a [[Group]], but has an additional `tag` signal that defines which of the other signals is
  * relevant/valid.
  * @param n Number of items
  */
-class Union(val n: Int) extends TydiEl {
+class Union(val n: Int) extends Group {
   private val tagWidth = log2Ceil(n)
   val tag: UInt = UInt(tagWidth.W)
 
@@ -73,6 +114,8 @@ class Union(val n: Int) extends TydiEl {
 
 class BitsEl(override val width: Width) extends TydiEl {
   val value: UInt = Bits(width)
+
+  override def tydiCode: String = s"${this.instanceName} = Bit(${this.width}); // ${fingerprint}"
 }
 
 object BitsEl {
@@ -117,6 +160,24 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
   val stai: UInt = Output(UInt(indexWidth.W))
   val endi: UInt = Output(UInt(indexWidth.W))
   val strb: UInt = Output(UInt(n.W))
+
+
+  def tydiCode: String = {
+    val elName = e.fingerprint
+    var str = s"$elName = Stream($elName, t=${n}, d=${d}, c=${c})"
+    str
+  }
+
+  override def transpile(map: Map[String, String]): Map[String, String] = {
+    var m = map
+    m = e.transpile(m)
+    val s = fingerprint
+    if (m.contains(s)) return m
+    m += (fingerprint -> tydiCode)
+    m
+  }
+
+  override def fingerprint: String = this.className
 }
 
 /**
@@ -237,20 +298,27 @@ class TydiModule extends Module {
       map = elem.transpile(map)
     }
     val moduleName = this.name
-    var str = s"streamlet ${moduleName}_interface {\n"
+    val streamletName = s"${moduleName}_interface"
+
+    var str = s"streamlet $streamletName {\n"
     for (elem <- ports) {
       val instanceName = elem.instanceName
       val direction = instanceName.toLowerCase.contains("out")
       val dirWord = if (direction) "out" else "in"
-      str += s"    ${instanceName} : ${moduleName}_${instanceName} ${dirWord};\n"
+      str += s"    $instanceName : ${moduleName}_$instanceName $dirWord;\n"
     }
-    str += s"}\n\nimpl ${moduleName} of ${moduleName}_interface {\n"
+    str += "}"
+    map += (streamletName -> str)
+
+    str = s"impl $moduleName of $streamletName {\n"
     for (elem <- ports) {
       val instanceName = elem.instanceName
       str += s"    self.${instanceName} => ...;\n"
     }
-    str += "}\n"
-    println(ports)
+    str += "}"
+    map += (moduleName -> str)
+
+    str = map.values.mkString("\n\n")
     str
   }
 }
