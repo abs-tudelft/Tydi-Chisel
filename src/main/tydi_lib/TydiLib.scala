@@ -3,6 +3,7 @@ package tydi_lib
 import chisel3._
 import chisel3.util.{Cat, log2Ceil}
 import chisel3.internal.firrtl.Width
+import tydi_lib.ReverseTranspiler._
 
 sealed trait TydiEl extends Bundle {
   val isStream: Boolean = false
@@ -220,38 +221,32 @@ object PhysicalStreamDetailed {
   def apply[Tel <: TydiEl, Tus <: Data](e: Tel, n: Int = 1, d: Int = 0, c: Int, r: Boolean = false, u: Tus = Null()): PhysicalStreamDetailed[Tel, Tus] = Wire(new PhysicalStreamDetailed(e, n, d, c, r, u))
 }
 
-object StringUtils {
-  implicit class ExtraStringMethods(s: Data) {
-    def dir = s.specifiedDirection
-  }
-}
-
 class TydiModule extends Module {
   def mount[Tel <: TydiEl, Tus <: Data](bundle: PhysicalStreamDetailed[Tel, Data], io: PhysicalStream): Unit = {
     io := bundle
   }
 
   def reverseTranspile(): String = {
-    val ports = getModulePorts.filter {
+    val ports: Seq[PhysicalStream] = getModulePorts.filter {
       case _: PhysicalStream => true
       case _ => false
+    }.map(_.asInstanceOf[PhysicalStream])
+
+    var map = Map[String, String]()
+    for (elem <- ports) {
+      map = elem.transpile(map)
     }
     val moduleName = this.name
-    this.getModulePortsAndLocators()
     var str = s"streamlet ${moduleName}_interface {\n"
     for (elem <- ports) {
-      val named = elem.toNamed
-      val t2 = elem.toPrintable
-      val t3 = elem.toString
-      val pathName = elem.pathName
       val instanceName = elem.instanceName
-      val direction = elem.specifiedDirection
-      str += s"    ${instanceName} : ${moduleName}_${instanceName} out;\n"
+      val direction = instanceName.toLowerCase.contains("out")
+      val dirWord = if (direction) "out" else "in"
+      str += s"    ${instanceName} : ${moduleName}_${instanceName} ${dirWord};\n"
     }
     str += s"}\n\nimpl ${moduleName} of ${moduleName}_interface {\n"
     for (elem <- ports) {
       val instanceName = elem.instanceName
-      val target = elem.toAbsoluteTarget
       str += s"    self.${instanceName} => ...;\n"
     }
     str += "}\n"
