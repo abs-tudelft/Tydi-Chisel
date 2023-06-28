@@ -30,7 +30,7 @@ object RgbMultiProcessing extends App {
   import chiseltest.RawTester.test
 
   test(new MainProcessor()) { c =>
-    val str = c.reverseTranspile()
+    val str = c.tydiCode
     println(str)
   }
   println(emitCHIRRTL(new MainProcessor()))

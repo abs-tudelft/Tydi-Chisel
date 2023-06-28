@@ -1,11 +1,13 @@
 package tydi_lib
 
 import chisel3._
+import chisel3.experimental.BaseModule
 import chisel3.util.{Cat, log2Ceil}
 import chisel3.internal.firrtl.Width
 import tydi_lib.ReverseTranspiler._
 
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 trait TranspileExtend {
   /**
@@ -330,18 +332,35 @@ object PhysicalStreamDetailed {
   def apply[Tel <: TydiEl, Tus <: Data](e: Tel, n: Int = 1, d: Int = 0, c: Int, r: Boolean = false, u: Tus = Null()): PhysicalStreamDetailed[Tel, Tus] = Wire(new PhysicalStreamDetailed(e, n, d, c, r, u))
 }
 
-class TydiModule extends Module {
+class TydiModule extends Module with TranspileExtend {
+
+  private val moduleList = ListBuffer[BaseModule]()
+
   def mount[Tel <: TydiEl, Tus <: Data](bundle: PhysicalStreamDetailed[Tel, Data], io: PhysicalStream): Unit = {
     io := bundle
   }
 
-  def reverseTranspile(): String = {
+  def Module [T <: BaseModule](bc: => T): T = {
+    val v = chisel3.Module.apply(bc)
+    moduleList += v
+    v
+  }
+
+  override def transpile(_map: mutable.LinkedHashMap[String, String]): mutable.LinkedHashMap[String, String] = {
+    var map = _map
+
+    for (module <- moduleList) {
+      module match {
+        case m: TydiModule => map = m.transpile(map)
+        case _ => println(s"Module $module is not of Tydi type")
+      }
+    }
+
     val ports: Seq[PhysicalStream] = getModulePorts.filter {
       case _: PhysicalStream => true
       case _ => false
     }.map(_.asInstanceOf[PhysicalStream])
 
-    var map = mutable.LinkedHashMap[String, String]()
     for (elem <- ports) {
       map = elem.transpile(map)
     }
@@ -351,8 +370,9 @@ class TydiModule extends Module {
     var str = s"streamlet $streamletName {\n"
     for (elem <- ports) {
       val instanceName = elem.instanceName
-      val direction = instanceName.toLowerCase.contains("out")
-      val dirWord = if (direction) "out" else "in"
+      val containsOut = instanceName.toLowerCase.contains("out")
+      val containsIn = instanceName.toLowerCase.contains("in")
+      val dirWord = if (containsOut) "out" else if (containsIn) "in" else "unknown"
       str += s"    $instanceName : ${elem.fingerprint} $dirWord;\n"
     }
     str += "}"
@@ -363,10 +383,21 @@ class TydiModule extends Module {
       val instanceName = elem.instanceName
       str += s"    self.${instanceName} => ...;\n"
     }
+    for (module <- moduleList) {
+      str += s"    instance ${module.instanceName}(${module.name});\n"
+    }
     str += "}"
     map += (moduleName -> str)
+    map
+  }
 
-    str = map.values.mkString("\n\n")
+  override def tydiCode: String = {
+    var map = mutable.LinkedHashMap[String, String]()
+    map = transpile(map)
+
+    val str = map.values.mkString("\n\n")
     str
   }
+
+  override def fingerprint: String = this.name
 }
