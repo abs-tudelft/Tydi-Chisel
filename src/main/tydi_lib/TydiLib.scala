@@ -1,7 +1,6 @@
 package tydi_lib
 
 import chisel3._
-import chisel3.experimental.BaseModule
 import chisel3.util.{Cat, log2Ceil}
 import chisel3.internal.firrtl.Width
 import tydi_lib.ReverseTranspiler._
@@ -334,26 +333,25 @@ object PhysicalStreamDetailed {
 
 class TydiModule extends Module with TranspileExtend {
 
-  private val moduleList = ListBuffer[BaseModule]()
+  private val moduleList = ListBuffer[TydiModule]()
 
   def mount[Tel <: TydiEl, Tus <: Data](bundle: PhysicalStreamDetailed[Tel, Data], io: PhysicalStream): Unit = {
     io := bundle
   }
 
-  def Module [T <: BaseModule](bc: => T): T = {
+  def Module [T <: TydiModule](bc: => T): T = {
     val v = chisel3.Module.apply(bc)
     moduleList += v
     v
   }
 
+  override def getModulePorts: Seq[Data] = super.getModulePorts
+
   override def transpile(_map: mutable.LinkedHashMap[String, String]): mutable.LinkedHashMap[String, String] = {
     var map = _map
 
     for (module <- moduleList) {
-      module match {
-        case m: TydiModule => map = m.transpile(map)
-        case _ => println(s"Module $module is not of Tydi type")
-      }
+      map = module.transpile(map)
     }
 
     val ports: Seq[PhysicalStream] = getModulePorts.filter {
@@ -379,12 +377,19 @@ class TydiModule extends Module with TranspileExtend {
     map += (streamletName -> str)
 
     str = s"impl $moduleName of $streamletName {\n"
-    for (elem <- ports) {
-      val instanceName = elem.instanceName
-      str += s"    self.${instanceName} => ...;\n"
+    for (port <- ports) {
+      str += s"    self.${port.instanceName} => ...;\n"
     }
     for (module <- moduleList) {
-      str += s"    instance ${module.instanceName}(${module.name});\n"
+      val instanceName = module.instanceName
+      str += s"    instance $instanceName(${module.name});\n"
+      val modulePorts: Seq[PhysicalStream] = module.getModulePorts.filter {
+        case _: PhysicalStream => true
+        case _ => false
+      }.map(_.asInstanceOf[PhysicalStream])
+      for (port <- modulePorts) {
+        str += s"    $instanceName.${port.instanceName} => ...;\n"
+      }
     }
     str += "}"
     map += (moduleName -> str)
