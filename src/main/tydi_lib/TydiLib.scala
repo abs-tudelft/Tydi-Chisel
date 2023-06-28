@@ -3,8 +3,33 @@ package tydi_lib
 import chisel3._
 import chisel3.util.{Cat, log2Ceil}
 import chisel3.internal.firrtl.Width
+import tydi_lib.ReverseTranspiler._
 
-sealed trait TydiEl extends Bundle {
+import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
+
+trait TranspileExtend {
+  /**
+   * Adds this component's Tydi-lang representation to the map of definitions.
+   * @param map Map with current Tydi-lang definitions
+   * @return Map with component's Tydi-lang representation included
+   */
+  def transpile(map: mutable.LinkedHashMap[String, String]): mutable.LinkedHashMap[String, String]
+
+  /**
+   * Generate Tydi-lang code for this specific element.
+   * @return Component in Tydi-lang representation
+   */
+  def tydiCode: String
+
+  /**
+   * Gets a unique representation of this element.
+   * @return Unique string representation
+   */
+  def fingerprint: String
+}
+
+sealed trait TydiEl extends Bundle with TranspileExtend {
   val isStream: Boolean = false
   val elWidth: Int = 0
   def getWidth: Int
@@ -32,15 +57,55 @@ sealed trait TydiEl extends Bundle {
     // `.asUInt` also does recursive action but we don't want sub-streams to be included.
     getDataElementsRec.map(_.asUInt).reduce((prev, new_) => Cat(prev, new_))
   }
+
+  def fingerprint: String = this.instanceName
+
+  def transpile(map: mutable.LinkedHashMap[String, String]): mutable.LinkedHashMap[String, String] = {
+    var m = map
+    val s = fingerprint
+    if (m.contains(s)) return m
+    m += (fingerprint -> tydiCode)
+    m
+  }
 }
 
-sealed class Null extends TydiEl
+sealed class Null extends TydiEl {
+  // Don't do anything for transpilation. Null is a standard element.
+  override def transpile(map: mutable.LinkedHashMap[String, String]): mutable.LinkedHashMap[String, String] = map
+
+  override def tydiCode: String = s"${fingerprint} = Null;"
+
+  override def fingerprint: String = "Null"
+}
 
 object Null {
   def apply(): Null = new Null
 }
 
-class Group() extends Bundle with TydiEl
+class Group() extends Bundle with TydiEl {
+  def tydiCode: String = {
+    var str = s"Group $fingerprint {\n"
+    for ((elName, el) <- this.elements) {
+      str += s"    $elName: ${el.fingerprint};\n"
+    }
+    str += "}"
+    str
+  }
+
+  override def transpile(map: mutable.LinkedHashMap[String, String]): mutable.LinkedHashMap[String, String] = {
+    var m = map
+    // Add all group elements to the map
+    for (el <- this.getElements) {
+      m = el.transpile(m)
+    }
+    val s = fingerprint
+    if (map.contains(s)) return m
+    m += (fingerprint -> tydiCode)
+    m
+  }
+
+  override def fingerprint: String = this.className
+}
 
 /**
  * A `Union` is similar to a [[Group]], but has an additional `tag` signal that defines which of the other signals is
@@ -50,6 +115,31 @@ class Group() extends Bundle with TydiEl
 class Union(val n: Int) extends TydiEl {
   private val tagWidth = log2Ceil(n)
   val tag: UInt = UInt(tagWidth.W)
+
+  def tydiCode: String = {
+    var str = s"Union $fingerprint {\n"
+    for ((elName, el) <- this.elements) {
+      if (elName != "tag")
+        str += s"    $elName: ${el.fingerprint};\n"
+    }
+    str += "}"
+    str
+  }
+
+  override def transpile(map: mutable.LinkedHashMap[String, String]): mutable.LinkedHashMap[String, String] = {
+    var m = map
+    // Add all union elements to the map
+    for ((elName, el) <- this.elements) {
+      if (elName != "tag")
+        m = el.transpile(m)
+    }
+    val s = fingerprint
+    if (map.contains(s)) return m
+    m += (fingerprint -> tydiCode)
+    m
+  }
+
+  override def fingerprint: String = this.className
 
   /**
    * Generates code for an Enum object that contains `tag` value literals.
@@ -72,6 +162,12 @@ class Union(val n: Int) extends TydiEl {
 
 class BitsEl(override val width: Width) extends TydiEl {
   val value: UInt = Bits(width)
+
+  override def tydiCode: String = value.tydiCode
+
+  override def fingerprint: String = value.fingerprint
+
+  override def transpile(map: mutable.LinkedHashMap[String, String]): mutable.LinkedHashMap[String, String] = value.transpile(map)
 }
 
 object BitsEl {
@@ -116,6 +212,32 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
   val stai: UInt = Output(UInt(indexWidth.W))
   val endi: UInt = Output(UInt(indexWidth.W))
   val strb: UInt = Output(UInt(n.W))
+
+
+  def tydiCode: String = {
+    val elName = e.fingerprint
+    val usName = u.fingerprint
+    u match {
+      case _: Null => s"$fingerprint = Stream($elName, t=$n, d=$d, c=$c)"
+      case _ => s"$fingerprint = Stream($elName, t=$n, d=$d, c=$c, u=$usName)"
+    }
+  }
+
+  override def transpile(map: mutable.LinkedHashMap[String, String]): mutable.LinkedHashMap[String, String] = {
+    var m = map
+    m = e.transpile(m)
+    val s = fingerprint
+    if (m.contains(s)) return m
+    m += (fingerprint -> tydiCode)
+    m
+  }
+
+  override def fingerprint: String = {
+    u match {
+      case _: Null => s"${e.fingerprint}_stream"
+      case _ => s"${e.fingerprint}_${u.fingerprint}_stream"
+    }
+  }
 }
 
 /**
@@ -220,8 +342,78 @@ object PhysicalStreamDetailed {
   def apply[Tel <: TydiEl, Tus <: Data](e: Tel, n: Int = 1, d: Int = 0, c: Int, r: Boolean = false, u: Tus = Null()): PhysicalStreamDetailed[Tel, Tus] = Wire(new PhysicalStreamDetailed(e, n, d, c, r, u))
 }
 
-class TydiModule extends Module {
+class TydiModule extends Module with TranspileExtend {
+
+  private val moduleList = ListBuffer[TydiModule]()
+
   def mount[Tel <: TydiEl, Tus <: Data](bundle: PhysicalStreamDetailed[Tel, Data], io: PhysicalStream): Unit = {
     io := bundle
   }
+
+  def Module [T <: TydiModule](bc: => T): T = {
+    val v = chisel3.Module.apply(bc)
+    moduleList += v
+    v
+  }
+
+  override def getModulePorts: Seq[Data] = super.getModulePorts
+
+  override def transpile(_map: mutable.LinkedHashMap[String, String]): mutable.LinkedHashMap[String, String] = {
+    var map = _map
+
+    for (module <- moduleList) {
+      map = module.transpile(map)
+    }
+
+    val ports: Seq[PhysicalStream] = getModulePorts.filter {
+      case _: PhysicalStream => true
+      case _ => false
+    }.map(_.asInstanceOf[PhysicalStream])
+
+    for (elem <- ports) {
+      map = elem.transpile(map)
+    }
+    val moduleName = this.name
+    val streamletName = s"${moduleName}_interface"
+
+    var str = s"streamlet $streamletName {\n"
+    for (elem <- ports) {
+      val instanceName = elem.instanceName
+      val containsOut = instanceName.toLowerCase.contains("out")
+      val containsIn = instanceName.toLowerCase.contains("in")
+      val dirWord = if (containsOut) "out" else if (containsIn) "in" else "unknown"
+      str += s"    $instanceName : ${elem.fingerprint} $dirWord;\n"
+    }
+    str += "}"
+    map += (streamletName -> str)
+
+    str = s"impl $moduleName of $streamletName {\n"
+    for (port <- ports) {
+      str += s"    self.${port.instanceName} => ...;\n"
+    }
+    for (module <- moduleList) {
+      val instanceName = module.instanceName
+      str += s"    instance $instanceName(${module.name});\n"
+      val modulePorts: Seq[PhysicalStream] = module.getModulePorts.filter {
+        case _: PhysicalStream => true
+        case _ => false
+      }.map(_.asInstanceOf[PhysicalStream])
+      for (port <- modulePorts) {
+        str += s"    $instanceName.${port.instanceName} => ...;\n"
+      }
+    }
+    str += "}"
+    map += (moduleName -> str)
+    map
+  }
+
+  override def tydiCode: String = {
+    var map = mutable.LinkedHashMap[String, String]()
+    map = transpile(map)
+
+    val str = map.values.mkString("\n\n")
+    str
+  }
+
+  override def fingerprint: String = this.name
 }

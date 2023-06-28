@@ -27,6 +27,12 @@ class MainProcessor extends MultiProcessorGeneral(Definition(new SubProcessor), 
 
 
 object RgbMultiProcessing extends App {
+  import chiseltest.RawTester.test
+
+  test(new MainProcessor()) { c =>
+    val str = c.tydiCode
+    println(str)
+  }
   println(emitCHIRRTL(new MainProcessor()))
 
   private val noOptimizationVerilog: String = emitSystemVerilog(new MainProcessor(), firtoolOpts = firNoOptimizationOpts)

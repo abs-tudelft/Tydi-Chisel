@@ -3,6 +3,7 @@ package timestamped_message
 import tydi_lib._
 import chisel3._
 import chisel3.internal.firrtl.Width
+import chiseltest.RawTester.test
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
 
 //////  End lib, start user code  //////
@@ -66,7 +67,7 @@ class TimestampedMessageModuleOut extends TydiModule {
   stream.el.message.last := 0.U
 }
 
-class TimestampedMessageModuleIn extends Module {
+class TimestampedMessageModuleIn extends TydiModule {
   val io1 = IO(Flipped(new PhysicalStream(new TimestampedMessageBundle, n=1, d=2, c=7, u=new Null())))
   val io2 = IO(Flipped(new PhysicalStream(BitsEl(8.W), n=3, d=2, c=7, u=new Null())))
   io1 :<= DontCare
@@ -75,7 +76,7 @@ class TimestampedMessageModuleIn extends Module {
   io2.ready := DontCare
 }
 
-class TopLevelModule extends Module {
+class TopLevelModule extends TydiModule {
   val io = IO(new Bundle {
     val in = Input(UInt(64.W))
     val out = Output(SInt(128.W))
@@ -93,6 +94,10 @@ class TopLevelModule extends Module {
 object TimestampedMessage extends App {
   private val firOpts: Array[String] = Array("-disable-opt", "-O=debug", "-disable-all-randomization", "-strip-debug-info"/*, "-preserve-values=all"*/)
   println("Test123")
+
+  test(new TopLevelModule()) { c =>
+    println(c.tydiCode)
+  }
 
   println((new NestedBundle).createEnum)
 
