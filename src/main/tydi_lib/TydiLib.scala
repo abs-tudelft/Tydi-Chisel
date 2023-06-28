@@ -278,7 +278,7 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
       bundle.getDataElementsRec.foldLeft(0)((i, dataField) => {
         val width = dataField.getWidth
         // .asTypeOf cast is necessary to prevent incompatible type errors
-        dataField.asTypeOf(this.data) := this.data(i + width - 1, i)
+        dataField := this.data(i + width - 1, i).asTypeOf(dataField)
         i + width
       })
       // Connect user bitvector back to bundle
