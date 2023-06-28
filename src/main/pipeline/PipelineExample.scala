@@ -2,12 +2,27 @@ package pipeline
 
 import tydi_lib._
 import chisel3._
+import chisel3.internal.firrtl.Width
+import chisel3.util.Counter
 import chiseltest.RawTester.test
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
 
-class NumberGroup extends Group {
+trait PipelineTypes {
+  val dataWidth: Width = 64.W
+  def signedData: SInt = SInt(64.W)
+  def unsingedData: UInt = UInt(64.W)
+}
+
+class NumberGroup extends Group with PipelineTypes {
   val time: UInt = UInt(64.W)
-  val value: SInt = SInt(64.W)
+  val value: SInt = signedData
+}
+
+class Stats extends Group with PipelineTypes {
+  val min: UInt = unsingedData
+  val max: UInt = unsingedData
+  val sum: UInt = unsingedData
+  val average: UInt = unsingedData
 }
 
 class NumberModuleOut extends TydiModule {
@@ -34,6 +49,35 @@ class NumberModuleOut extends TydiModule {
   stream.last := 0.U
 }
 
+class NonNegativeFilter extends SubProcessorBase(new NumberGroup, new NumberGroup) {
+  outStream.valid := inStream.el.value >= 0.S
+  outStream.el := inStream.el
+
+  inStream.ready := true.B
+}
+
+class Reducer extends SubProcessorBase(new NumberGroup, new Stats) with PipelineTypes {
+  val cMin = RegInit(0.U(dataWidth))
+  val maxVal = (1 << dataWidth.get)-1
+  val cMax = RegInit(maxVal.U(dataWidth))
+  val nSamples = Counter(maxVal)
+  val cSum = RegInit(0.U(dataWidth))
+
+  inStream.ready := true.B
+
+  when (inStream.valid) {
+    val value = inStream.el.value.asUInt
+    cMin := cMin min value
+    cMax := cMin max value
+    cSum := cSum + value
+    nSamples.inc()
+  }
+  outStream.el.sum := cSum
+  outStream.el.min := cMin
+  outStream.el.max := cMax
+  outStream.el.average := cSum/nSamples.value
+}
+
 class NumberModuleIn extends TydiModule {
   val io1 = IO(Flipped(new PhysicalStream(new NumberGroup, n=1, d=2, c=7, u=new Null())))
   io1 :<= DontCare
@@ -41,17 +85,23 @@ class NumberModuleIn extends TydiModule {
 }
 
 class TopLevelModule extends TydiModule {
-  val io = IO(new Bundle {
-    val in = Input(UInt(64.W))
-    val out = Output(SInt(128.W))
-  })
+  private val numberGroup = new NumberGroup
+  private val statsGroup = new Stats
 
-  val numberModuleOut = Module(new NumberModuleOut())
-  val numberModuleIn = Module(new NumberModuleIn())
+  // Create Tydi logical stream object
+  val streamIn: PhysicalStreamDetailed[NumberGroup, Null] = PhysicalStreamDetailed(numberGroup, 1, c = 7)
+  val streamOut: PhysicalStreamDetailed[Stats, Null] = PhysicalStreamDetailed(statsGroup, 1, c = 7)
 
-  // Bi-directional connection
-  numberModuleIn.io1 :<>= numberModuleOut.tydi_port_top
-  io.out := numberModuleOut.tydi_port_top.data.asSInt
+  // Create and connect physical streams following standard with concatenated data bitvector
+  val numsIn: PhysicalStream = streamIn.toPhysical
+  val statsOut: PhysicalStream = streamOut.toPhysical
+
+  val filter = Module(new NonNegativeFilter())
+  filter.in := streamIn
+//  numsIn.ready := filter.in.ready
+  val reducer = Module(new Reducer())
+  reducer.in :<>= filter.out
+  statsOut :<>= reducer.out
 }
 
 object PipelineExample extends App {
@@ -60,12 +110,6 @@ object PipelineExample extends App {
   test(new TopLevelModule()) { c =>
     println(c.tydiCode)
   }
-
-  println(emitCHIRRTL(new NumberModuleOut()))
-  println(emitSystemVerilog(new NumberModuleOut(), firtoolOpts = firNormalOpts))
-
-  println(emitCHIRRTL(new NumberModuleIn()))
-  println(emitSystemVerilog(new NumberModuleIn(), firtoolOpts = firNormalOpts))
 
   println(emitCHIRRTL(new TopLevelModule()))
 

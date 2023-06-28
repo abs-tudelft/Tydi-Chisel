@@ -277,7 +277,9 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
       // Connect data bitvector back to bundle
       bundle.getDataElementsRec.foldLeft(0)((i, dataField) => {
         val width = dataField.getWidth
-        dataField := this.data(i+width-1, i)
+        val subField = this.data(i + width - 1, i)
+        // .asTypeOf cast is necessary to prevent incompatible type errors
+        dataField.asTypeOf(subField) := subField
         i + width
       })
       // Connect user bitvector back to bundle
