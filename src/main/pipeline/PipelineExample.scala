@@ -9,8 +9,8 @@ import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
 
 trait PipelineTypes {
   val dataWidth: Width = 64.W
-  def signedData: SInt = SInt(64.W)
-  def unsingedData: UInt = UInt(64.W)
+  def signedData: SInt = SInt(dataWidth)
+  def unsingedData: UInt = UInt(dataWidth)
 }
 
 class NumberGroup extends Group with PipelineTypes {
@@ -50,7 +50,7 @@ class NumberModuleOut extends TydiModule {
 }
 
 class NonNegativeFilter extends SubProcessorBase(new NumberGroup, new NumberGroup) with PipelineTypes {
-  val filter: Bool = inStream.el.value >= 0.S(dataWidth)
+  val filter: Bool = inStream.el.value >= 0.S
   outStream.valid := filter
   outStream.strb := filter
 //  outStream.data := inStream.data
@@ -61,9 +61,9 @@ class NonNegativeFilter extends SubProcessorBase(new NumberGroup, new NumberGrou
 
 class Reducer extends SubProcessorBase(new NumberGroup, new Stats) with PipelineTypes {
   val cMin = RegInit(0.U(dataWidth))
-  val maxVal = (1 << dataWidth.get)-1
+  val maxVal = (BigInt(1) << dataWidth.get)-1  // Must work with BigInt or we get an overflow
   val cMax = RegInit(maxVal.U(dataWidth))
-  val nSamples = Counter(maxVal)
+  val nSamples = Counter(Int.MaxValue)
   val cSum = RegInit(0.U(dataWidth))
 
   inStream.ready := true.B
@@ -109,11 +109,13 @@ object PipelineExample extends App {
     println(c.tydiCode)
   }
 
-  println(emitSystemVerilog(new NonNegativeFilter(), firtoolOpts = firNormalOpts))
+//  println(emitCHIRRTL(new NonNegativeFilter()))
+//  println(emitSystemVerilog(new NonNegativeFilter(), firtoolOpts = firNormalOpts))
 
-  println(emitSystemVerilog(new Reducer(), firtoolOpts = firNormalOpts))
+//  println(emitCHIRRTL(new Reducer()))
+//  println(emitSystemVerilog(new Reducer(), firtoolOpts = firNormalOpts))
 
-  println(emitCHIRRTL(new TopLevelModule()))
+//  println(emitCHIRRTL(new TopLevelModule()))
 
   // These lines generate the Verilog output
   println(emitSystemVerilog(new TopLevelModule(), firtoolOpts = firNormalOpts))
