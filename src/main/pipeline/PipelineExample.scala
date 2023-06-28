@@ -85,7 +85,7 @@ class NumberModuleIn extends TydiModule {
   io1.ready := DontCare
 }
 
-class TopLevelModule extends TydiModule {
+/*class TopLevelModule extends TydiModule {
   private val numberGroup = new NumberGroup
   private val statsGroup = new Stats
 
@@ -93,11 +93,15 @@ class TopLevelModule extends TydiModule {
   val numsIn: PhysicalStream = IO(Flipped(PhysicalStream(numberGroup, 1, c = 7)))
   val statsOut: PhysicalStream = IO(PhysicalStream(statsGroup, 1, c = 7))
 
-//  val filter = Module(new NonNegativeFilter())
-//  filter.in := numsIn
-//  val reducer = Module(new Reducer())
-//  reducer.in := filter.out
-  statsOut := numsIn.processWith(new NonNegativeFilter).processWith(new Reducer())
+  val filter = Module(new NonNegativeFilter())
+  filter.in := numsIn
+  val reducer = Module(new Reducer())
+  reducer.in := filter.out
+  statsOut := reducer.out
+}*/
+
+class TopLevelModule extends SimpleProcessorBase(new NumberGroup, new Stats) {
+  out := in.processWith(new NonNegativeFilter).processWith(new Reducer())
 }
 
 object PipelineExample extends App {

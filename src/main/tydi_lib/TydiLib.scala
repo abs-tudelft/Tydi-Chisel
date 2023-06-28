@@ -304,10 +304,10 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
     this.user := bundle.user
   }
 
-  def processWith[T <: SubProcessorSignalDef](filterModule: => T): PhysicalStream = {
-    val mod = Module(filterModule)
-    mod.in := this
-    mod.out
+  def processWith[T <: SubProcessorSignalDef](module: => T): PhysicalStream = {
+    val processingModule = Module(module)
+    processingModule.in := this
+    processingModule.out
   }
 }
 

@@ -156,6 +156,28 @@ abstract class SubProcessorBase[Tinel <: TydiEl, Toutel <: TydiEl, Tinus <: Tydi
 }
 
 /**
+ * Basis of a SubProcessor definition that already includes the stream definitions and some base connections.
+ * @param eIn Element type to use for input stream
+ * @param eOut Element type to use for output stream
+ * @param uIn Element type to use for input stream's user signals
+ * @param uOut Element type to use for output stream's user signals
+ */
+@instantiable
+abstract class SimpleProcessorBase(val eIn: TydiEl, eOut: TydiEl, val uIn: Data = Null(), val uOut: Data = Null()) extends SubProcessorSignalDef {
+  // Declare streams
+  val out: PhysicalStream = IO(PhysicalStream(eOut, n = 1, d = 0, c = 1, u=uOut))
+  val in: PhysicalStream = IO(Flipped(PhysicalStream(eIn, n = 1, d = 0, c = 1, u=uIn)))
+
+  // Connect streams
+  out := in
+
+  // Set static signals
+  out.strb := 1.U
+  out.stai := 0.U
+  out.endi := 0.U
+}
+
+/**
  * A MIMO processor that divides work over multiple sub-processors.
  * @param processorDef Definition of sub-processor
  * @param n Number of lanes/sub-processors
