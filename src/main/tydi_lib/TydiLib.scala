@@ -8,8 +8,23 @@ import tydi_lib.ReverseTranspiler._
 import scala.collection.mutable
 
 trait TranspileExtend {
+  /**
+   * Adds this component's Tydi-lang representation to the map of definitions.
+   * @param map Map with current Tydi-lang definitions
+   * @return Map with component's Tydi-lang representation included
+   */
   def transpile(map: mutable.LinkedHashMap[String, String]): mutable.LinkedHashMap[String, String]
+
+  /**
+   * Generate Tydi-lang code for this specific element.
+   * @return Component in Tydi-lang representation
+   */
   def tydiCode: String
+
+  /**
+   * Gets a unique representation of this element.
+   * @return Unique string representation
+   */
   def fingerprint: String
 }
 
@@ -55,6 +70,8 @@ sealed trait TydiEl extends Bundle with TranspileExtend {
 
 sealed class Null extends TydiEl {
   override def tydiCode: String = s"${fingerprint} = Null;"
+
+  override def fingerprint: String = "null"
 }
 
 object Null {
@@ -91,9 +108,34 @@ class Group() extends Bundle with TydiEl {
  * relevant/valid.
  * @param n Number of items
  */
-class Union(val n: Int) extends Group {
+class Union(val n: Int) extends TydiEl {
   private val tagWidth = log2Ceil(n)
   val tag: UInt = UInt(tagWidth.W)
+
+  def tydiCode: String = {
+    var str = s"Union $fingerprint {\n"
+    for ((elName, el) <- this.elements) {
+      if (elName != "tag")
+        str += s"    $elName: ${el.fingerprint};\n"
+    }
+    str += "}"
+    str
+  }
+
+  override def transpile(map: mutable.LinkedHashMap[String, String]): mutable.LinkedHashMap[String, String] = {
+    var m = map
+    // Add all union elements to the map
+    for ((elName, el) <- this.elements) {
+      if (elName != "tag")
+        m = el.transpile(m)
+    }
+    val s = fingerprint
+    if (map.contains(s)) return m
+    m += (fingerprint -> tydiCode)
+    m
+  }
+
+  override def fingerprint: String = this.className
 
   /**
    * Generates code for an Enum object that contains `tag` value literals.
