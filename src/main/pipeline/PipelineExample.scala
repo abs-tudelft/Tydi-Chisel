@@ -49,14 +49,12 @@ class NumberModuleOut extends TydiModule {
   stream.last := 0.U
 }
 
-class NonNegativeFilter extends SubProcessorBase(new NumberGroup, new NumberGroup) with PipelineTypes {
+class NonNegativeFilter extends SubProcessorBase(new NumberGroup, new NumberGroup) {
   val filter: Bool = inStream.el.value >= 0.S
   outStream.valid := filter
   outStream.strb := filter
-//  outStream.data := inStream.data
 
   inStream.ready := true.B
-  outStream.last := inStream.last
 }
 
 class Reducer extends SubProcessorBase(new NumberGroup, new Stats) with PipelineTypes {
@@ -96,10 +94,10 @@ class TopLevelModule extends TydiModule {
   val statsOut: PhysicalStream = IO(PhysicalStream(statsGroup, 1, c = 7))
 
   val filter = Module(new NonNegativeFilter())
-  filter.in :<>= numsIn
+  filter.in := numsIn
   val reducer = Module(new Reducer())
-  reducer.in :<>= filter.out
-  statsOut :<>= reducer.out
+  reducer.in := filter.out
+  statsOut := reducer.out
 }
 
 object PipelineExample extends App {

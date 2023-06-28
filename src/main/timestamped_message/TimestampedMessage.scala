@@ -86,8 +86,8 @@ class TopLevelModule extends TydiModule {
   val timestampedMessageIn = Module(new TimestampedMessageModuleIn())
 
   // Bi-directional connection
-  timestampedMessageIn.io1 :<>= timestampedMessageOut.tydi_port_top
-  timestampedMessageIn.io2 :<>= timestampedMessageOut.tydi_port_child
+  timestampedMessageIn.io1 := timestampedMessageOut.tydi_port_top
+  timestampedMessageIn.io2 := timestampedMessageOut.tydi_port_child
   io.out := timestampedMessageOut.tydi_port_top.data.asSInt
 }
 

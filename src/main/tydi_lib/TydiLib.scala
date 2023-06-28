@@ -291,6 +291,18 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
       })
     }
   }
+
+  def :=(bundle: PhysicalStream): Unit = {
+    // This could be done with a :<>= but I like being explicit here to catch possible errors.
+    this.endi := bundle.endi
+    this.stai := bundle.stai
+    this.strb := bundle.strb
+    this.last := bundle.last
+    this.valid := bundle.valid
+    bundle.ready := this.ready
+    this.data := bundle.data
+    this.user := bundle.user
+  }
 }
 
 object PhysicalStream {

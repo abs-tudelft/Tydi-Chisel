@@ -41,11 +41,11 @@ class TopLevelModule extends Module with myTypes {
   val helloWorldIn = Module(new HelloWorldModuleIn())
 
   val converter = Module(new ComplexityConverter(helloWorldOut.io, memSize = 20))
-  converter.in :<>= helloWorldOut.io
-  helloWorldIn.io :<>= converter.out
+  converter.in := helloWorldOut.io
+  helloWorldIn.io := converter.out
 
   // Bi-directional connection
-//  helloWorldIn.io :<>= helloWorldOut.io
+//  helloWorldIn.io := helloWorldOut.io
 //  io.out := helloWorldOut.io.data.asSInt
   io.out := helloWorldOut.io.data.asUInt.asSInt
 }
