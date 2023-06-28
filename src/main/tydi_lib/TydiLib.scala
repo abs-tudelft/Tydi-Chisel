@@ -70,9 +70,12 @@ sealed trait TydiEl extends Bundle with TranspileExtend {
 }
 
 sealed class Null extends TydiEl {
+  // Don't do anything for transpilation. Null is a standard element.
+  override def transpile(map: mutable.LinkedHashMap[String, String]): mutable.LinkedHashMap[String, String] = map
+
   override def tydiCode: String = s"${fingerprint} = Null;"
 
-  override def fingerprint: String = "null"
+  override def fingerprint: String = "Null"
 }
 
 object Null {
@@ -213,8 +216,11 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
 
   def tydiCode: String = {
     val elName = e.fingerprint
-    var str = s"$fingerprint = Stream($elName, t=${n}, d=${d}, c=${c})"
-    str
+    val usName = u.fingerprint
+    u match {
+      case _: Null => s"$fingerprint = Stream($elName, t=$n, d=$d, c=$c)"
+      case _ => s"$fingerprint = Stream($elName, t=$n, d=$d, c=$c, u=$usName)"
+    }
   }
 
   override def transpile(map: mutable.LinkedHashMap[String, String]): mutable.LinkedHashMap[String, String] = {
@@ -226,7 +232,12 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
     m
   }
 
-  override def fingerprint: String = s"${e.fingerprint}_${u.fingerprint}_stream"
+  override def fingerprint: String = {
+    u match {
+      case _: Null => s"${e.fingerprint}_stream"
+      case _ => s"${e.fingerprint}_${u.fingerprint}_stream"
+    }
+  }
 }
 
 /**
