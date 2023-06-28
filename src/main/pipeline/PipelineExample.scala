@@ -93,11 +93,11 @@ class TopLevelModule extends TydiModule {
   val numsIn: PhysicalStream = IO(Flipped(PhysicalStream(numberGroup, 1, c = 7)))
   val statsOut: PhysicalStream = IO(PhysicalStream(statsGroup, 1, c = 7))
 
-  val filter = Module(new NonNegativeFilter())
-  filter.in := numsIn
-  val reducer = Module(new Reducer())
-  reducer.in := filter.out
-  statsOut := reducer.out
+//  val filter = Module(new NonNegativeFilter())
+//  filter.in := numsIn
+//  val reducer = Module(new Reducer())
+//  reducer.in := filter.out
+  statsOut := numsIn.processWith(new NonNegativeFilter).processWith(new Reducer())
 }
 
 object PipelineExample extends App {
@@ -113,7 +113,7 @@ object PipelineExample extends App {
 //  println(emitCHIRRTL(new Reducer()))
 //  println(emitSystemVerilog(new Reducer(), firtoolOpts = firNormalOpts))
 
-//  println(emitCHIRRTL(new TopLevelModule()))
+  println(emitCHIRRTL(new TopLevelModule()))
 
   // These lines generate the Verilog output
   println(emitSystemVerilog(new TopLevelModule(), firtoolOpts = firNormalOpts))
