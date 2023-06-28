@@ -49,10 +49,11 @@ class NumberModuleOut extends TydiModule {
   stream.last := 0.U
 }
 
-class NonNegativeFilter extends SubProcessorBase(new NumberGroup, new NumberGroup) {
-  outStream.valid := inStream.el.value >= 0.S
-  inStream.data := DontCare
-  outStream.data := inStream.data
+class NonNegativeFilter extends SubProcessorBase(new NumberGroup, new NumberGroup) with PipelineTypes {
+  val filter: Bool = inStream.el.value >= 0.S(dataWidth)
+  outStream.valid := filter
+  outStream.strb := filter
+//  outStream.data := inStream.data
 
   inStream.ready := true.B
   outStream.last := inStream.last
@@ -66,9 +67,6 @@ class Reducer extends SubProcessorBase(new NumberGroup, new Stats) with Pipeline
   val cSum = RegInit(0.U(dataWidth))
 
   inStream.ready := true.B
-  inStream.el := DontCare
-  outStream.last := inStream.last
-  outStream.valid := inStream.valid
 
   when (inStream.valid) {
     val value = inStream.el.value.asUInt
@@ -110,6 +108,10 @@ object PipelineExample extends App {
   test(new TopLevelModule()) { c =>
     println(c.tydiCode)
   }
+
+  println(emitSystemVerilog(new NonNegativeFilter(), firtoolOpts = firNormalOpts))
+
+  println(emitSystemVerilog(new Reducer(), firtoolOpts = firNormalOpts))
 
   println(emitCHIRRTL(new TopLevelModule()))
 

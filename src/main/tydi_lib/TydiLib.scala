@@ -277,9 +277,8 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
       // Connect data bitvector back to bundle
       bundle.getDataElementsRec.foldLeft(0)((i, dataField) => {
         val width = dataField.getWidth
-        val subField = this.data(i + width - 1, i)
         // .asTypeOf cast is necessary to prevent incompatible type errors
-        dataField.asTypeOf(subField) := subField
+        dataField.asTypeOf(this.data) := this.data(i + width - 1, i)
         i + width
       })
       // Connect user bitvector back to bundle
@@ -337,6 +336,30 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
     val io = IO(if (flip) Flipped(stream) else stream)
     io := this
     io
+  }
+
+  // Stream mounting function
+  def :=[TBel <: TydiEl, TBus <: Data](bundle: PhysicalStreamDetailed[TBel, TBus]): Unit = {
+    // This could be done with a :<>= but I like being explicit here to catch possible errors.
+    if (bundle.r && !this.r) {
+      this.endi := bundle.endi
+      this.stai := bundle.stai
+      this.strb := bundle.strb
+      this.last := bundle.last
+      this.valid := bundle.valid
+      bundle.ready := this.ready
+      (this.data: Data).waiveAll :<>= (bundle.data: Data).waiveAll
+      (this.user: Data).waiveAll :<>= (bundle.user: Data).waiveAll
+    } else {
+      bundle.endi := this.endi
+      bundle.stai := this.stai
+      bundle.strb := this.strb
+      bundle.last := this.last
+      bundle.valid := this.valid
+      this.ready := bundle.ready
+      (bundle.data: Data).waiveAll :<>= (this.data: Data).waiveAll
+      (bundle.user: Data).waiveAll :<>= (this.user: Data).waiveAll
+    }
   }
 }
 

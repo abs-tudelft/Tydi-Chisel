@@ -145,8 +145,9 @@ abstract class SubProcessorBase[Tinel <: TydiEl, Toutel <: TydiEl, Tinus <: Tydi
   val out: PhysicalStream = outStream.toPhysical
   val in: PhysicalStream = inStream.toPhysical
 
+  inStream.data := DontCare
   // Connect streams
-  out :<>= in
+  outStream := inStream
 
   // Set static signals
   outStream.strb := 1.U
