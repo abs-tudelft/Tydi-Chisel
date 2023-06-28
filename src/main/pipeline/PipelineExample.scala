@@ -51,9 +51,11 @@ class NumberModuleOut extends TydiModule {
 
 class NonNegativeFilter extends SubProcessorBase(new NumberGroup, new NumberGroup) {
   outStream.valid := inStream.el.value >= 0.S
-  outStream.el := inStream.el
+  inStream.data := DontCare
+  outStream.data := inStream.data
 
   inStream.ready := true.B
+  outStream.last := inStream.last
 }
 
 class Reducer extends SubProcessorBase(new NumberGroup, new Stats) with PipelineTypes {
@@ -64,6 +66,9 @@ class Reducer extends SubProcessorBase(new NumberGroup, new Stats) with Pipeline
   val cSum = RegInit(0.U(dataWidth))
 
   inStream.ready := true.B
+  inStream.el := DontCare
+  outStream.last := inStream.last
+  outStream.valid := inStream.valid
 
   when (inStream.valid) {
     val value = inStream.el.value.asUInt
@@ -88,17 +93,12 @@ class TopLevelModule extends TydiModule {
   private val numberGroup = new NumberGroup
   private val statsGroup = new Stats
 
-  // Create Tydi logical stream object
-  val streamIn: PhysicalStreamDetailed[NumberGroup, Null] = PhysicalStreamDetailed(numberGroup, 1, c = 7)
-  val streamOut: PhysicalStreamDetailed[Stats, Null] = PhysicalStreamDetailed(statsGroup, 1, c = 7)
-
   // Create and connect physical streams following standard with concatenated data bitvector
-  val numsIn: PhysicalStream = streamIn.toPhysical
-  val statsOut: PhysicalStream = streamOut.toPhysical
+  val numsIn: PhysicalStream = IO(Flipped(PhysicalStream(numberGroup, 1, c = 7)))
+  val statsOut: PhysicalStream = IO(PhysicalStream(statsGroup, 1, c = 7))
 
   val filter = Module(new NonNegativeFilter())
-  filter.in := streamIn
-//  numsIn.ready := filter.in.ready
+  filter.in :<>= numsIn
   val reducer = Module(new Reducer())
   reducer.in :<>= filter.out
   statsOut :<>= reducer.out
