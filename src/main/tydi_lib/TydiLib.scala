@@ -117,7 +117,11 @@ class Union(val n: Int) extends Group {
 class BitsEl(override val width: Width) extends TydiEl {
   val value: UInt = Bits(width)
 
-  override def tydiCode: String = s"${this.instanceName} = Bit(${this.width}); // ${fingerprint}"
+  override def tydiCode: String = value.tydiCode
+
+  override def fingerprint: String = value.fingerprint
+
+  override def transpile(map: mutable.LinkedHashMap[String, String]): mutable.LinkedHashMap[String, String] = value.transpile(map)
 }
 
 object BitsEl {

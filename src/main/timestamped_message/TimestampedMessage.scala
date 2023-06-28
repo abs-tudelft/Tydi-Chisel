@@ -3,6 +3,7 @@ package timestamped_message
 import tydi_lib._
 import chisel3._
 import chisel3.internal.firrtl.Width
+import chiseltest.RawTester.test
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
 
 //////  End lib, start user code  //////
@@ -93,6 +94,10 @@ class TopLevelModule extends Module {
 object TimestampedMessage extends App {
   private val firOpts: Array[String] = Array("-disable-opt", "-O=debug", "-disable-all-randomization", "-strip-debug-info"/*, "-preserve-values=all"*/)
   println("Test123")
+
+  test(new TimestampedMessageModuleOut()) { c =>
+    println(c.reverseTranspile())
+  }
 
   println((new NestedBundle).createEnum)
 
