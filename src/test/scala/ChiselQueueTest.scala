@@ -2,8 +2,8 @@
 // and https://github.com/ucb-bar/chiseltest/blob/main/src/test/scala/chiseltest/tests/TestUtils.scala
 
 import org.scalatest._
-
 import chisel3._
+import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chiseltest._
 import chisel3.util._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -50,13 +50,14 @@ class MyBundle extends Bundle {
 class ChiselQueueTest extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "Testers2 with Queue"
 
-  /*it should "pass through an aggregate, using enqueueNow" in {
+  it should "pass through an aggregate, using enqueueNow" in {
     test(new QueueModule(new MyBundle, 2)) { c =>
       c.in.initSource().setSourceClock(c.clock)
       c.out.initSink().setSinkClock(c.clock)
 
-      val testVal = chiselTypeOf(c.in).Lit(_.a -> 42.U, _.b -> true.B)
-      val testVal2 = chiselTypeOf(c.in).Lit(_.a -> 43.U, _.b -> false.B)
+      val bundle = new MyBundle
+      val testVal = bundle.Lit(_.a -> 42.U, _.b -> true.B)
+      val testVal2 = bundle.Lit(_.a -> 43.U, _.b -> false.B)
 
       c.out.expectInvalid()
       c.in.enqueueNow(testVal)
@@ -66,7 +67,7 @@ class ChiselQueueTest extends AnyFlatSpec with ChiselScalatestTester {
       )
       c.out.expectDequeueNow(testVal2)
     }
-  }*/
+  }
 
   it should "pass through elements, using enqueueNow" in {
     test(new QueueModule(UInt(8.W), 2)) { c =>
