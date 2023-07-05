@@ -41,9 +41,32 @@ class QueueModule[T <: Data](ioType: T, entries: Int) extends Module {
   out <> Queue(in, entries)
 }
 
+class MyBundle extends Bundle {
+  val a = UInt(8.W)
+  val b = Bool()
+}
+
 
 class ChiselQueueTest extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "Testers2 with Queue"
+
+  /*it should "pass through an aggregate, using enqueueNow" in {
+    test(new QueueModule(new MyBundle, 2)) { c =>
+      c.in.initSource().setSourceClock(c.clock)
+      c.out.initSink().setSinkClock(c.clock)
+
+      val testVal = chiselTypeOf(c.in).Lit(_.a -> 42.U, _.b -> true.B)
+      val testVal2 = chiselTypeOf(c.in).Lit(_.a -> 43.U, _.b -> false.B)
+
+      c.out.expectInvalid()
+      c.in.enqueueNow(testVal)
+      parallel(
+        c.out.expectDequeueNow(testVal),
+        c.in.enqueueNow(testVal2)
+      )
+      c.out.expectDequeueNow(testVal2)
+    }
+  }*/
 
   it should "pass through elements, using enqueueNow" in {
     test(new QueueModule(UInt(8.W), 2)) { c =>
