@@ -51,6 +51,27 @@ class MyBundle extends Bundle {
 class ChiselQueueTest extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "Testers2 with Queue"
 
+  it should "pass through a vector of bundles, using enqueueNow" in {
+    val bundle = new MyBundle
+    val myVec = Vec(2, bundle)
+
+    test(new QueueModule(myVec, 2)) { c =>
+      c.in.initSource().setSourceClock(c.clock)
+      c.out.initSink().setSinkClock(c.clock)
+
+      val testVal = myVec.Lit(0 -> bundle.Lit(_.a -> 42.U, _.b -> true.B), 1 -> bundle.Lit(_.a -> 43.U, _.b -> false.B))
+      val testVal2 = myVec.Lit(0 -> bundle.Lit(_.a -> 44.U, _.b -> false.B), 1 -> bundle.Lit(_.a -> 45.U, _.b -> true.B))
+
+      c.out.expectInvalid()
+      c.in.enqueueNow(testVal)
+      parallel(
+        c.out.expectDequeueNow(testVal),
+        c.in.enqueueNow(testVal2)
+      )
+      c.out.expectDequeueNow(testVal2)
+    }
+  }
+
   it should "pass through a vector, using enqueueNow" in {
     val myVec = Vec(2, UInt(8.W))
 
