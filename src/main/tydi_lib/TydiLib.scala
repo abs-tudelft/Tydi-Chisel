@@ -277,7 +277,8 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
       // Connect data bitvector back to bundle
       bundle.getDataElementsRec.foldLeft(0)((i, dataField) => {
         val width = dataField.getWidth
-        dataField := this.data(i+width-1, i)
+        // .asTypeOf cast is necessary to prevent incompatible type errors
+        dataField := this.data(i + width - 1, i).asTypeOf(dataField)
         i + width
       })
       // Connect user bitvector back to bundle
@@ -289,6 +290,24 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
         i + width
       })
     }
+  }
+
+  def :=(bundle: PhysicalStream): Unit = {
+    // This could be done with a :<>= but I like being explicit here to catch possible errors.
+    this.endi := bundle.endi
+    this.stai := bundle.stai
+    this.strb := bundle.strb
+    this.last := bundle.last
+    this.valid := bundle.valid
+    bundle.ready := this.ready
+    this.data := bundle.data
+    this.user := bundle.user
+  }
+
+  def processWith[T <: SubProcessorSignalDef](module: => T): PhysicalStream = {
+    val processingModule = Module(module)
+    processingModule.in := this
+    processingModule.out
   }
 }
 
@@ -335,6 +354,30 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
     val io = IO(if (flip) Flipped(stream) else stream)
     io := this
     io
+  }
+
+  // Stream mounting function
+  def :=[TBel <: TydiEl, TBus <: Data](bundle: PhysicalStreamDetailed[TBel, TBus]): Unit = {
+    // This could be done with a :<>= but I like being explicit here to catch possible errors.
+    if (bundle.r && !this.r) {
+      this.endi := bundle.endi
+      this.stai := bundle.stai
+      this.strb := bundle.strb
+      this.last := bundle.last
+      this.valid := bundle.valid
+      bundle.ready := this.ready
+      (this.data: Data).waiveAll :<>= (bundle.data: Data).waiveAll
+      (this.user: Data).waiveAll :<>= (bundle.user: Data).waiveAll
+    } else {
+      bundle.endi := this.endi
+      bundle.stai := this.stai
+      bundle.strb := this.strb
+      bundle.last := this.last
+      bundle.valid := this.valid
+      this.ready := bundle.ready
+      (bundle.data: Data).waiveAll :<>= (this.data: Data).waiveAll
+      (bundle.user: Data).waiveAll :<>= (this.user: Data).waiveAll
+    }
   }
 }
 

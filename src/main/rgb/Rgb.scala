@@ -50,7 +50,7 @@ class TopLevelModule extends Module {
   val rgbIn = Module(new RgbModuleIn())
 
   // Bi-directional connection
-  rgbIn.io :<>= rgbOut.tydi_port
+  rgbIn.io := rgbOut.tydi_port
   io.out := rgbOut.tydi_port.data.asSInt
 }
 
