@@ -4,6 +4,7 @@
 import org.scalatest._
 import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+import chisel3.experimental.VecLiterals.AddVecLiteralConstructor
 import chiseltest._
 import chisel3.util._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -49,6 +50,26 @@ class MyBundle extends Bundle {
 
 class ChiselQueueTest extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "Testers2 with Queue"
+
+  it should "pass through a vector, using enqueueNow" in {
+    val myVec = Vec(2, UInt(8.W))
+
+    test(new QueueModule(myVec, 2)) { c =>
+      c.in.initSource().setSourceClock(c.clock)
+      c.out.initSink().setSinkClock(c.clock)
+
+      val testVal = myVec.Lit(0 -> 42.U, 1 -> 43.U)
+      val testVal2 = myVec.Lit(0 -> 44.U, 1 -> 45.U)
+
+      c.out.expectInvalid()
+      c.in.enqueueNow(testVal)
+      parallel(
+        c.out.expectDequeueNow(testVal),
+        c.in.enqueueNow(testVal2)
+      )
+      c.out.expectDequeueNow(testVal2)
+    }
+  }
 
   it should "pass through an aggregate, using enqueueNow" in {
     test(new QueueModule(new MyBundle, 2)) { c =>
