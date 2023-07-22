@@ -3,9 +3,10 @@ package tydi_lib.testing
 import chiseltest._
 import chisel3._
 import chisel3.util._
+import tydi_lib.{PhysicalStreamDetailed, TydiEl}
 
 // implicit class, cannot maintain state
-class DecoupledDriver[T <: Data](x: ReadyValidIO[T]) {
+class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel, Tus]) {
   // Source (enqueue) functions
   //
   def initSource(): this.type = {
@@ -14,21 +15,21 @@ class DecoupledDriver[T <: Data](x: ReadyValidIO[T]) {
   }
 
   def setSourceClock(clock: Clock): this.type = {
-    ClockResolutionUtils.setClock(DecoupledDriver.decoupledSourceKey, x, clock)
+    ClockResolutionUtils.setClock(TydiStreamDriver.decoupledSourceKey, x, clock)
     this
   }
 
   protected def getSourceClock: Clock = {
     ClockResolutionUtils.getClock(
-      DecoupledDriver.decoupledSourceKey,
+      TydiStreamDriver.decoupledSourceKey,
       x,
       x.ready.getSourceClock()
     ) // TODO: validate against bits/valid sink clocks
   }
 
-  def enqueueNow(data: T): Unit = timescope {
+  def enqueueNow(data: Tel): Unit = timescope {
     // TODO: check for init
-    x.bits.poke(data)
+    x.el.poke(data)
     x.valid.poke(true.B)
     fork
       .withRegion(Monitor) {
@@ -37,9 +38,9 @@ class DecoupledDriver[T <: Data](x: ReadyValidIO[T]) {
       .joinAndStep(getSourceClock)
   }
 
-  def enqueue(data: T): Unit = timescope {
+  def enqueue(data: Tel): Unit = timescope {
     // TODO: check for init
-    x.bits.poke(data)
+    x.el.poke(data)
     x.valid.poke(true.B)
     fork
       .withRegion(Monitor) {
@@ -50,7 +51,7 @@ class DecoupledDriver[T <: Data](x: ReadyValidIO[T]) {
       .joinAndStep(getSourceClock)
   }
 
-  def enqueueSeq(data: Seq[T]): Unit = timescope {
+  def enqueueSeq(data: Seq[Tel]): Unit = timescope {
     for (elt <- data) {
       enqueue(elt)
     }
@@ -64,13 +65,13 @@ class DecoupledDriver[T <: Data](x: ReadyValidIO[T]) {
   }
 
   def setSinkClock(clock: Clock): this.type = {
-    ClockResolutionUtils.setClock(DecoupledDriver.decoupledSinkKey, x, clock)
+    ClockResolutionUtils.setClock(TydiStreamDriver.decoupledSinkKey, x, clock)
     this
   }
 
   protected def getSinkClock: Clock = {
     ClockResolutionUtils.getClock(
-      DecoupledDriver.decoupledSinkKey,
+      TydiStreamDriver.decoupledSinkKey,
       x,
       x.valid.getSourceClock()
     ) // TODO: validate against bits/valid sink clocks
@@ -83,39 +84,39 @@ class DecoupledDriver[T <: Data](x: ReadyValidIO[T]) {
     }
   }
 
-  def expectDequeue(data: T): Unit = timescope {
+  def expectDequeue(data: Tel): Unit = timescope {
     // TODO: check for init
     x.ready.poke(true.B)
     fork
       .withRegion(Monitor) {
         waitForValid()
         x.valid.expect(true.B)
-        x.bits.expect(data)
+        x.el.expect(data)
       }
       .joinAndStep(getSinkClock)
   }
 
-  def expectDequeueNow(data: T): Unit = timescope {
+  def expectDequeueNow(data: Tel): Unit = timescope {
     // TODO: check for init
     x.ready.poke(true.B)
     fork
       .withRegion(Monitor) {
         x.valid.expect(true.B)
-        x.bits.expect(data)
+        x.el.expect(data)
       }
       .joinAndStep(getSinkClock)
   }
 
-  def expectDequeueSeq(data: Seq[T]): Unit = timescope {
+  def expectDequeueSeq(data: Seq[Tel]): Unit = timescope {
     for (elt <- data) {
       expectDequeue(elt)
     }
   }
 
-  def expectPeek(data: T): Unit = {
+  def expectPeek(data: Tel): Unit = {
     fork.withRegion(Monitor) {
       x.valid.expect(true.B)
-      x.bits.expect(data)
+      x.el.expect(data)
     }
   }
 
@@ -126,7 +127,7 @@ class DecoupledDriver[T <: Data](x: ReadyValidIO[T]) {
   }
 }
 
-object DecoupledDriver {
+object TydiStreamDriver {
   protected val decoupledSourceKey = new Object()
   protected val decoupledSinkKey = new Object()
 }
