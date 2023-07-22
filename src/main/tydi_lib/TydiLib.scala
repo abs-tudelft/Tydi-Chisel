@@ -330,6 +330,8 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
   val data: Vec[Tel] = Output(Vec(n, e))
   val user: Tus = Output(u)
 
+  def getDataType: Tel = e
+
   override def getDataConcat: UInt = data.map(_.getDataConcat).reduce(Cat(_, _))
 
   def getUserConcat: UInt = user.asUInt

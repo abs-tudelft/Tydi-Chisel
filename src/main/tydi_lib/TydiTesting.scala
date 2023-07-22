@@ -34,7 +34,11 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     ) // TODO: validate against bits/valid sink clocks
   }
 
-  def dataLit(elems: (Tel => (Data, Data))*): Tel = x.el.Lit(elems: _*) // Use splat operator to propagate repeated parameters
+  def dataLit(elems: (Tel => (Data, Data))*): Tel = {
+    // Must use datatype instead of just .data or .el because Lit does not accept hardware types.
+    // Use splat operator to propagate repeated parameters
+    x.getDataType.Lit(elems: _*)
+  }
 
   def enqueueNow(data: Tel): Unit = timescope {
     // TODO: check for init

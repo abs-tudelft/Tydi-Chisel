@@ -13,11 +13,10 @@ import tydi_lib.testing.Conversions._
 class SimplePassthroughModule[T <: TydiEl](ioType: T) extends SubProcessorBase(ioType, ioType)
 
 class TydiPassthroughModule[T <: TydiEl](ioType: T) extends TydiModule {
-  val mod = Module(new SimplePassthroughModule(ioType))
-  val out = IO(new PhysicalStreamDetailed(ioType, c=7, r=true))
-  val in = IO(Flipped(new PhysicalStreamDetailed(ioType, c=7)))
-  mod.in := in
-  mod.out := out
+//  val mod = Module(new SimplePassthroughModule(ioType))
+  val out = IO(new PhysicalStreamDetailed(ioType, c=7))
+  val in = IO(Flipped(new PhysicalStreamDetailed(ioType, c=7, r=true)))
+  out := in
 }
 
 //class QueueModule[T <: TydiEl](ioType: T, entries: Int) extends SubProcessorSignalDef {
