@@ -6,6 +6,11 @@ import chisel3.util._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chisel3.experimental.VecLiterals.AddVecLiteralConstructor
 import tydi_lib.{PhysicalStreamDetailed, TydiEl}
+import scala.language.implicitConversions
+
+object Conversions {
+  implicit def tydiStreamToDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel, Tus]): TydiStreamDriver[Tel, Tus] = new TydiStreamDriver(x)
+}
 
 // implicit class, cannot maintain state
 class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel, Tus]) {
