@@ -3,6 +3,8 @@ package tydi_lib.testing
 import chiseltest._
 import chisel3._
 import chisel3.util._
+import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+import chisel3.experimental.VecLiterals.AddVecLiteralConstructor
 import tydi_lib.{PhysicalStreamDetailed, TydiEl}
 
 // implicit class, cannot maintain state
@@ -27,6 +29,8 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     ) // TODO: validate against bits/valid sink clocks
   }
 
+  def dataLit(elems: (Tel => (Data, Data))*): Tel = x.el.Lit(elems: _*) // Use splat operator to propagate repeated parameters
+
   def enqueueNow(data: Tel): Unit = timescope {
     // TODO: check for init
     x.el.poke(data)
@@ -36,6 +40,11 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
         x.ready.expect(true.B)
       }
       .joinAndStep(getSourceClock)
+  }
+
+  def enqueueNow(elems: (Tel => (Data, Data))*): Unit = timescope {
+    val litValue = dataLit(elems: _*) // Use splat operator to propagate repeated parameters
+    enqueueNow(litValue)
   }
 
   def enqueue(data: Tel): Unit = timescope {
@@ -49,6 +58,11 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
         }
       }
       .joinAndStep(getSourceClock)
+  }
+
+  def enqueue(elems: (Tel => (Data, Data))*): Unit = timescope {
+    val litValue = dataLit(elems:_*) // Use splat operator to propagate repeated parameters
+    enqueue(litValue)
   }
 
   def enqueueSeq(data: Seq[Tel]): Unit = timescope {
@@ -96,6 +110,11 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
       .joinAndStep(getSinkClock)
   }
 
+  def expectDequeue(elems: (Tel => (Data, Data))*): Unit = timescope {
+    val litValue = dataLit(elems: _*) // Use splat operator to propagate repeated parameters
+    expectDequeue(litValue)
+  }
+
   def expectDequeueNow(data: Tel): Unit = timescope {
     // TODO: check for init
     x.ready.poke(true.B)
@@ -105,6 +124,11 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
         x.el.expect(data)
       }
       .joinAndStep(getSinkClock)
+  }
+
+  def expectDequeueNow(elems: (Tel => (Data, Data))*): Unit = timescope {
+    val litValue = dataLit(elems: _*) // Use splat operator to propagate repeated parameters
+    expectDequeueNow(litValue)
   }
 
   def expectDequeueSeq(data: Seq[Tel]): Unit = timescope {
