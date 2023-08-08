@@ -38,6 +38,11 @@ class TydiStreamDriverTest extends AnyFlatSpec with ChiselScalatestTester {
       c.in.initSource().setSourceClock(c.clock)
       c.out.initSink().setSinkClock(c.clock)
 
+      var state = c.out.printState()
+      print(state)
+
+      val whatever: Seq[MyBundle => (Data, Data)] = Seq(_.a -> 0.U, _.b -> false.B)
+
       val bundle = new MyBundle
       val testVal = bundle.Lit(_.a -> 42.U, _.b -> true.B)
       val testVal2 = c.in.dataLit(_.a -> 43.U, _.b -> false.B)
@@ -47,6 +52,8 @@ class TydiStreamDriverTest extends AnyFlatSpec with ChiselScalatestTester {
         c.in.enqueueNow(testVal),
         c.out.expectDequeueNow(_.a -> 42.U, _.b -> true.B)
       )
+      state = c.out.printState()
+      print(state)
       parallel(
         c.in.enqueueNow(_.a -> 43.U, _.b -> false.B),
         c.out.expectDequeueNow(testVal2)

@@ -158,6 +158,24 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
       x.valid.expect(false.B)
     }
   }
+
+  def printState(): String = {
+    val stringBuilder = new StringBuilder
+
+    stringBuilder.append(s"State of \"${x.instanceName}\" @ step ${getSinkClock.getStepCount}:\n")
+    stringBuilder.append(s"valid: ${x.valid.peek().litToBoolean}\n")
+    stringBuilder.append(s"ready: ${x.ready.peek().litToBoolean}\n")
+    stringBuilder.append(s"last: ${x.last.peek()}\n")
+    stringBuilder.append(s"stai: ${x.stai.peek().litValue}\n")
+    stringBuilder.append(s"endi: ${x.endi.peek().litValue}\n")
+    stringBuilder.append(s"strb: ${x.strb.peek()}\n")
+
+    x.data.zipWithIndex.foreach { case (lane, index) =>
+      stringBuilder.append(s"Lane $index: ${lane.peek()}\n")
+    }
+
+    stringBuilder.toString
+  }
 }
 
 object TydiStreamDriver {
