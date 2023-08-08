@@ -163,15 +163,21 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     val stringBuilder = new StringBuilder
 
     stringBuilder.append(s"State of \"${x.instanceName}\" @ step ${getSinkClock.getStepCount}:\n")
-    stringBuilder.append(s"valid: ${x.valid.peek().litToBoolean}\n")
+    stringBuilder.append(s"valid: ${x.valid.peek().litToBoolean}\t")
     stringBuilder.append(s"ready: ${x.ready.peek().litToBoolean}\n")
-    stringBuilder.append(s"last: ${x.last.peek()}\n")
-    stringBuilder.append(s"stai: ${x.stai.peek().litValue}\n")
+    stringBuilder.append(s"stai: ${x.stai.peek().litValue}\t\t\t")
     stringBuilder.append(s"endi: ${x.endi.peek().litValue}\n")
     stringBuilder.append(s"strb: ${x.strb.peek()}\n")
+    stringBuilder.append(s"last: ${x.last.peek()}\n")
+    stringBuilder.append("Lanes:\n")
 
     x.data.zipWithIndex.foreach { case (lane, index) =>
-      stringBuilder.append(s"Lane $index: ${lane.peek()}\n")
+      stringBuilder.append(s"$index\tdata: ${lane.peek()}\n")
+      val active_strobe = x.strb.peek()(index).litToBoolean
+      val active_stai = x.stai.peek().litValue >= index
+      val active_endi = x.endi.peek().litValue <= index
+      val active = active_strobe && active_stai && active_endi
+      stringBuilder.append(s"\tactive: $active – $active_strobe; $active_stai; $active_endi;\n")
     }
 
     stringBuilder.toString
