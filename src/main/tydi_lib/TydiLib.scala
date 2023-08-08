@@ -208,7 +208,7 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
   val user: Data
 
   val lastWidth: Int = if (c == 7) d * n else d
-  val last: UInt = Output(UInt(lastWidth.W))
+  val last: Data
   val stai: UInt = Output(UInt(indexWidth.W))
   val endi: UInt = Output(UInt(indexWidth.W))
   val strb: UInt = Output(UInt(n.W))
@@ -254,6 +254,7 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
   val userElWidth: Int = u.getWidth
   val data: UInt = Output(UInt((elWidth*n).W))
   val user: UInt = Output(UInt(userElWidth.W))
+  val last: UInt = Output(UInt(lastWidth.W))
 
   // Stream mounting function
   def :=[Tel <: TydiEl, Tus <: Data](bundle: PhysicalStreamDetailed[Tel, Tus]): Unit = {
@@ -262,7 +263,7 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
       this.endi := bundle.endi
       this.stai := bundle.stai
       this.strb := bundle.strb
-      this.last := bundle.last
+      this.last := bundle.last.asUInt
       this.valid := bundle.valid
       bundle.ready := this.ready
       this.data := bundle.getDataConcat
@@ -271,7 +272,9 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
       bundle.endi := this.endi
       bundle.stai := this.stai
       bundle.strb := this.strb
-      bundle.last := this.last
+      for ((lastLane, i) <- bundle.last.zipWithIndex) {
+        lastLane := this.last((i+1)*d, i*d)
+      }
       bundle.valid := this.valid
       this.ready := bundle.ready
       // Connect data bitvector back to bundle
@@ -329,6 +332,7 @@ object PhysicalStream {
 class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: Int = 1, d: Int = 0, c: Int, var r: Boolean = false, private val u: Tus = Null()) extends PhysicalStreamBase(e, n, d, c, u) {
   val data: Vec[Tel] = Output(Vec(n, e))
   val user: Tus = Output(u)
+  val last: Vec[UInt] = Output(Vec(n, UInt(d.W)))
 
   def getDataType: Tel = e
 

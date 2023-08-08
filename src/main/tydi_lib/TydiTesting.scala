@@ -167,12 +167,22 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     stringBuilder.append(s"ready: ${x.ready.peek().litToBoolean}\n")
     stringBuilder.append(s"stai: ${x.stai.peek().litValue}\t\t\t")
     stringBuilder.append(s"endi: ${x.endi.peek().litValue}\n")
-    stringBuilder.append(s"strb: ${x.strb.peek()}\n")
-    stringBuilder.append(s"last: ${x.last.peek()}\n")
+    if (x.c < 8) {
+
+    } else {
+      stringBuilder.append(s"strb: ${x.strb.peek()}\n")
+    }
+    if (x.c < 8) {
+      stringBuilder.append(s"last: ${x.last.last.peek()}\n")
+    }
     stringBuilder.append("Lanes:\n")
 
     x.data.zipWithIndex.foreach { case (lane, index) =>
       stringBuilder.append(s"$index\tdata: ${lane.peek()}\n")
+      // https://abs-tudelft.github.io/tydi/specification/physical.html#last-signal-description
+      if (x.c >= 8) {
+        stringBuilder.append(s"\tlast: ${x.last(index).peek()}\n")
+      }
       val active_strobe = x.strb.peek()(index).litToBoolean
       val active_stai = x.stai.peek().litValue >= index
       val active_endi = x.endi.peek().litValue <= index
