@@ -160,34 +160,53 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
   }
 
   def printState(): String = {
+    import printUtils._
     val stringBuilder = new StringBuilder
 
-    stringBuilder.append(s"State of \"${x.instanceName}\" @ step ${getSinkClock.getStepCount}:\n")
-    stringBuilder.append(s"valid: ${x.valid.peek().litToBoolean}\t")
-    stringBuilder.append(s"ready: ${x.ready.peek().litToBoolean}\n")
-    stringBuilder.append(s"stai: ${x.stai.peek().litValue}\t\t\t")
-    stringBuilder.append(s"endi: ${x.endi.peek().litValue}\n")
-    if (x.c < 8) {
+    val out = '↑'
+    val in = '↓'
+    val streamDir = if (x.r) in else out
+    val streamAntiDir = if (x.r) out else in
 
+    stringBuilder.append(s"State of \"${x.instanceName}\" $streamDir @ clk-step ${getSinkClock.getStepCount}:\n")
+    // Valid and ready signals
+    stringBuilder.append(s"valid $streamDir: ${x.valid.peek().litToBoolean}\t\t")
+    stringBuilder.append(s"ready $streamAntiDir: ${x.ready.peek().litToBoolean}\n")
+    // Stai and endi signals
+    stringBuilder.append(s"stai ≥: ${x.stai.peek().litValue}\t\t\t")
+    stringBuilder.append(s"endi ≤: ${x.endi.peek().litValue}\n")
+
+    // Strobe signal
+    if (x.c < 8) {
+      // For C<8 all `strb` bits should be the same
+      stringBuilder.append(s"strb: ${x.strb.peek()(0).litToBoolean} (${binaryFromUint(x.strb.peek(), x.n)})\n")
     } else {
-      stringBuilder.append(s"strb: ${x.strb.peek()}\n")
+      stringBuilder.append(s"strb: ${binaryFromUint(x.strb.peek(), x.n)}\n")
     }
+    // Last signal
     if (x.c < 8) {
-      stringBuilder.append(s"last: ${x.last.last.peek()}\n")
+      stringBuilder.append(s"last: ${binaryFromUint(x.last.last.peek(), x.d, "-")}\n")
+    } else {
+      stringBuilder.append(s"last: ${x.last.peek().map(binaryFromUint(_, x.d, "-")).mkString("|")}\n")
     }
-    stringBuilder.append("Lanes:\n")
 
+    // Lane-specific info
+    stringBuilder.append("Lanes:\n")
     x.data.zipWithIndex.foreach { case (lane, index) =>
+      // Print data
       stringBuilder.append(s"$index\tdata: ${lane.peek()}\n")
 
+      // Last signal for this lane
       if (x.c >= 8) {
-        stringBuilder.append(s"\tlast: ${x.last(index).peek()}\n")
+        stringBuilder.append(s"\tlast: ${binaryFromUint(x.last(index).peek(), x.d, "-")}\n")
       }
+
+      // See if a lane is active or not and why
       val active_strobe = x.strb.peek()(index).litToBoolean
       val active_stai = x.stai.peek().litValue >= index
       val active_endi = x.endi.peek().litValue <= index
       val active = active_strobe && active_stai && active_endi
-      stringBuilder.append(s"\tactive: $active – $active_strobe; $active_stai; $active_endi;\n")
+      stringBuilder.append(s"\tactive: $active \t(strb=$active_strobe; stai=$active_stai; endi=$active_endi;)\n")
     }
 
     stringBuilder.toString
@@ -197,4 +216,22 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
 object TydiStreamDriver {
   protected val decoupledSourceKey = new Object()
   protected val decoupledSinkKey = new Object()
+}
+
+
+object printUtils {
+  def binaryFromUint(num: UInt, width: Int, empty: String = ""): String = binaryFromInt(num.litValue.toInt, width, empty)
+
+  def binaryFromBigInt(num: BigInt, width: Int, empty: String = ""): String = binaryFromInt(num.toInt, width, empty)
+
+  /**
+   * Get binary notation of a number of specified width.
+   * @param num Number to transform
+   * @param width Requested width of the binary string
+   * @return String with binary notation
+   */
+  def binaryFromInt(num: Int, width: Int, empty: String = ""): String = {
+    if (width == 0) return empty
+    String.format("%" + width + "s", num.toBinaryString).replace(' ', '0')
+  }
 }
