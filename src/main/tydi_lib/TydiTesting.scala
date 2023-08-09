@@ -179,7 +179,7 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
 
     x.data.zipWithIndex.foreach { case (lane, index) =>
       stringBuilder.append(s"$index\tdata: ${lane.peek()}\n")
-      // https://abs-tudelft.github.io/tydi/specification/physical.html#last-signal-description
+
       if (x.c >= 8) {
         stringBuilder.append(s"\tlast: ${x.last(index).peek()}\n")
       }

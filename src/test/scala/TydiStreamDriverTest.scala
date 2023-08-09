@@ -14,7 +14,7 @@ class SimplePassthroughModule[T <: TydiEl](ioType: T) extends SubProcessorBase(i
 
 class TydiPassthroughModule[T <: TydiEl](ioType: T) extends TydiModule {
 //  val mod = Module(new SimplePassthroughModule(ioType))
-  val out = IO(new PhysicalStreamDetailed(ioType, c=7))
+  val out = IO(new PhysicalStreamDetailed(ioType, c=8))
   val in = IO(Flipped(new PhysicalStreamDetailed(ioType, c=7, r=true)))
   out := in
 }
