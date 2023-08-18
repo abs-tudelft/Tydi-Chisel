@@ -317,40 +317,14 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
   // Stream mounting function
   def :=[Tel <: TydiEl, Tus <: Data](bundle: PhysicalStreamDetailed[Tel, Tus]): Unit = {
     // This could be done with a :<>= but I like being explicit here to catch possible errors.
-    if (!bundle.r) {
-      this.endi := bundle.endi
-      this.stai := bundle.stai
-      this.strb := bundle.strb
-      this.last := bundle.last.asUInt
-      this.valid := bundle.valid
-      bundle.ready := this.ready
-      this.data := bundle.getDataConcat
-      this.user := bundle.getUserConcat
-    } else {
-      bundle.endi := this.endi
-      bundle.stai := this.stai
-      bundle.strb := this.strb
-      for ((lastLane, i) <- bundle.last.zipWithIndex) {
-        lastLane := this.last((i+1)*d, i*d)
-      }
-      bundle.valid := this.valid
-      this.ready := bundle.ready
-      // Connect data bitvector back to bundle
-      bundle.getDataElementsRec.foldLeft(0)((i, dataField) => {
-        val width = dataField.getWidth
-        // .asTypeOf cast is necessary to prevent incompatible type errors
-        dataField := this.data(i + width - 1, i).asTypeOf(dataField)
-        i + width
-      })
-      // Connect user bitvector back to bundle
-      // Todo: Investigate if this is really necessary or if connecting as Data Bundle/Vector directly is fine,
-      //  since user signals are unspecified by the standard.
-      bundle.getUserElements.foldLeft(0)((i, userField) => {
-        val width = userField.getWidth
-        userField := this.user(i+width-1, i)
-        i + width
-      })
-    }
+    this.endi := bundle.endi
+    this.stai := bundle.stai
+    this.strb := bundle.strb
+    this.last := bundle.last.asUInt
+    this.valid := bundle.valid
+    bundle.ready := this.ready
+    this.data := bundle.getDataConcat
+    this.user := bundle.getUserConcat
   }
 
   def :=(bundle: PhysicalStream): Unit = {
@@ -443,6 +417,32 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
       (bundle.data: Data).waiveAll :<>= (this.data: Data).waiveAll
       (bundle.user: Data).waiveAll :<>= (this.user: Data).waiveAll
     }
+  }
+
+  def :=(bundle: PhysicalStream): Unit = {
+    this.endi := bundle.endi
+    this.stai := bundle.stai
+    this.strb := bundle.strb
+    for ((lastLane, i) <- this.last.zipWithIndex) {
+      lastLane := bundle.last((i + 1) * d - 1, i * d)
+    }
+    this.valid := bundle.valid
+    bundle.ready := this.ready
+    // Connect data bitvector back to bundle
+    this.getDataElementsRec.foldLeft(0)((i, dataField) => {
+      val width = dataField.getWidth
+      // .asTypeOf cast is necessary to prevent incompatible type errors
+      dataField := bundle.data(i + width - 1, i).asTypeOf(dataField)
+      i + width
+    })
+    // Connect user bitvector back to bundle
+    // Todo: Investigate if this is really necessary or if connecting as Data Bundle/Vector directly is fine,
+    //  since user signals are unspecified by the standard.
+    this.getUserElements.foldLeft(0)((i, userField) => {
+      val width = userField.getWidth
+      userField := bundle.user(i + width - 1, i)
+      i + width
+    })
   }
 }
 

@@ -122,11 +122,11 @@ class TydiTestWrapper(module: => SubProcessorSignalDef) extends TydiModule {
   val mod: SubProcessorSignalDef = Module(module)
   private val out_ref = mod.out
   private val in_ref = mod.in
-  val out = PhysicalStreamDetailed(out_ref.getDataType, out_ref.n, out_ref.d, out_ref.c, r=false)
-  val in = PhysicalStreamDetailed(in_ref.getDataType, in_ref.n, in_ref.d, in_ref.c, r=true)
+  val out = IO(Output(new PhysicalStreamDetailed(out_ref.getDataType, out_ref.n, out_ref.d, out_ref.c, r=false)))
+  val in = IO(Input(new PhysicalStreamDetailed(in_ref.getDataType, in_ref.n, in_ref.d, in_ref.c, r=true)))
 
   out.endi := mod.out.endi
-  mod.out := out
+  out := mod.out
   mod.in := in
 }
 
