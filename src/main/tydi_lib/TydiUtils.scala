@@ -9,15 +9,18 @@ import chisel3.util.{Cat, PopCount, PriorityEncoder, log2Ceil}
  * @param template Physical stream to use as a reference for the input stream and partially the output stream.
  * @param memSize Size of the buffer in terms of total items/lanes.
  */
-class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extends TydiModule {
+class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extends SubProcessorSignalDef {
   // Get some information from the template
   private val elWidth = template.elWidth
   private val n = template.n
   private val d = template.d
   val elType = template.elementType
   // Create in- and output IO streams based on template
-  val in: PhysicalStream = IO(Flipped(PhysicalStream(elType, n, d = d, c = template.c)))
-  val out: PhysicalStream = IO(PhysicalStream(elType, n, d = d, c = 1))
+  override val in: PhysicalStream = IO(Flipped(PhysicalStream(elType, n, d = d, c = template.c)))
+  override val out: PhysicalStream = IO(PhysicalStream(elType, n, d = d, c = 1))
+
+  in.user := DontCare
+  out.user := DontCare
 
   /** How many bits are required to represent an index of memSize */
   val indexSize: Int = log2Ceil(memSize)
@@ -113,6 +116,18 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
   }
   out.stai := 0.U
 
+}
+
+class TydiTestWrapper(module: => SubProcessorSignalDef) extends TydiModule {
+  val mod: SubProcessorSignalDef = Module(module)
+  private val out_ref = mod.out
+  private val in_ref = mod.in
+  val out = PhysicalStreamDetailed(out_ref.getDataType, out_ref.n, out_ref.d, out_ref.c, r=false)
+  val in = PhysicalStreamDetailed(in_ref.getDataType, in_ref.n, in_ref.d, in_ref.c, r=true)
+
+  out.endi := mod.out.endi
+  mod.out := out
+  mod.in := in
 }
 
 /**

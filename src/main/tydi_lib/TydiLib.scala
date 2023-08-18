@@ -190,6 +190,9 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
 
   def elementType = e.cloneType
 
+  def getDataType: TydiEl = e
+  def getUserType: Data = u
+
   /**
    * Indicates that the producer has valid data ready.<br>
    * [C&lt;3] valid may only be released when lane `N−1` of the [[last]] signal in the acknowledged transfer is nonzero.<br>
@@ -389,7 +392,8 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
   val user: Tus = Output(u)
   val last: Vec[UInt] = Output(Vec(n, UInt(d.W)))
 
-  def getDataType: Tel = e
+  override def getDataType: Tel = e
+  override def getUserType: Tus = u
 
   override def getDataConcat: UInt = data.map(_.getDataConcat).reduce(Cat(_, _))
 

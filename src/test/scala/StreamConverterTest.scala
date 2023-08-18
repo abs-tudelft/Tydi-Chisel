@@ -1,4 +1,5 @@
 import chisel3._
+import chisel3.experimental.VecLiterals.AddVecLiteralConstructor
 import chiseltest._
 import chiseltest.experimental.expose
 import org.scalatest.flatspec.AnyFlatSpec
@@ -27,6 +28,8 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
     val exposed_indexes: Vec[UInt] = expose(indexes)
     val exposed_lasts: UInt = expose(leastSignificantLastSignal)
   }
+
+  class ComplexityConverterFancyWrapper(template: PhysicalStream, memSize: Int) extends TydiTestWrapper(new ComplexityConverter(template, memSize))
 
   behavior of "ComplexityConverter"
   // test class body here
@@ -137,6 +140,22 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
       c.exposed_transferLength.expect(1.U)
       c.exposed_transferCount.expect(1.U)
       println("N=2 test done")
+    }
+  }
+
+  it should "work with fancy wrapper" in {
+    val stream = PhysicalStream(new MyEl, n = 1, d = 1, c = 7)
+
+    // test case body here
+    test(new ComplexityConverterFancyWrapper(stream, 10)) { c =>
+      println("N=1 test")
+      // Initialize signals
+      println("Initializing signals")
+      c.in.last.poke(c.in.last.Lit(0 -> 0.U))
+      c.in.strb.poke(1.U)
+      c.in.stai.poke(0.U)
+      c.in.endi.poke(0.U)
+      c.in.valid.poke(false.B)
     }
   }
 }
