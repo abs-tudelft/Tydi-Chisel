@@ -186,31 +186,86 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
   override val isStream: Boolean = true
 
   require(n >= 1)
-  require(1 <= c && c <= 7)
+  require(1 <= c && c <= 8)
 
   def elementType = e.cloneType
 
-  /** Indicates that the producer has valid data ready
+  /**
+   * Indicates that the producer has valid data ready.<br>
+   * [C&lt;3] valid may only be released when lane `N−1` of the [[last]] signal in the acknowledged transfer is nonzero.<br>
+   * [C&lt;2] valid may only be released when lane `N−1` of the [[last]] signal in the acknowledged transfer is all ones.<br>
+   * https://abs-tudelft.github.io/tydi/specification/physical.html#valid-signal-description
    *
    * @group Signals
    */
   val valid: Bool = Output(Bool())
 
-  /** Indicates that the consumer is ready to accept the data this cycle
-   *
+  /**
+   * Indicates that the consumer is ready to accept the data this cycle.<br>
+   * A transfer is considered "handshaked" when both [[valid]] and [[ready]] are asserted during the active clock edge of the clock domain common to the source and the sink.<br>
+   * https://abs-tudelft.github.io/tydi/specification/physical.html#ready-signal-description
    * @group Signals
    */
   val ready: Bool = Input(Bool())
 
   private val indexWidth = log2Ceil(n)
 
+  /**
+   * Data signal of [[n]] lanes, each carrying data elements ([[e]]).<br>
+   * A lane is active if
+   * <ul>
+   *   <li>bit `i` of [[strb]] is asserted</li>
+   *   <li>the unsigned integer interpretation of [[endi]] &ge; `i`</li>
+   *   <li>the unsigned integer interpretation of [[stai]] &le; `i`</li>
+   * </ul>
+   * https://abs-tudelft.github.io/tydi/specification/physical.html#data-signal-description
+   * @group Signals
+   */
   val data: Data
+
+  /**
+   * User signal of interface. Can be anything. Still, the state of the [[user]] signal is not significant when [[valid]] is not asserted.<br>
+   * https://abs-tudelft.github.io/tydi/specification/physical.html#user-signal-description
+   */
   val user: Data
 
   val lastWidth: Int = if (c == 7) d * n else d
-  val last: UInt = Output(UInt(lastWidth.W))
+
+  /**
+   * Last signal for signalling the end of nested sequences. Usage is highly dependent on complexity!<br>
+   * The state of the [[last]] signal is significant only while [[valid]] is asserted.<br>
+   * [C&lt;8] All last bits for lanes `0` to `N−2` inclusive must be driven low by the source, and may be ignored by the sink.<br>
+   * [C&lt;4] It is illegal to assert a [[last]] bit for dimension `j` without also asserting the last bits for dimensions `j′`&lt;`j` in the same lane.<br>
+   * [C&lt;4] It is illegal to assert the [[last]] bit for dimension `0` when the respective data lane is inactive, except for empty sequences.<br>
+   * https://abs-tudelft.github.io/tydi/specification/physical.html#last-signal-description
+   * @group Signals
+   */
+  val last: Data
+
+  /**
+   * Lane validity start index signal for turning lanes on and off.<br>
+   * The state of the [[stai]] signal is significant only while [[valid]] is asserted.<br>
+   * [C&lt;6] [[stai]] must always be driven to `0` by the source, and may be ignored by the sink.<br>
+   * https://abs-tudelft.github.io/tydi/specification/physical.html#stai-signal-description
+   * @group Signals
+   */
   val stai: UInt = Output(UInt(indexWidth.W))
+
+  /**
+   * Lane validity end index signal for turning lanes on and off.<br>
+   * The state of the [[endi]] signal is significant only while [[valid]] is asserted.<br>
+   * [C&lt;5] [[endi]] must be driven to `N−1` by the source when last is zero, and may be ignored by the sink in this case.<br>
+   * https://abs-tudelft.github.io/tydi/specification/physical.html#endi-signal-description
+   * @group Signals
+   */
   val endi: UInt = Output(UInt(indexWidth.W))
+
+  /**
+   * Strobe signal for turning lanes on and off.<br>
+   * [C&lt;8] All [[strb]] bits must be driven to the same value by the source. The sink only needs to interpret one of the bits.<br>
+   * https://abs-tudelft.github.io/tydi/specification/physical.html#strb-signal-description
+   * @group Signals
+   */
   val strb: UInt = Output(UInt(n.W))
 
 
@@ -254,6 +309,7 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
   val userElWidth: Int = u.getWidth
   val data: UInt = Output(UInt((elWidth*n).W))
   val user: UInt = Output(UInt(userElWidth.W))
+  val last: UInt = Output(UInt(lastWidth.W))
 
   // Stream mounting function
   def :=[Tel <: TydiEl, Tus <: Data](bundle: PhysicalStreamDetailed[Tel, Tus]): Unit = {
@@ -262,7 +318,7 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
       this.endi := bundle.endi
       this.stai := bundle.stai
       this.strb := bundle.strb
-      this.last := bundle.last
+      this.last := bundle.last.asUInt
       this.valid := bundle.valid
       bundle.ready := this.ready
       this.data := bundle.getDataConcat
@@ -271,7 +327,9 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
       bundle.endi := this.endi
       bundle.stai := this.stai
       bundle.strb := this.strb
-      bundle.last := this.last
+      for ((lastLane, i) <- bundle.last.zipWithIndex) {
+        lastLane := this.last((i+1)*d, i*d)
+      }
       bundle.valid := this.valid
       this.ready := bundle.ready
       // Connect data bitvector back to bundle
@@ -329,6 +387,9 @@ object PhysicalStream {
 class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: Int = 1, d: Int = 0, c: Int, var r: Boolean = false, private val u: Tus = Null()) extends PhysicalStreamBase(e, n, d, c, u) {
   val data: Vec[Tel] = Output(Vec(n, e))
   val user: Tus = Output(u)
+  val last: Vec[UInt] = Output(Vec(n, UInt(d.W)))
+
+  def getDataType: Tel = e
 
   override def getDataConcat: UInt = data.map(_.getDataConcat).reduce(Cat(_, _))
 
