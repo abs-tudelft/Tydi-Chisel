@@ -118,12 +118,13 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
 
 }
 
-class TydiTestWrapper(module: => SubProcessorSignalDef) extends TydiModule {
+class TydiTestWrapper[Tinel <: TydiEl, Toutel <: TydiEl, Tinus <: TydiEl, Toutus <: TydiEl]
+(module: => SubProcessorSignalDef, val eIn: Tinel, eOut: Toutel, val uIn: Tinus = Null(), val uOut: Toutus = Null()) extends TydiModule {
   val mod: SubProcessorSignalDef = Module(module)
   private val out_ref = mod.out
   private val in_ref = mod.in
-  val out = IO(new PhysicalStreamDetailed(out_ref.getDataType, out_ref.n, out_ref.d, out_ref.c, r=false))
-  val in = IO(Flipped(new PhysicalStreamDetailed(in_ref.getDataType, in_ref.n, in_ref.d, in_ref.c, r=true)))
+  val out: PhysicalStreamDetailed[Toutel, Toutus] = IO(new PhysicalStreamDetailed(eOut, out_ref.n, out_ref.d, out_ref.c, r=false, uOut))
+  val in: PhysicalStreamDetailed[Tinel, Tinus] = IO(Flipped(new PhysicalStreamDetailed(eIn, in_ref.n, in_ref.d, in_ref.c, r=true, uIn)))
 
   out := mod.out
   mod.in := in

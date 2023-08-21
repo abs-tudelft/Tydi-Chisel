@@ -31,7 +31,7 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
     val exposed_lasts: UInt = expose(leastSignificantLastSignal)
   }
 
-  class ComplexityConverterFancyWrapper(template: PhysicalStream, memSize: Int) extends TydiTestWrapper(new ComplexityConverter(template, memSize))
+  class ComplexityConverterFancyWrapper(template: PhysicalStream, memSize: Int) extends TydiTestWrapper(new ComplexityConverter(template, memSize), new MyEl, new MyEl)
 
   behavior of "ComplexityConverter"
   // test class body here
@@ -150,6 +150,8 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
 
     // test case body here
     test(new ComplexityConverterFancyWrapper(stream, 10)) { c =>
+      c.in.initSource().setSourceClock(c.clock)
+      c.out.initSink().setSinkClock(c.clock)
       println("N=1 test")
       // Initialize signals
       println("Initializing signals")
@@ -157,7 +159,6 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
       c.in.strb.poke(1.U)
       c.in.stai.poke(0.U)
       c.in.endi.poke(0.U)
-      c.in.valid.poke(false.B)
       c.in.enqueueNow(_.a -> 136.U, _.b -> 42.U)
     }
   }
