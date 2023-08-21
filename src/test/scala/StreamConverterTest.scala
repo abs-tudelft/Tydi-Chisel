@@ -33,6 +33,28 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
 
   class ComplexityConverterFancyWrapper(template: PhysicalStream, memSize: Int) extends TydiTestWrapper(new ComplexityConverter(template, memSize), new MyEl, new MyEl)
 
+  class ManualComplexityConverterFancyWrapper[T <: TydiEl](el: T, template: PhysicalStream, memSize: Int) extends TydiModule {
+    val mod: ComplexityConverter = Module(new ComplexityConverter(template, memSize))
+    private val out_ref = mod.out
+    private val in_ref = mod.in
+    val out: PhysicalStreamDetailed[T, Null] = IO(new PhysicalStreamDetailed(el, out_ref.n, out_ref.d, out_ref.c, r = false))
+    val in: PhysicalStreamDetailed[T, Null] = IO(Flipped(new PhysicalStreamDetailed(el, in_ref.n, in_ref.d, c=1, r = true)))
+
+    out := mod.out
+    mod.in := in
+
+    val exposed_currentIndex: UInt = expose(mod.currentIndex)
+    val exposed_seriesStored: UInt = expose(mod.seriesStored)
+    val exposed_transferLength: UInt = expose(mod.transferLength)
+    val exposed_transferCount: UInt = expose(mod.transferCount)
+    val exposed_lanes: Vec[UInt] = expose(mod.lanes)
+    val exposed_lastLanes: Vec[UInt] = expose(mod.lasts)
+    val exposed_storedData: Vec[UInt] = expose(mod.storedData)
+    val exposed_storedLasts: Vec[UInt] = expose(mod.storedLasts)
+    val exposed_indexes: Vec[UInt] = expose(mod.indexes)
+    val exposed_lasts: UInt = expose(mod.leastSignificantLastSignal)
+  }
+
   behavior of "ComplexityConverter"
   // test class body here
 
@@ -149,17 +171,35 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
     val stream = PhysicalStream(new MyEl, n = 1, d = 1, c = 7)
 
     // test case body here
-    test(new ComplexityConverterFancyWrapper(stream, 10)) { c =>
+    test(new ManualComplexityConverterFancyWrapper(new MyEl, stream, 10)) { c =>
       c.in.initSource().setSourceClock(c.clock)
       c.out.initSink().setSinkClock(c.clock)
-      println("N=1 test")
+      println("N=1 test with fancy wrapper")
       // Initialize signals
       println("Initializing signals")
 //      c.in.last.poke(c.in.last.Lit(0 -> 0.U))
-      c.in.strb.poke(1.U)
-      c.in.stai.poke(0.U)
-      c.in.endi.poke(0.U)
-      c.in.enqueueNow(_.a -> 136.U, _.b -> 42.U)
+      c.exposed_currentIndex.expect(0.U)
+      c.exposed_seriesStored.expect(0.U)
+      println("Data in:")
+      val litValIn1 = c.in.dataLit(_.a -> 136.U, _.b -> 9.U)
+      println(litValIn1)
+      println(litValIn1.litValue.toInt.toBinaryString)
+      c.in.enqueueNow(_.a -> 136.U, _.b -> 9.U)
+      c.in.enqueueNow(_.a -> 65.U, _.b -> 4.U)
+      c.exposed_currentIndex.expect(2.U)
+      c.exposed_seriesStored.expect(0.U)
+      c.out.expectInvalid()
+      c.in.last(0).poke(1.U)
+      c.in.enqueueNow(_.a -> 98.U, _.b -> 7.U)
+      c.exposed_currentIndex.expect(3.U)
+      c.exposed_seriesStored.expect(1.U)
+
+      println("Data out:")
+      println(c.out.el.peek())
+      println(c.out.el.peek().litValue.toInt.toBinaryString)
+      c.out.expectDequeueNow(_.a -> 136.U, _.b -> 9.U)
+      c.exposed_currentIndex.expect(2.U)
+      c.exposed_seriesStored.expect(1.U)
     }
   }
 }
