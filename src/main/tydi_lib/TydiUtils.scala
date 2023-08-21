@@ -14,7 +14,7 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
   private val elWidth = template.elWidth
   private val n = template.n
   private val d = template.d
-  val elType = template.elementType
+  private val elType: TydiEl = template.getDataType
   // Create in- and output IO streams based on template
   override val in: PhysicalStream = IO(Flipped(PhysicalStream(elType, n, d = d, c = template.c)))
   override val out: PhysicalStream = IO(PhysicalStream(elType, n, d = d, c = 1))
@@ -25,65 +25,61 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
   /** How many bits are required to represent an index of memSize */
   val indexSize: Int = log2Ceil(memSize)
   /** Stores index to write new data to in the register */
-  val currentIndex: UInt = RegInit(0.U(indexSize.W))
+  val currentWriteIndex: UInt = RegInit(0.U(indexSize.W))
   val lastWidth: Int = d  // Assuming c = 7 here, or that this is the case for all complexities. Todo: Should still verify that.
 
   // Create actual element storage
   val dataReg: Vec[UInt] = Reg(Vec(memSize, UInt(elWidth.W)))
   val lastReg: Vec[UInt] = Reg(Vec(memSize, UInt(lastWidth.W)))
   /** How many elements/lanes are being transferred *out* this cycle */
-  val transferCount: UInt = Wire(UInt(indexSize.W))
+  val transferOutItemCount: UInt = Wire(UInt(indexSize.W))
 
   // Shift the whole register file by `transferCount` places by default
   dataReg.zipWithIndex.foreach { case (r, i) =>
-    r := dataReg(i.U + transferCount)
+    r := dataReg(i.U + transferOutItemCount)
   }
   lastReg.zipWithIndex.foreach { case (r, i) =>
-    r := lastReg(i.U + transferCount)
+    r := lastReg(i.U + transferOutItemCount)
   }
 
   /** Signal for storing the indexes the current incoming lanes should write to */
-  val indexes: Vec[UInt] = Wire(Vec(n, UInt(indexSize.W)))
+  val writeIndexes: Vec[UInt] = Wire(Vec(n, UInt(indexSize.W)))
   // Split incoming data and last signals into indexable vectors
-  val lanesSeq: Seq[UInt] = Seq.tabulate(n)(i => in.data((i+1)*elWidth-1, i*elWidth))
-  val lastSeq: Seq[UInt] = Seq.tabulate(n)(i => in.last((i+1)*lastWidth-1, i*lastWidth))
-  val lanes: Vec[UInt] = VecInit(lanesSeq)
-  val lasts: Vec[UInt] = VecInit(lastSeq)
+  private val lanesInSeq: Seq[UInt] = Seq.tabulate(n)(i => in.data((i+1)*elWidth-1, i*elWidth))
+  private val lastInSeq: Seq[UInt] = Seq.tabulate(n)(i => in.last((i+1)*lastWidth-1, i*lastWidth))
+  val lanesIn: Vec[UInt] = VecInit(lanesInSeq)
+  val lastsIn: Vec[UInt] = VecInit(lastInSeq)
 
   /** Register that stores how many first dimension data-series are stored */
   val seriesStored: UInt = RegInit(0.U(indexSize.W))
 
   // Calculate & set write indexes
-  indexes.zipWithIndex.foreach({ case (indexWire, i) => {
+  writeIndexes.zipWithIndex.foreach({ case (indexWire, i) => {
     // Count which index this lane should get
     // The strobe bit adds 1 for each item, which is why we can remove 1 here, or we would not fill the first slot.
-    indexWire := currentIndex + PopCount(in.strb(i, 0)) - 1.U
+    indexWire := currentWriteIndex + PopCount(in.strb(i, 0)) - 1.U
     val isValid = in.strb(i) && in.valid
     when(isValid) {
-      dataReg(indexWire) := lanes(i)
-      lastReg(indexWire) := lasts(i)
+      dataReg(indexWire) := lanesIn(i)
+      lastReg(indexWire) := lastsIn(i)
     }
   }
   })
 
   // Index for new cycle is the one after the last index of last cycle - how many lanes we shifted out
   when (in.valid) {
-    currentIndex := indexes.last + 1.U - transferCount
+    currentWriteIndex := writeIndexes.last + 1.U - transferOutItemCount
   } otherwise {
-    currentIndex := currentIndex - transferCount
+    currentWriteIndex := currentWriteIndex - transferOutItemCount
   }
 
-  in.ready := currentIndex < (memSize-n).U  // We are ready as long as we have enough space left for a full transfer
+  in.ready := currentWriteIndex < (memSize-n).U  // We are ready as long as we have enough space left for a full transfer
 
-  // Fixme: Can I assume that last will not be high if it is not valid?
-  // Series transferred is the number of last lanes with high MSB
-  seriesStored := seriesStored + lasts.map(_(0, 0)).reduce(_+_)
-
-  transferCount := 0.U  // Default, overwritten below
+  transferOutItemCount := 0.U  // Default, overwritten below
 
   val storedData: Vec[UInt] = VecInit(dataReg.slice(0, n))
   val storedLasts: Vec[UInt] = VecInit(lastReg.slice(0, n))
-  var transferLength: UInt = Wire(UInt(indexSize.W))
+  var outItemsReadyCount: UInt = Wire(UInt(indexSize.W))
 
   /** Stores the contents of the least significant bits */
   // The extra true concatenation is to fix the undefined PriorityEncoder behaviour when everything is 0
@@ -91,29 +87,41 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
   val leastSignificantLastSignal: UInt = leastSignificantLasts.map(_.asUInt).reduce(Cat(_, _))
   // Todo: Check orientation
   val temp: UInt = PriorityEncoder(leastSignificantLasts)
-  transferLength := Mux(temp > n.U, n.U, temp)
+  outItemsReadyCount := Mux(temp > n.U, n.U, temp)
+
+  // Series transferred is the number of last lanes with high MSB
+  val transferOutSeriesCount: UInt = Wire(UInt())
+  transferOutSeriesCount := 0.U
+  val transferInSeriesCount: UInt = lastsIn.map(_(0, 0) & in.ready).reduce(_ + _)
 
   // When we have at least one series stored and sink is ready
   when (seriesStored > 0.U) {
     when (out.ready) {
       // When transferLength is 0 (no last found) it means the end will come later, transfer n items
-      transferCount := transferLength
+      transferOutItemCount := outItemsReadyCount
+
+      // Series transferred is the number of last lanes with high MSB
+      transferOutSeriesCount := storedLasts.map(_(0, 0)).reduce(_ + _)
     }
 
     // Set out stream signals
     out.valid := true.B
     out.data := storedData.reduce(Cat(_, _))  // Re-concatenate all the data lanes
-    out.endi := transferCount - 1.U  // Encodes the index of the last valid lane.
-    out.strb := (1.U << transferCount) - 1.U
+    out.endi := transferOutItemCount - 1.U  // Encodes the index of the last valid lane.
+    out.strb := (1.U << transferOutItemCount) - 1.U
     // This should be okay since you cannot have an end to a higher dimension without an end to a lower dimension first
-    out.last := storedLasts(transferLength)
+    out.last := storedLasts(outItemsReadyCount)
   } .otherwise {
     out.valid := false.B
     out.last := DontCare
     out.endi := DontCare
     out.strb := DontCare
     out.data := DontCare
+
   }
+
+  seriesStored := seriesStored + transferInSeriesCount - transferOutSeriesCount
+
   out.stai := 0.U
 
 }
