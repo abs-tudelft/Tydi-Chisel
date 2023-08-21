@@ -55,7 +55,7 @@ sealed trait TydiEl extends Bundle with TranspileExtend {
   def getDataConcat: UInt = {
     // Filter out any `Element`s that are also streams.
     // `.asUInt` also does recursive action but we don't want sub-streams to be included.
-    getDataElementsRec.map(_.asUInt).reduce((prev, new_) => Cat(prev, new_))
+    getDataElementsRec.map(_.asUInt).reduce((prev, new_) => Cat(new_, prev))
   }
 
   def fingerprint: String = this.instanceName

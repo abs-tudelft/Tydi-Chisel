@@ -186,21 +186,14 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
       val litValIn1 = c.in.dataLit(_.a -> 136.U, _.b -> 9.U)
       println(litValIn1)
       println(litValIn1.litValue.toInt.toBinaryString)
-      parallel(
-        {
-          c.in.enqueueNow(_.a -> 136.U, _.b -> 9.U)
-        },
-        {
-          println("Data in raw:")
-          println(c.inDataRaw.peek().litValue.toInt.toBinaryString)
-        }
-      )
+      c.in.enqueueNow(_.a -> 136.U, _.b -> 9.U)
       c.in.enqueueNow(_.a -> 65.U, _.b -> 4.U)
       c.exposed_currentIndex.expect(2.U)
       c.exposed_seriesStored.expect(0.U)
       c.out.expectInvalid()
       c.in.last(0).poke(1.U)
       c.in.enqueueNow(_.a -> 98.U, _.b -> 7.U)
+      c.in.last(0).poke(0.U)
       c.exposed_currentIndex.expect(3.U)
       c.exposed_seriesStored.expect(1.U)
 
