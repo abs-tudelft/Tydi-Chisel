@@ -1,9 +1,11 @@
 import chisel3._
-import chisel3.experimental.VecLiterals.AddVecLiteralConstructor
 import chiseltest._
 import chiseltest.experimental.expose
 import org.scalatest.flatspec.AnyFlatSpec
 import tydi_lib._
+import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
+import chisel3.experimental.VecLiterals.AddVecLiteralConstructor
+import tydi_lib.testing.Conversions._
 
 class MyEl extends Group {
   val a: UInt = UInt(8.W)
@@ -151,11 +153,12 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
       println("N=1 test")
       // Initialize signals
       println("Initializing signals")
-      c.in.last.poke(c.in.last.Lit(0 -> 0.U))
+//      c.in.last.poke(c.in.last.Lit(0 -> 0.U))
       c.in.strb.poke(1.U)
       c.in.stai.poke(0.U)
       c.in.endi.poke(0.U)
       c.in.valid.poke(false.B)
+      c.in.enqueueNow(_.a -> 136.U, _.b -> 42.U)
     }
   }
 }
