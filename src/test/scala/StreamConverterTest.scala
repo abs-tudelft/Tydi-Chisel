@@ -53,6 +53,8 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
     val exposed_storedLasts: Vec[UInt] = expose(mod.storedLasts)
     val exposed_indexes: Vec[UInt] = expose(mod.indexes)
     val exposed_lasts: UInt = expose(mod.leastSignificantLastSignal)
+    val outDataRaw: UInt = expose(mod.out.data)
+    val inDataRaw: UInt = expose(mod.in.data)
   }
 
   behavior of "ComplexityConverter"
@@ -184,7 +186,15 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
       val litValIn1 = c.in.dataLit(_.a -> 136.U, _.b -> 9.U)
       println(litValIn1)
       println(litValIn1.litValue.toInt.toBinaryString)
-      c.in.enqueueNow(_.a -> 136.U, _.b -> 9.U)
+      parallel(
+        {
+          c.in.enqueueNow(_.a -> 136.U, _.b -> 9.U)
+        },
+        {
+          println("Data in raw:")
+          println(c.inDataRaw.peek().litValue.toInt.toBinaryString)
+        }
+      )
       c.in.enqueueNow(_.a -> 65.U, _.b -> 4.U)
       c.exposed_currentIndex.expect(2.U)
       c.exposed_seriesStored.expect(0.U)
@@ -197,6 +207,8 @@ class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
       println("Data out:")
       println(c.out.el.peek())
       println(c.out.el.peek().litValue.toInt.toBinaryString)
+      println("Data out raw:")
+      println(c.outDataRaw.peek().litValue.toInt.toBinaryString)
       c.out.expectDequeueNow(_.a -> 136.U, _.b -> 9.U)
       c.exposed_currentIndex.expect(2.U)
       c.exposed_seriesStored.expect(1.U)
