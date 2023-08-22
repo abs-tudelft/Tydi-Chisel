@@ -31,6 +31,7 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
   // Create actual element storage
   val dataReg: Vec[UInt] = Reg(Vec(memSize, UInt(elWidth.W)))
   val lastReg: Vec[UInt] = Reg(Vec(memSize, UInt(lastWidth.W)))
+  val emptyReg: Vec[Bool] = Reg(Vec(memSize, Bool))
   /** How many elements/lanes are being transferred *out* this cycle */
   val transferOutItemCount: UInt = Wire(UInt(indexSize.W))
 
@@ -53,18 +54,19 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
   /** Register that stores how many first dimension data-series are stored */
   val seriesStored: UInt = RegInit(0.U(indexSize.W))
 
+  val relativeIndexes: Vec[UInt] = VecInit(Seq.tabulate(n)(i => PopCount(in.laneValidity(i, 0))))
+
   // Calculate & set write indexes
-  writeIndexes.zipWithIndex.foreach({ case (indexWire, i) => {
+  for ((indexWire, i) <- writeIndexes.zipWithIndex) {
     // Count which index this lane should get
     // The strobe bit adds 1 for each item, which is why we can remove 1 here, or we would not fill the first slot.
-    indexWire := currentWriteIndex + PopCount(in.strb(i, 0)) - 1.U
+    indexWire := currentWriteIndex + relativeIndexes(i) - 1.U
     val isValid = in.strb(i) && in.valid
     when(isValid) {
       dataReg(indexWire) := lanesIn(i)
       lastReg(indexWire) := lastsIn(i)
     }
   }
-  })
 
   // Index for new cycle is the one after the last index of last cycle - how many lanes we shifted out
   when (in.valid) {

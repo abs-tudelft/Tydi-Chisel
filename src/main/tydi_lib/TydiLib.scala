@@ -236,7 +236,7 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
 
   /**
    * Last signal for signalling the end of nested sequences. Usage is highly dependent on complexity!<br>
-   * The state of the [[last]] signal is significant only while [[valid]] is asserted.<br>
+   * The state of the [[last]] signal is significant only while [[valid]] is asserted. It is thus <i>not</i> controlled by which data lanes are active. <br>
    * [C&lt;8] All last bits for lanes `0` to `N−2` inclusive must be driven low by the source, and may be ignored by the sink.<br>
    * [C&lt;4] It is illegal to assert a [[last]] bit for dimension `j` without also asserting the last bits for dimensions `j′`&lt;`j` in the same lane.<br>
    * [C&lt;4] It is illegal to assert the [[last]] bit for dimension `0` when the respective data lane is inactive, except for empty sequences.<br>
@@ -270,6 +270,24 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
    * @group Signals
    */
   val strb: UInt = Output(UInt(n.W))
+
+  /**
+   * Creates a [[UInt]] bitmask for lane validity based on [[stai]] and [[endi]].
+   * @return Bitmask based on [[stai]] and [[endi]]
+   */
+  def indexMask: UInt = {
+    ((1 << (endi - stai + 1)) - 1) << stai
+  }
+
+  /**
+   * Returns lane validity based on the [[strb]], [[stai]], and [[endi]] signals.
+   */
+  def laneValidity: UInt = (strb & indexMask)
+
+  /**
+   * Returns lane validity based on the [[strb]], [[stai]], and [[endi]] signals.
+   */
+  def laneValidityVec: Vec[Bool] = VecInit(laneValidity)
 
 
   def tydiCode: String = {
