@@ -50,7 +50,7 @@ class NumberModuleOut extends TydiModule {
 }
 
 class NonNegativeFilter extends SubProcessorBase(new NumberGroup, new NumberGroup) {
-  val filter: Bool = inStream.el.value >= 0.S
+  val filter: Bool = inStream.el.value >= 0.S && inStream.valid
   outStream.valid := filter
   outStream.strb := filter
 
@@ -58,18 +58,19 @@ class NonNegativeFilter extends SubProcessorBase(new NumberGroup, new NumberGrou
 }
 
 class Reducer extends SubProcessorBase(new NumberGroup, new Stats) with PipelineTypes {
-  val cMin = RegInit(0.U(dataWidth))
-  val maxVal = (BigInt(1) << dataWidth.get)-1  // Must work with BigInt or we get an overflow
-  val cMax = RegInit(maxVal.U(dataWidth))
-  val nSamples = Counter(Int.MaxValue)
-  val cSum = RegInit(0.U(dataWidth))
+  val maxVal: BigInt = (BigInt(1) << dataWidth.get)-1  // Must work with BigInt or we get an overflow
+  val cMin: UInt = RegInit(maxVal.U(dataWidth))
+  val cMax: UInt = RegInit(0.U(dataWidth))
+  val nSamples: Counter = Counter(Int.MaxValue)
+  val cSum: UInt = RegInit(0.U(dataWidth))
 
   inStream.ready := true.B
+  outStream.valid := nSamples.value > 0.U
 
   when (inStream.valid) {
     val value = inStream.el.value.asUInt
     cMin := cMin min value
-    cMax := cMin max value
+    cMax := cMax max value
     cSum := cSum + value
     nSamples.inc()
   }
