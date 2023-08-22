@@ -391,7 +391,11 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
     val flip = r
     val stream = new PhysicalStream(e, n, d, c, u)
     val io = IO(if (flip) Flipped(stream) else stream)
-    io := this
+    if (flip) {
+      this := io
+    } else {
+      io := this
+    }
     io
   }
 
@@ -423,8 +427,13 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
     this.endi := bundle.endi
     this.stai := bundle.stai
     this.strb := bundle.strb
-    for ((lastLane, i) <- this.last.zipWithIndex) {
-      lastLane := bundle.last((i + 1) * d - 1, i * d)
+    // There are only last bits if there is dimensionality
+    if (d > 0) {
+      for ((lastLane, i) <- this.last.zipWithIndex) {
+        lastLane := bundle.last((i + 1) * d - 1, i * d)
+      }
+    } else {
+      this.last := DontCare
     }
     this.valid := bundle.valid
     bundle.ready := this.ready

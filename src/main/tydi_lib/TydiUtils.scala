@@ -138,6 +138,18 @@ class TydiTestWrapper[Tinel <: TydiEl, Toutel <: TydiEl, Tinus <: TydiEl, Toutus
   mod.in := in
 }
 
+class TydiProcessorTestWrapper[Tinel <: TydiEl, Toutel <: TydiEl, Tinus <: TydiEl, Toutus <: TydiEl]
+(module: => SubProcessorBase[Tinel, Toutel, Tinus, Toutus]) extends TydiModule {
+  val mod: SubProcessorBase[Tinel, Toutel, Tinus, Toutus] = Module(module)
+  private val out_ref = mod.out
+  private val in_ref = mod.in
+  val out: PhysicalStreamDetailed[Toutel, Toutus] = IO(new PhysicalStreamDetailed(mod.eOut, out_ref.n, out_ref.d, out_ref.c, r = false, mod.uOut))
+  val in: PhysicalStreamDetailed[Tinel, Tinus] = IO(Flipped(new PhysicalStreamDetailed(mod.eIn, in_ref.n, in_ref.d, in_ref.c, r = true, mod.uIn)))
+
+  out := mod.out
+  mod.in := in
+}
+
 /**
  * Base definition for SubProcessor that only includes signal definitions used in [[MultiProcessorGeneral]]
  */
@@ -161,7 +173,7 @@ abstract class SubProcessorSignalDef extends TydiModule {
  */
 @instantiable
 abstract class SubProcessorBase[Tinel <: TydiEl, Toutel <: TydiEl, Tinus <: TydiEl, Toutus <: TydiEl]
-(val eIn: Tinel, eOut: Toutel, val uIn: Tinus = Null(), val uOut: Toutus = Null()) extends SubProcessorSignalDef {
+(val eIn: Tinel, val eOut: Toutel, val uIn: Tinus = Null(), val uOut: Toutus = Null()) extends SubProcessorSignalDef {
   // Declare streams
   val outStream: PhysicalStreamDetailed[Toutel, Toutus] = PhysicalStreamDetailed(eOut, n = 1, d = 0, c = 1, r = false, u=uOut)
   val inStream: PhysicalStreamDetailed[Tinel, Tinus] = PhysicalStreamDetailed(eIn, n = 1, d = 0, c = 1, r = true, u=uIn)

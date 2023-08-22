@@ -173,7 +173,11 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     val streamDir = if (x.r) in else out
     val streamAntiDir = if (x.r) out else in
 
-    stringBuilder.append(s"State of \"${x.instanceName}\" $streamDir @ clk-step ${getSinkClock.getStepCount}:\n")
+    try
+      stringBuilder.append(s"State of \"${x.instanceName}\" $streamDir @ clk-step ${getSinkClock.getStepCount}:\n")
+    catch {
+      case e: ClockResolutionException => stringBuilder.append(s"State of \"${x.instanceName}\" $streamDir (unable to get clock):\n")
+    }
     // Valid and ready signals
     stringBuilder.append(s"valid $streamDir: ${x.valid.peek().litToBoolean}\t\t")
     stringBuilder.append(s"ready $streamAntiDir: ${x.ready.peek().litToBoolean}\n")
