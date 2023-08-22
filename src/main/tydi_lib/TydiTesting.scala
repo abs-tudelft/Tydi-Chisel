@@ -18,6 +18,11 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
   //
   def initSource(): this.type = {
     x.valid.poke(false.B)
+    x.stai.poke(0.U)
+    x.endi.poke(0.U)
+    x.strb.poke(((1 << x.n)-1).U(x.n.W)) // Set strobe to all 1's
+//    val lasts = (0 until x.n).map(index => (index, 0.U))
+//    x.last.poke(x.last.Lit(lasts: _*))
     this
   }
 
@@ -168,7 +173,11 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     val streamDir = if (x.r) in else out
     val streamAntiDir = if (x.r) out else in
 
-    stringBuilder.append(s"State of \"${x.instanceName}\" $streamDir @ clk-step ${getSinkClock.getStepCount}:\n")
+    try
+      stringBuilder.append(s"State of \"${x.instanceName}\" $streamDir @ clk-step ${getSinkClock.getStepCount}:\n")
+    catch {
+      case e: ClockResolutionException => stringBuilder.append(s"State of \"${x.instanceName}\" $streamDir (unable to get clock):\n")
+    }
     // Valid and ready signals
     stringBuilder.append(s"valid $streamDir: ${x.valid.peek().litToBoolean}\t\t")
     stringBuilder.append(s"ready $streamAntiDir: ${x.ready.peek().litToBoolean}\n")
