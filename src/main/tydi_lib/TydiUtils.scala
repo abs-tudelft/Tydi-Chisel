@@ -57,11 +57,23 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
   val reducedLasts: Vec[Vec[UInt]] = VecInit.tabulate(n, n) {
     (i, j) => lastsIn.slice(i, j).reduce(_ | _)
   }
-  // Get which lanes contain MSB lasts
-  val msbLastLanes: UInt = VecInit(lastsIn.map(_(0,0))).asUInt
+  /** Get which lanes contain MSB lasts */
+  val lastsInMsbIndexes: Vec[UInt] = VecInit(
+    // Priority encode the last lane with a 1 prepended to fix the PriorityEncoder, subtract 1 again to fix
+    lastsIn.map(last => PriorityEncoder(Seq(false.B) ++ last.asBools ++ Seq(true.B))-1.U)
+  )
+  val lastMsbIndex: UInt = RegNext(lastsInMsbIndexes.last, 0.U)
+  val significantLastLanes: UInt = VecInit(
+    // Prepend the last MSB index to the indexes and run a sliding window to see if the current last MSB has a <= index than the previous entry.
+    // Last entry must be > 0 for there to be a new sequence though.
+    // Fixme, look-back is now only 1 item. You can start a(n) (empty) sequence later as well.
+    (Seq(lastMsbIndex) ++ lastsInMsbIndexes).sliding(2).map { case List(prev, current) =>
+      (current <= prev) && prev > 0.U && current > 0.U
+    }.toList
+  ).asUInt
 
-  val incrementIndexAt: UInt = in.laneValidity | msbLastLanes
-  val relativeIndexes: Vec[UInt] = VecInit.tabulate(n)(i => PopCount(incrementIndexAt))
+  val incrementIndexAt: UInt = in.laneValidity | significantLastLanes
+  val relativeIndexes: Vec[UInt] = VecInit.tabulate(n)(i => PopCount(incrementIndexAt(0,i)))
 
   // Calculate & set write indexes
   for ((indexWire, i) <- writeIndexes.zipWithIndex) {
@@ -71,7 +83,7 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
     // The strobe bit adds 1 for each item, which is why we can remove 1 here, or we would not fill the first slot.
     indexWire := currentWriteIndex + relativeIndexes(i) - 1.U
     // Empty is if the msb is asserted but the lane is not valid
-    val isEmpty: Bool = msbLastLanes(i) ^ in.laneValidity(i)
+    val isEmpty: Bool = significantLastLanes(i) ^ in.laneValidity(i)
     val isValid = in.laneValidity(i) && in.valid
     when(isValid) {
       dataReg(indexWire) := lanesIn(i)
