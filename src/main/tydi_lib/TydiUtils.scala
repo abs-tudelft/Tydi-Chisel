@@ -45,26 +45,38 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
 
   /** Signal for storing the indexes the current incoming lanes should write to */
   val writeIndexes: Vec[UInt] = Wire(Vec(n, UInt(indexSize.W)))
+//  val relativeIndexes: Vec[UInt] = Wire(Vec(n, UInt(indexSize.W)))
   // Split incoming data and last signals into indexable vectors
-  private val lanesInSeq: Seq[UInt] = Seq.tabulate(n)(i => in.data((i+1)*elWidth-1, i*elWidth))
-  private val lastInSeq: Seq[UInt] = Seq.tabulate(n)(i => in.last((i+1)*lastWidth-1, i*lastWidth))
-  val lanesIn: Vec[UInt] = VecInit(lanesInSeq)
-  val lastsIn: Vec[UInt] = VecInit(lastInSeq)
+  val lanesIn: Vec[UInt] = VecInit.tabulate(n)(i => in.data((i+1)*elWidth-1, i*elWidth))
+  val lastsIn: Vec[UInt] = VecInit.tabulate(n)(i => in.last((i+1)*lastWidth-1, i*lastWidth))
 
   /** Register that stores how many first dimension data-series are stored */
   val seriesStored: UInt = RegInit(0.U(indexSize.W))
+  // Another possibility is a variable mask I suppose.
+  /** A 2D vector of reductions of various slices of the [[in.last]] signal. */
+  val reducedLasts: Vec[Vec[UInt]] = VecInit.tabulate(n, n) {
+    (i, j) => lastsIn.slice(i, j).reduce(_ | _)
+  }
+  // Get which lanes contain MSB lasts
+  val msbLastLanes: UInt = VecInit(lastsIn.map(_(0,0))).asUInt
 
-  val relativeIndexes: Vec[UInt] = VecInit(Seq.tabulate(n)(i => PopCount(in.laneValidity(i, 0))))
+  val incrementIndexAt: UInt = in.laneValidity | msbLastLanes
+  val relativeIndexes: Vec[UInt] = VecInit.tabulate(n)(i => PopCount(incrementIndexAt))
 
   // Calculate & set write indexes
   for ((indexWire, i) <- writeIndexes.zipWithIndex) {
+    val ref = if (i == 0) currentWriteIndex else writeIndexes(i-1)
+
     // Count which index this lane should get
     // The strobe bit adds 1 for each item, which is why we can remove 1 here, or we would not fill the first slot.
     indexWire := currentWriteIndex + relativeIndexes(i) - 1.U
-    val isValid = in.strb(i) && in.valid
+    // Empty is if the msb is asserted but the lane is not valid
+    val isEmpty: Bool = msbLastLanes(i) ^ in.laneValidity(i)
+    val isValid = in.laneValidity(i) && in.valid
     when(isValid) {
       dataReg(indexWire) := lanesIn(i)
       lastReg(indexWire) := lastsIn(i)
+      emptyReg(indexWire) := isEmpty
     }
   }
 
@@ -81,6 +93,7 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
 
   val storedData: Vec[UInt] = VecInit(dataReg.slice(0, n))
   val storedLasts: Vec[UInt] = VecInit(lastReg.slice(0, n))
+//  val storedEmpty: Vec[UInt] = VecInit(emptyReg.slice(0, n))
   var outItemsReadyCount: UInt = Wire(UInt(indexSize.W))
 
   /** Stores the contents of the least significant bits */
@@ -110,7 +123,12 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
     out.valid := true.B
     out.data := storedData.reduce(Cat(_, _))  // Re-concatenate all the data lanes
     out.endi := transferOutItemCount - 1.U  // Encodes the index of the last valid lane.
-    out.strb := (1.U << transferOutItemCount) - 1.U
+    // If there is an empty item/seq, it will for sure be the first one at C=1, else it would not be empty
+    when (!emptyReg(0)) {
+      out.strb := (1.U << transferOutItemCount) - 1.U
+    } otherwise {
+      out.strb := 0.U
+    }
     // This should be okay since you cannot have an end to a higher dimension without an end to a lower dimension first
     out.last := storedLasts(outItemsReadyCount)
   } .otherwise {
