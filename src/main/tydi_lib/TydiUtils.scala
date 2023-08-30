@@ -31,6 +31,7 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
   // Create actual element storage
   val dataReg: Vec[UInt] = Reg(Vec(memSize, UInt(elWidth.W)))
   val lastReg: Vec[UInt] = Reg(Vec(memSize, UInt(lastWidth.W)))
+  val emptyReg: Vec[Bool] = Reg(Vec(memSize, Bool()))
   /** How many elements/lanes are being transferred *out* this cycle */
   val transferOutItemCount: UInt = Wire(UInt(indexSize.W))
 

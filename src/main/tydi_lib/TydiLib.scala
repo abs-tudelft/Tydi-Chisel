@@ -271,6 +271,24 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
    */
   val strb: UInt = Output(UInt(n.W))
 
+  /**
+   * Creates a [[UInt]] bitmask for lane validity based on [[stai]] and [[endi]].
+   * @return Bitmask based on [[stai]] and [[endi]]
+   */
+  def indexMask: UInt = {
+    ((1.U << (endi - stai + 1.U)) - 1.U) << stai
+  }
+
+  /**
+   * Returns lane validity based on the [[strb]], [[stai]], and [[endi]] signals.
+   */
+  def laneValidity: UInt = (strb & indexMask)
+
+  /**
+   * Returns lane validity based on the [[strb]], [[stai]], and [[endi]] signals.
+   */
+  def laneValidityVec: Vec[Bool] = VecInit(laneValidity.asBools)
+
 
   def tydiCode: String = {
     val elName = e.fingerprint
