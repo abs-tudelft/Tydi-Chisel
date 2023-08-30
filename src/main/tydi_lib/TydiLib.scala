@@ -357,8 +357,8 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
     this.user := bundle.user
   }
 
-  def processWith[T <: SubProcessorSignalDef](module: => T): PhysicalStream = {
-    val processingModule = Module(module)
+  def processWith[T <: SubProcessorSignalDef](module: => T)(implicit parentModule: TydiModule): PhysicalStream = {
+    val processingModule = parentModule.Module(module)
     processingModule.in := this
     processingModule.out
   }
@@ -478,6 +478,8 @@ object PhysicalStreamDetailed {
 }
 
 class TydiModule extends Module with TranspileExtend {
+
+  implicit var parentModule: TydiModule = this
 
   private val moduleList = ListBuffer[TydiModule]()
 
