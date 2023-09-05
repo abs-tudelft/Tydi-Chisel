@@ -276,7 +276,7 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
    * @return Bitmask based on [[stai]] and [[endi]]
    */
   def indexMask: UInt = {
-    ((1 << (endi - stai + 1)) - 1) << stai
+    ((1.U << (endi - stai + 1.U)) - 1.U) << stai
   }
 
   /**
@@ -287,15 +287,15 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
   /**
    * Returns lane validity based on the [[strb]], [[stai]], and [[endi]] signals.
    */
-  def laneValidityVec: Vec[Bool] = VecInit(laneValidity)
+  def laneValidityVec: Vec[Bool] = VecInit(laneValidity.asBools)
 
 
   def tydiCode: String = {
     val elName = e.fingerprint
     val usName = u.fingerprint
     u match {
-      case _: Null => s"$fingerprint = Stream($elName, t=$n, d=$d, c=$c)"
-      case _ => s"$fingerprint = Stream($elName, t=$n, d=$d, c=$c, u=$usName)"
+      case _: Null => s"$fingerprint = Stream($elName, t=$n, d=$d, c=$c);"
+      case _ => s"$fingerprint = Stream($elName, t=$n, d=$d, c=$c, u=$usName);"
     }
   }
 
@@ -357,8 +357,8 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
     this.user := bundle.user
   }
 
-  def processWith[T <: SubProcessorSignalDef](module: => T): PhysicalStream = {
-    val processingModule = Module(module)
+  def processWith[T <: SubProcessorSignalDef](module: => T)(implicit parentModule: TydiModule): PhysicalStream = {
+    val processingModule = parentModule.Module(module)
     processingModule.in := this
     processingModule.out
   }
@@ -479,6 +479,8 @@ object PhysicalStreamDetailed {
 
 class TydiModule extends Module with TranspileExtend {
 
+  implicit var parentModule: TydiModule = this
+
   private val moduleList = ListBuffer[TydiModule]()
 
   def mount[Tel <: TydiEl, Tus <: Data](bundle: PhysicalStreamDetailed[Tel, Data], io: PhysicalStream): Unit = {
@@ -492,6 +494,17 @@ class TydiModule extends Module with TranspileExtend {
   }
 
   override def getModulePorts: Seq[Data] = super.getModulePorts
+
+  /**
+   * Tydi-lang cannot handle "in" or "out" as signal name, therefore these are prefixed with "std_".
+   * This function adds that prefix.
+   *
+   * @param name Unprocessed name
+   * @return Name with "std_" prefix added if name is "in" or "out"
+   */
+  private def filterPortName(name: String): String = {
+    if (name == "in" || name == "out") "std_" + name else name
+  }
 
   override def transpile(_map: mutable.LinkedHashMap[String, String]): mutable.LinkedHashMap[String, String] = {
     var map = _map
@@ -513,7 +526,7 @@ class TydiModule extends Module with TranspileExtend {
 
     var str = s"streamlet $streamletName {\n"
     for (elem <- ports) {
-      val instanceName = elem.instanceName
+      val instanceName = filterPortName(elem.instanceName)
       val containsOut = instanceName.toLowerCase.contains("out")
       val containsIn = instanceName.toLowerCase.contains("in")
       val dirWord = if (containsOut) "out" else if (containsIn) "in" else "unknown"
@@ -524,7 +537,7 @@ class TydiModule extends Module with TranspileExtend {
 
     str = s"impl $moduleName of $streamletName {\n"
     for (port <- ports) {
-      str += s"    self.${port.instanceName} => ...;\n"
+      str += s"    self.${filterPortName(port.instanceName)} => ...;\n"
     }
     for (module <- moduleList) {
       val instanceName = module.instanceName
@@ -534,7 +547,7 @@ class TydiModule extends Module with TranspileExtend {
         case _ => false
       }.map(_.asInstanceOf[PhysicalStream])
       for (port <- modulePorts) {
-        str += s"    $instanceName.${port.instanceName} => ...;\n"
+        str += s"    $instanceName.${filterPortName(port.instanceName)} => ...;\n"
       }
     }
     str += "}"
