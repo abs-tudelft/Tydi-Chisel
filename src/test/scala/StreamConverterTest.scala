@@ -6,6 +6,7 @@ import tydi_lib._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chisel3.experimental.VecLiterals.AddVecLiteralConstructor
 import tydi_lib.testing.Conversions._
+import tydi_lib.utils.ComplexityConverter
 
 class MyEl extends Group {
   val a: UInt = UInt(8.W)
