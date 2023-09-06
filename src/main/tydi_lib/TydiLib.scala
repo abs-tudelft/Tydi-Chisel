@@ -276,7 +276,10 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
    * @return Bitmask based on [[stai]] and [[endi]]
    */
   def indexMask: UInt = {
-    ((1.U << (endi - stai + 1.U)) - 1.U) << stai
+    // Cannot use expression directly because the width is not inferred correctly
+    val _indexMask: UInt = Wire(UInt(n.W))
+    _indexMask := ((1.U << (endi - stai + 1.U(n.W))) - 1.U) << stai
+    _indexMask
   }
 
   /**

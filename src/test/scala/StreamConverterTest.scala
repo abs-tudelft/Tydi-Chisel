@@ -6,6 +6,7 @@ import tydi_lib._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chisel3.experimental.VecLiterals.AddVecLiteralConstructor
 import tydi_lib.testing.Conversions._
+import tydi_lib.testing.printUtils.{binaryFromUint, printVec, printVecBinary}
 import tydi_lib.utils.ComplexityConverter
 
 
@@ -20,6 +21,8 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   class ComplexityConverterWrapper(template: PhysicalStream, memSize: Int) extends ComplexityConverter(template, memSize) {
+    val exposed_indexMask: UInt = expose(in.indexMask)
+    val exposed_laneValidity: UInt = expose(in.laneValidity)
     val exposed_currentWriteIndex: UInt = expose(currentWriteIndex)
     val exposed_seriesStored: UInt = expose(seriesStored)
     val exposed_outItemsReadyCount: UInt = expose(outItemsReadyCount)
@@ -76,7 +79,7 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       c.in.valid.poke(false.B)
       c.in.data.poke(555.U)
       c.exposed_currentWriteIndex.expect(0.U) // No items yet
-      println(s"Indexes: ${c.exposed_writeIndexes.peek()}")
+      println(s"Indexes: ${printVec(c.exposed_writeIndexes.peek())}")
       println("Step clock")
       c.clock.step()
 
@@ -92,7 +95,7 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
 
       println(s"Data: ${c.exposed_storedData(0).peek()}")
       println(s"Last: ${c.exposed_storedLasts(0).peek()}")
-      println(s"Last: ${c.exposed_lasts.peek().litValue.toInt.toBinaryString}")
+      println(s"Last: ${binaryFromUint(c.exposed_lasts.peek())}")
       c.exposed_currentWriteIndex.expect(1.U)
       c.exposed_transferOutItemCount.expect(0.U) // Not transferring yet because output is not ready
       c.exposed_seriesStored.expect(0.U)
@@ -109,15 +112,15 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       c.exposed_seriesStored.expect(1.U) // One series stored
       c.out.valid.expect(1.U) // ... means valid output
       c.exposed_currentWriteIndex.expect(2.U)
-      println(s"Last: ${c.exposed_storedLasts.peek()}")
-      println(s"Last: ${c.exposed_lasts.peek().litValue.toInt.toBinaryString}")
+      println(s"Last: ${printVecBinary(c.exposed_storedLasts.peek())}")
+      println(s"Last: ${binaryFromUint(c.exposed_lasts.peek())}")
       c.exposed_outItemsReadyCount.expect(1.U)
       println("Step clock")
       c.clock.step()
 
-      println(s"Data: ${c.exposed_storedData.peek()}")
-      println(s"Last: ${c.exposed_storedLasts.peek()}")
-      println(s"Last: ${c.exposed_lasts.peek().litValue.toInt.toBinaryString}")
+      println(s"Data: ${printVec(c.exposed_storedData.peek())}")
+      println(s"Last: ${printVecBinary(c.exposed_storedLasts.peek())}")
+      println(s"Last: ${binaryFromUint(c.exposed_lasts.peek())}")
       c.exposed_seriesStored.expect(1.U) // Still outputting first series
       c.out.valid.expect(1.U) // ... means valid output
       c.exposed_currentWriteIndex.expect(1.U)
@@ -139,16 +142,22 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       c.in.stai.poke(0.U)
       c.in.endi.poke(1.U)
       c.exposed_currentWriteIndex.expect(0.U) // No items yet
+      println(s"Data in strb: ${binaryFromUint(c.in.strb.peek())}")
+      println(s"Data in stai: ${binaryFromUint(c.in.stai.peek())}, endi: ${binaryFromUint(c.in.endi.peek())}")
+      println(s"Data in mask: ${binaryFromUint(c.exposed_indexMask.peek())}")
+      println(s"Data in validity: ${binaryFromUint(c.exposed_laneValidity.peek())}")
       c.clock.step()
 
+      println(s"Data: ${printVec(c.exposed_storedData.peek())}")
+      println(s"Last: ${printVecBinary(c.exposed_storedLasts.peek())}")
       c.exposed_currentWriteIndex.expect(1.U)
       c.in.data.poke(0xABCDEF.U)
       c.in.strb.poke(b("11"))
       c.in.last.poke(b("10"))
       c.clock.step()
 
-      println(s"Data: ${c.exposed_storedData.peek()}")
-      println(s"Last: ${c.exposed_storedLasts.peek()}")
+      println(s"Data: ${printVec(c.exposed_storedData.peek())}")
+      println(s"Last: ${printVecBinary(c.exposed_storedLasts.peek())}")
       println(s"Last: ${c.exposed_lasts.peek().litValue.toInt.toBinaryString}")
       c.in.last.poke(0.U)
       c.in.valid.poke(false.B)
@@ -159,9 +168,9 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       c.exposed_transferOutItemCount.expect(2.U)
       c.clock.step()
 
-      println(s"Data: ${c.exposed_storedData.peek()}")
-      println(s"Last: ${c.exposed_storedLasts.peek()}")
-      println(s"Last: ${c.exposed_lasts.peek().litValue.toInt.toBinaryString}")
+      println(s"Data: ${printVec(c.exposed_storedData.peek())}")
+      println(s"Last: ${printVecBinary(c.exposed_storedLasts.peek())}")
+      println(s"Last: ${binaryFromUint(c.exposed_lasts.peek()).reverse}")
       c.exposed_currentWriteIndex.expect(1.U)
       c.exposed_seriesStored.expect(1.U)
       c.exposed_outItemsReadyCount.expect(1.U)
