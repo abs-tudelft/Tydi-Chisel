@@ -27,9 +27,9 @@ class LastSeqProcessor(val n: Int, val d: Int) extends TydiModule {
 }
 
 object LastSeqProcessor {
-  def apply(lasts: Vec[UInt]): UInt = {
+  def apply(lasts: Vec[UInt]): LastSeqProcessor = {
     val mod = Module(new LastSeqProcessor(lasts.length, lasts(0).getWidth))
     mod.lasts := lasts
-    mod.outIndex
+    mod
   }
 }
