@@ -63,21 +63,23 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
 
   // Calculate & set write indexes
   for ((indexWire, i) <- writeIndexes.zipWithIndex) {
-    val ref = if (i == 0) currentWriteIndex else writeIndexes(i - 1)
-
     // Count which index this lane should get
     // The strobe bit adds 1 for each item, which is why we can remove 1 here, or we would not fill the first slot.
     indexWire := currentWriteIndex + relativeIndexes(i) - 1.U
-    // Empty is if the msb is asserted but the lane is not valid
+    // Empty is if the a new sequence is assigned by last bits, but the lane is not valid
     val isEmpty: Bool = lastSeqProcessor.outCheck(i) && !in.laneValidity(i)
     val isValid = in.laneValidity(i) && in.valid
-    when(isValid) {
+    when (isValid) {
       dataReg(indexWire) := lanesIn(i)
-      // Fixme: it should get the reduced lasts of the lane *before* the *next* valid item
-      lastReg(indexWire) := (if (i == 0) prevReducedLast else lastSeqProcessor.reducedLasts(i-1))
+      // It should get the reduced lasts of the lane *before* the *next* valid item
+      when (indexWire > 0.U) {
+        lastReg(indexWire - 1.U) := (if (i == 0) prevReducedLast else lastSeqProcessor.reducedLasts(i - 1))
+      }
       emptyReg(indexWire) := isEmpty
     }
   }
+  // Fix for the "looking back" way of setting last signals.
+  lastReg(writeIndexes.last) := lastSeqProcessor.reducedLasts.last
 
   // Index for new cycle is the one after the last index of last cycle - how many lanes we shifted out
   when(in.valid) {

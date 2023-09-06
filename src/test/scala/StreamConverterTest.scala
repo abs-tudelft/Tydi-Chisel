@@ -8,13 +8,13 @@ import chisel3.experimental.VecLiterals.AddVecLiteralConstructor
 import tydi_lib.testing.Conversions._
 import tydi_lib.utils.ComplexityConverter
 
-class MyEl extends Group {
-  val a: UInt = UInt(8.W)
-  val b: UInt = UInt(4.W)
-}
 
+class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
+  class MyEl extends Group {
+    val a: UInt = UInt(8.W)
+    val b: UInt = UInt(4.W)
+  }
 
-class BasicTest extends AnyFlatSpec with ChiselScalatestTester {
   def b(num: String): UInt = {
     Integer.parseInt(num, 2).U
   }
