@@ -8,15 +8,16 @@ import tydi_lib.testing.printUtils.{binaryFromUint, printVecBinary}
 import tydi_lib.utils.LastSeqProcessor
 
 class LastSeqProcessorTest extends AnyFlatSpec with ChiselScalatestTester {
+  def UIntVec(elems: Int*): Vec[UInt] = {
+    Vec.Lit(elems.map(_.U): _*)
+  }
 
   behavior of "LastSeqProcessor"
 
   it should "work with the testVec" in {
 
     test(new LastSeqProcessor(10, 3)) { c =>
-      val testVec: Vec[UInt] = Vec.Lit(
-        0.U, 1.U, 2.U, 0.U, 1.U, 0.U, 6.U, 0.U, 2.U, 4.U
-      )
+      val testVec: Vec[UInt] = UIntVec(0, 1, 2, 0, 1, 0, 6, 0, 2, 4)
       c.lasts.poke(testVec)
       c.prevReduced.poke(0.U)
       print("prevReduced:  ")
@@ -30,6 +31,9 @@ class LastSeqProcessorTest extends AnyFlatSpec with ChiselScalatestTester {
 
       print("outIndex: ")
       println(c.outIndex.peek().litValue)
+
+      c.reducedLasts.expect(UIntVec(0, 1, 3, 3, 1, 1, 7, 7, 2, 6))
+      c.outCheck.expect("b0100010000".U)
     }
   }
 }
