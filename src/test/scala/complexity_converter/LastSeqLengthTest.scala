@@ -25,7 +25,7 @@ class LastSeqLengthTest extends AnyFlatSpec with ChiselScalatestTester {
 //      )
       c.lasts.poke(testVec)
       print("outCheck: ")
-      println(binaryFromUint(c.outCheck.peek(), 10))
+      println(binaryFromUint(c.outCheck.peek()))
       print("outIndex: ")
       println(c.outIndex.peek())
     }

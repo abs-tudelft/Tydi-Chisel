@@ -188,15 +188,15 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     // Strobe signal
     if (x.c < 8) {
       // For C<8 all `strb` bits should be the same
-      stringBuilder.append(s"strb: ${x.strb.peek()(0).litToBoolean} (${binaryFromUint(x.strb.peek(), x.n)})\n")
+      stringBuilder.append(s"strb: ${x.strb.peek()(0).litToBoolean} (${binaryFromUint(x.strb.peek())})\n")
     } else {
-      stringBuilder.append(s"strb: ${binaryFromUint(x.strb.peek(), x.n)}\n")
+      stringBuilder.append(s"strb: ${binaryFromUint(x.strb.peek())}\n")
     }
     // Last signal
     if (x.c < 8) {
-      stringBuilder.append(s"last: ${binaryFromUint(x.last.last.peek(), x.d, "-")}\n")
+      stringBuilder.append(s"last: ${binaryFromUint(x.last.last.peek(), empty="-")}\n")
     } else {
-      stringBuilder.append(s"last: ${x.last.peek().map(binaryFromUint(_, x.d, "-")).mkString("|")}\n")
+      stringBuilder.append(s"last: ${x.last.peek().map(binaryFromUint(_, empty="-")).mkString("|")}\n")
     }
 
     // Lane-specific info
@@ -207,7 +207,7 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
 
       // Last signal for this lane
       if (x.c >= 8) {
-        stringBuilder.append(s"\tlast: ${binaryFromUint(x.last(index).peek(), x.d, "-")}\n")
+        stringBuilder.append(s"\tlast: ${binaryFromUint(x.last(index).peek(), empty="-")}\n")
       }
 
       // See if a lane is active or not and why
@@ -229,7 +229,17 @@ object TydiStreamDriver {
 
 
 object printUtils {
-  def binaryFromUint(num: UInt, width: Int, empty: String = ""): String = binaryFromInt(num.litValue.toInt, width, empty)
+  def printVecBinary[T <: Data](vec: Vec[T]): String = {
+    vec.map(v => binaryFromData(v)).mkString(", ")
+  }
+
+  def printVec[T <: Data](vec: Vec[T]): String = {
+    vec.map(v => v.litValue).mkString(", ")
+  }
+
+  def binaryFromData[T <: Data](num: T, width: Option[Int] = None, empty: String = ""): String = binaryFromUint(num.asUInt, width, empty)
+
+  def binaryFromUint(num: UInt, width: Option[Int] = None, empty: String = ""): String = binaryFromInt(num.litValue.toInt, width.getOrElse(num.getWidth), empty)
 
   def binaryFromBigInt(num: BigInt, width: Int, empty: String = ""): String = binaryFromInt(num.toInt, width, empty)
 
