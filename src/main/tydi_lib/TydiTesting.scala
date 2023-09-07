@@ -227,8 +227,8 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
 
       // See if a lane is active or not and why
       val active_strobe = x.strb.peek()(index).litToBoolean
-      val active_stai = x.stai.peek().litValue >= index
-      val active_endi = x.endi.peek().litValue <= index
+      val active_stai = index >= x.stai.peek().litValue
+      val active_endi = index <= x.endi.peek().litValue
       val active = active_strobe && active_stai && active_endi
       stringBuilder.append(s"\tactive: $active \t(strb=$active_strobe; stai=$active_stai; endi=$active_endi;)\n")
     }
