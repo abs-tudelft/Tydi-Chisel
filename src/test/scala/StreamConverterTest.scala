@@ -47,6 +47,10 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
     out := mod.out
     mod.in := in
 
+    val exposed_incrementIndexAt: UInt = expose(mod.incrementIndexAt)
+    val exposed_lastSeqs: UInt = expose(mod.lastSeqProcessor.outCheck)
+    val exposed_reducedLasts: Vec[UInt] = expose(mod.lastSeqProcessor.reducedLasts)
+    val exposed_prevReducedLast: UInt = expose(mod.prevReducedLast)
     val exposed_currentWriteIndex: UInt = expose(mod.currentWriteIndex)
     val exposed_seriesStored: UInt = expose(mod.seriesStored)
     val exposed_outItemsReadyCount: UInt = expose(mod.outItemsReadyCount)
@@ -273,10 +277,10 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
             c.in.valid.poke(true)
             c.in.data.pokePartial(t1)
             c.in.strb.poke("b1111".U)
-            val lastValue = Vec.Lit("b00".U(2.W), "b00".U, "b01".U, "b00".U)
-            println(lastValue)
-            println(c.in.last.peek())
-            c.in.last.poke(lastValue)
+            c.in.last.poke(Vec.Lit("b00".U(2.W), "b00".U, "b01".U, "b00".U))
+            println("-- Transfer 1")
+            println(s"reducedLasts: ${binaryFromUint(c.exposed_prevReducedLast.peek())} -> ${printVecBinary(c.exposed_reducedLasts.peek())}")
+            println(s"lastSeqs: ${binaryFromUint(c.exposed_lastSeqs.peek())}")
             c.clock.step(1)
           })
 
@@ -290,6 +294,9 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
             c.in.data.pokePartial(t3)
             c.in.strb.poke("b1010".U)
             c.in.last.poke(Vec.Lit("b01".U(2.W), "b00".U, "b01".U, "b00".U))
+            println("-- Transfer 3")
+            println(s"reducedLasts: ${printVecBinary(c.exposed_reducedLasts.peek())} (${binaryFromUint(c.exposed_prevReducedLast.peek())})")
+            println(s"lastSeqs: ${binaryFromUint(c.exposed_lastSeqs.peek())}")
             c.clock.step(1)
           })
 

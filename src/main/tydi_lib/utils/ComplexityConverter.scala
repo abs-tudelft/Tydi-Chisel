@@ -54,8 +54,9 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
   /** Register that stores how many first dimension data-series are stored */
   val seriesStored: UInt = RegInit(0.U(indexSize.W))
 
-  private val lastSeqProcessor = LastSeqProcessor(lastsIn)
-  val prevReducedLast: UInt = RegNext(lastSeqProcessor.reducedLasts.last, 0.U)
+  val lastSeqProcessor: LastSeqProcessor = LastSeqProcessor(lastsIn)
+  val prevReducedLast: UInt = RegInit(0.U(d.W))
+  prevReducedLast := lastSeqProcessor.reducedLasts.last
   lastSeqProcessor.prevReduced := prevReducedLast
 
   val incrementIndexAt: UInt = in.laneValidity | lastSeqProcessor.outCheck
