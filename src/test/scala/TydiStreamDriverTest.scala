@@ -45,7 +45,7 @@ class TydiStreamDriverTest extends AnyFlatSpec with ChiselScalatestTester {
 
       val bundle = new MyBundle
       val testVal = bundle.Lit(_.a -> 42.U, _.b -> true.B)
-      val testVal2 = c.in.dataLit(_.a -> 43.U, _.b -> false.B)
+      val testVal2 = c.in.elLit(_.a -> 43.U, _.b -> false.B)
 
 //      c.out.expectInvalid()
       parallel(

@@ -232,7 +232,7 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
    */
   val user: Data
 
-  val lastWidth: Int = if (c == 7) d * n else d
+  val lastWidth: Int = d * n
 
   /**
    * Last signal for signalling the end of nested sequences. Usage is highly dependent on complexity!<br>

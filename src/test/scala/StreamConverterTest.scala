@@ -4,7 +4,7 @@ import chiseltest.experimental.expose
 import org.scalatest.flatspec.AnyFlatSpec
 import tydi_lib._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
-import chisel3.experimental.VecLiterals.AddVecLiteralConstructor
+import chisel3.experimental.VecLiterals.{AddObjectLiteralConstructor, AddVecLiteralConstructor}
 import tydi_lib.testing.Conversions._
 import tydi_lib.testing.printUtils.{binaryFromUint, printVec, printVecBinary}
 import tydi_lib.utils.ComplexityConverter
@@ -194,7 +194,7 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       c.exposed_seriesStored.expect(0.U)
 
       println("Data in:")
-      val litValIn1 = c.in.dataLit(_.a -> 136.U, _.b -> 9.U)
+      val litValIn1 = c.in.elLit(_.a -> 136.U, _.b -> 9.U)
       println(litValIn1)
       println(litValIn1.litValue.toInt.toBinaryString)
 
@@ -229,6 +229,107 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       c.exposed_currentWriteIndex.expect(0.U)
       c.exposed_seriesStored.expect(0.U)
       c.out.expectInvalid()
+    }
+  }
+
+  it should "process 'she is a dolphin'" in {
+    val char = BitsEl(8.W)
+    val stream = PhysicalStream(char, n = 4, d = 2, c = 8)
+
+    implicit class CharExtensions1(c: Char) {
+      def asEl: BitsEl = char.Lit(_.value -> c.U)
+    }
+
+    implicit class CharExtensions2(c: BitsEl) {
+      def asChar: Char = c.litValue.toChar
+    }
+
+
+    // test case body here
+    test(new ManualComplexityConverterFancyWrapper(char, stream, 20)) { c =>
+      // Initialize signals
+      c.in.initSource().setSourceClock(c.clock)
+      c.out.initSink().setSinkClock(c.clock)
+      c.in.endi.poke(stream.n-1)
+      println("She is a dolphin test")
+      println("Initializing signals")
+//      c.in.last.poke(c.in.last.Lit(0 -> 0.U))
+      c.exposed_currentWriteIndex.expect(0.U)
+      c.exposed_seriesStored.expect(0.U)
+
+      val t1 = Vec.Lit("shei".map(c => char.Lit(_.value -> c.U)): _*)
+      val t3 = c.in.dataLit(0 -> 's'.asEl, 2 -> 'a'.asEl)
+      val t4 = c.in.dataLit(0 -> 'd'.asEl, 2 -> 'o'.asEl, 3 -> 'l'.asEl)
+      val t5 = c.in.dataLit(0 -> 'p'.asEl, 1 -> 'h'.asEl)
+      val t6 = c.in.dataLit(2 -> 'i'.asEl, 3 -> 'h'.asEl)
+
+      val lastType = Vec(stream.n, UInt(stream.d.W))
+
+      parallel(
+        {
+          // Send some data in
+          // shei
+          timescope({
+            c.in.valid.poke(true)
+            c.in.data.pokePartial(t1)
+            c.in.strb.poke("b1111".U)
+            val lastValue = Vec.Lit("b00".U(2.W), "b00".U, "b01".U, "b00".U)
+            println(lastValue)
+            println(c.in.last.peek())
+            c.in.last.poke(lastValue)
+            c.clock.step(1)
+          })
+
+          timescope({
+            c.clock.step(1)
+          })
+
+          // s_a_
+          timescope({
+            c.in.valid.poke(true)
+            c.in.data.pokePartial(t3)
+            c.in.strb.poke("b1010".U)
+            c.in.last.poke(Vec.Lit("b01".U(2.W), "b00".U, "b01".U, "b00".U))
+            c.clock.step(1)
+          })
+
+          // d_ol
+          timescope({
+            c.in.valid.poke(true)
+            c.in.data.pokePartial(t4)
+            c.in.strb.poke("b1011".U)
+            c.in.last.poke(Vec.Lit("b00".U(2.W), "b00".U, "b00".U, "b00".U))
+            c.clock.step(1)
+          })
+
+          // ph__
+          timescope({
+            c.in.valid.poke(true)
+            c.in.data.pokePartial(t5)
+            c.in.strb.poke("b1100".U)
+            c.in.last.poke(Vec.Lit("b00".U(2.W), "b00".U, "b00".U, "b00".U))
+            c.clock.step(1)
+          })
+
+          // __in
+          timescope({
+            c.in.valid.poke(true)
+            c.in.data.pokePartial(t6)
+            c.clock.step(1)
+          })
+
+          // close off
+          timescope({
+            c.in.valid.poke(true)
+            c.in.last.poke(Vec.Lit("b11".U(2.W), "b00".U, "b00".U, "b00".U))
+            c.clock.step(1)
+          })
+        },
+        {
+          c.out.waitForValid()
+
+        }
+      )
     }
   }
 }
