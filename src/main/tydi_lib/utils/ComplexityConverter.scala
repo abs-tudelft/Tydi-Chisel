@@ -48,6 +48,7 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
   val writeIndexes: Vec[UInt] = Wire(Vec(n, UInt(indexSize.W)))
   //  val relativeIndexes: Vec[UInt] = Wire(Vec(n, UInt(indexSize.W)))
   // Split incoming data and last signals into indexable vectors
+  // Todo: check orientation
   val lanesIn: Vec[UInt] = VecInit.tabulate(n)(i => in.data((i + 1) * elWidth - 1, i * elWidth))
   val lastsIn: Vec[UInt] = VecInit.tabulate(n)(i => in.last((i + 1) * lastWidth - 1, i * lastWidth))
 
@@ -72,7 +73,7 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
     val isEmpty: Bool = lastSeqProcessor.outCheck(i) && !in.laneValidity(i)
     val isValid = in.laneValidity(i) && in.valid
     when (isValid) {
-      dataReg(indexWire) := lanesIn(i)
+      dataReg(indexWire) := lanesIn.reverse(i)
       // It should get the reduced lasts of the lane *before* the *next* valid item
       when (indexWire > 0.U) {
         lastReg(indexWire - 1.U) := (if (i == 0) prevReducedLast else lastSeqProcessor.reducedLasts(i - 1))
@@ -101,14 +102,14 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
 
   /** Stores the contents of the least significant bits */
   // The extra true concatenation is to fix the undefined PriorityEncoder behaviour when everything is 0
-  val leastSignificantLasts: Seq[Bool] = Seq(false.B) ++ storedLasts.map(_(lastWidth - 1)) ++ Seq(true.B)
+  val leastSignificantLasts: Seq[Bool] = Seq(false.B) ++ storedLasts.map(_(0)) ++ Seq(true.B)
   val leastSignificantLastSignal: UInt = leastSignificantLasts.map(_.asUInt).reduce(Cat(_, _))
   // Todo: Check orientation
-  val temp: UInt = PriorityEncoder(leastSignificantLasts)
-  outItemsReadyCount := Mux(temp > n.U, n.U, temp)
+  val innerSeqLength: UInt = PriorityEncoder(leastSignificantLasts)
+  outItemsReadyCount := Mux(innerSeqLength > n.U, n.U, innerSeqLength)
 
   // Series transferred is the number of last lanes with high MSB
-  val transferOutSeriesCount: UInt = Wire(UInt())
+  val transferOutSeriesCount: UInt = Wire(UInt(1.W))
   transferOutSeriesCount := 0.U
   private val msbIndex = Math.max(0, d-1)
   val transferInSeriesCount: UInt = lastsIn.map(_(msbIndex, msbIndex) & in.ready).reduce(_ + _)
@@ -120,21 +121,21 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
       transferOutItemCount := outItemsReadyCount
 
       // Series transferred is the number of last lanes with high MSB
-      transferOutSeriesCount := storedLasts.map(_(0, 0)).reduce(_ + _)
+      transferOutSeriesCount := storedLasts(out.endi)(msbIndex, msbIndex)
     }
 
     // Set out stream signals
     out.valid := true.B
-    out.data := storedData.reduce(Cat(_, _)) // Re-concatenate all the data lanes
-    out.endi := transferOutItemCount - 1.U // Encodes the index of the last valid lane.
+    out.data := storedData.reduce((a, b) => Cat(b, a)) // Re-concatenate all the data lanes
+    out.endi := outItemsReadyCount - 1.U // Encodes the index of the last valid lane.
     // If there is an empty item/seq, it will for sure be the first one at C=1, else it would not be empty
     when(!emptyReg(0)) {
-      out.strb := (1.U << transferOutItemCount) - 1.U
+      out.strb := (1.U << outItemsReadyCount) - 1.U
     } otherwise {
       out.strb := 0.U
     }
     // This should be okay since you cannot have an end to a higher dimension without an end to a lower dimension first
-    out.last := storedLasts(outItemsReadyCount)
+    out.last := storedLasts(out.endi) << ((n-1)*lastWidth)
   }.otherwise {
     out.valid := false.B
     out.last := DontCare
