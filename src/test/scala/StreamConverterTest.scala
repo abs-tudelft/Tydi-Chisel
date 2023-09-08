@@ -20,6 +20,10 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
     Integer.parseInt(num, 2).U
   }
 
+  def bRev(num: String): UInt = {
+    Integer.parseInt(num.reverse, 2).U
+  }
+
   class ComplexityConverterWrapper(template: PhysicalStream, memSize: Int) extends ComplexityConverter(template, memSize) {
     val exposed_indexMask: UInt = expose(in.indexMask)
     val exposed_laneValidity: UInt = expose(in.laneValidity)
@@ -47,6 +51,8 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
     out := mod.out
     mod.in := in
 
+    val exposed_indexMask: UInt = expose(in.indexMask)
+    val exposed_laneValidity: UInt = expose(in.laneValidity)
     val exposed_incrementIndexAt: UInt = expose(mod.incrementIndexAt)
     val exposed_lastSeqs: UInt = expose(mod.lastSeqProcessor.outCheck)
     val exposed_reducedLasts: Vec[UInt] = expose(mod.lastSeqProcessor.reducedLasts)
@@ -57,8 +63,8 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
     val exposed_transferOutItemCount: UInt = expose(mod.transferOutItemCount)
     val exposed_lanesIn: Vec[UInt] = expose(mod.lanesIn)
     val exposed_lastLanesIn: Vec[UInt] = expose(mod.lastsIn)
-    val exposed_storedData: Vec[UInt] = expose(mod.storedData)
-    val exposed_storedLasts: Vec[UInt] = expose(mod.storedLasts)
+    val exposed_storedData: Vec[UInt] = expose(mod.dataReg)
+    val exposed_storedLasts: Vec[UInt] = expose(mod.lastReg)
     val exposed_writeIndexes: Vec[UInt] = expose(mod.writeIndexes)
     val exposed_lasts: UInt = expose(mod.leastSignificantLastSignal)
     val outDataRaw: UInt = expose(mod.out.data)
@@ -248,6 +254,14 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       def asChar: Char = c.litValue.toChar
     }
 
+    implicit class CharExtensions3(c: UInt) {
+      def asChar: Char = c.litValue.toChar
+    }
+
+    implicit class StringExtensions(s: Seq[UInt]) {
+      def asString: String = s.map(_.asChar).mkString
+    }
+
 
     // test case body here
     test(new ManualComplexityConverterFancyWrapper(char, stream, 20)) { c =>
@@ -255,6 +269,7 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       c.in.initSource().setSourceClock(c.clock)
       c.out.initSink().setSinkClock(c.clock)
       c.in.endi.poke(stream.n-1)
+      c.in.strb.poke(0.U)
       println("She is a dolphin test")
       println("Initializing signals")
 //      c.in.last.poke(c.in.last.Lit(0 -> 0.U))
@@ -265,7 +280,7 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       val t3 = c.in.dataLit(0 -> 's'.asEl, 2 -> 'a'.asEl)
       val t4 = c.in.dataLit(0 -> 'd'.asEl, 2 -> 'o'.asEl, 3 -> 'l'.asEl)
       val t5 = c.in.dataLit(0 -> 'p'.asEl, 1 -> 'h'.asEl)
-      val t6 = c.in.dataLit(2 -> 'i'.asEl, 3 -> 'h'.asEl)
+      val t6 = c.in.dataLit(2 -> 'i'.asEl, 3 -> 'n'.asEl)
 
       val lastType = Vec(stream.n, UInt(stream.d.W))
 
@@ -276,12 +291,13 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
           timescope({
             c.in.valid.poke(true)
             c.in.data.pokePartial(t1)
-            c.in.strb.poke("b1111".U)
+            c.in.strb.poke(bRev("1111"))
             c.in.last.poke(Vec.Lit("b00".U(2.W), "b00".U, "b01".U, "b00".U))
             println("-- Transfer 1")
             println(s"reducedLasts: ${binaryFromUint(c.exposed_prevReducedLast.peek())} -> ${printVecBinary(c.exposed_reducedLasts.peek())}")
             println(s"lastSeqs: ${binaryFromUint(c.exposed_lastSeqs.peek())}")
             c.clock.step(1)
+            println(s"All data: ${c.exposed_storedData.peek().asString}")
           })
 
           timescope({
@@ -292,45 +308,65 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
           timescope({
             c.in.valid.poke(true)
             c.in.data.pokePartial(t3)
-            c.in.strb.poke("b1010".U)
+            c.in.strb.poke(bRev("1010"))
             c.in.last.poke(Vec.Lit("b01".U(2.W), "b00".U, "b01".U, "b00".U))
             println("-- Transfer 3")
             println(s"reducedLasts: ${printVecBinary(c.exposed_reducedLasts.peek())} (${binaryFromUint(c.exposed_prevReducedLast.peek())})")
             println(s"lastSeqs: ${binaryFromUint(c.exposed_lastSeqs.peek())}")
             c.clock.step(1)
+            println(s"All data: ${c.exposed_storedData.peek().asString}")
           })
 
           // d_ol
           timescope({
             c.in.valid.poke(true)
             c.in.data.pokePartial(t4)
-            c.in.strb.poke("b1011".U)
+            c.in.strb.poke(bRev("1011"))
             c.in.last.poke(Vec.Lit("b00".U(2.W), "b00".U, "b00".U, "b00".U))
+            println("-- Transfer 4")
+            println(s"reducedLasts: ${printVecBinary(c.exposed_reducedLasts.peek())} (${binaryFromUint(c.exposed_prevReducedLast.peek())})")
+            println(s"lastSeqs: ${binaryFromUint(c.exposed_lastSeqs.peek())}")
             c.clock.step(1)
+            println(s"All data: ${c.exposed_storedData.peek().asString}")
           })
 
           // ph__
           timescope({
             c.in.valid.poke(true)
             c.in.data.pokePartial(t5)
-            c.in.strb.poke("b1100".U)
+            c.in.strb.poke(bRev("1100"))
             c.in.last.poke(Vec.Lit("b00".U(2.W), "b00".U, "b00".U, "b00".U))
+            println("-- Transfer 5")
+            println(s"reducedLasts: ${printVecBinary(c.exposed_reducedLasts.peek())} (${binaryFromUint(c.exposed_prevReducedLast.peek())})")
+            println(s"lastSeqs: ${binaryFromUint(c.exposed_lastSeqs.peek())}")
             c.clock.step(1)
+            println(s"All data: ${c.exposed_storedData.peek().asString}")
           })
 
           // __in
           timescope({
             c.in.valid.poke(true)
             c.in.data.pokePartial(t6)
+            c.in.strb.poke(bRev("0011"))
+            println("-- Transfer 6")
+            println(s"reducedLasts: ${printVecBinary(c.exposed_reducedLasts.peek())} (${binaryFromUint(c.exposed_prevReducedLast.peek())})")
+            println(s"lastSeqs: ${binaryFromUint(c.exposed_lastSeqs.peek())}")
             c.clock.step(1)
+            println(s"All data: ${c.exposed_storedData.peek().asString}")
           })
 
           // close off
           timescope({
             c.in.valid.poke(true)
             c.in.last.poke(Vec.Lit("b11".U(2.W), "b00".U, "b00".U, "b00".U))
+            println("-- Transfer 7")
+            println(s"reducedLasts: ${printVecBinary(c.exposed_reducedLasts.peek())} (${binaryFromUint(c.exposed_prevReducedLast.peek())})")
+            println(s"lastSeqs: ${binaryFromUint(c.exposed_lastSeqs.peek())}")
             c.clock.step(1)
           })
+
+          println(s"All data: ${c.exposed_storedData.peek().asString}")
+          println(s"All lasts: ${printVecBinary(c.exposed_storedLasts.peek())}")
         },
         {
           c.out.waitForValid()

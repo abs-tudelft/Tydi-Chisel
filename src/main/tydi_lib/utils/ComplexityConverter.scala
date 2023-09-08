@@ -55,6 +55,7 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
   val seriesStored: UInt = RegInit(0.U(indexSize.W))
 
   val lastSeqProcessor: LastSeqProcessor = LastSeqProcessor(lastsIn)
+  lastSeqProcessor.dataAt := in.laneValidityVec
   val prevReducedLast: UInt = RegInit(0.U(d.W))
   prevReducedLast := lastSeqProcessor.reducedLasts.last
   lastSeqProcessor.prevReduced := prevReducedLast
@@ -109,7 +110,8 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
   // Series transferred is the number of last lanes with high MSB
   val transferOutSeriesCount: UInt = Wire(UInt())
   transferOutSeriesCount := 0.U
-  val transferInSeriesCount: UInt = lastsIn.map(_(0, 0) & in.ready).reduce(_ + _)
+  private val msbIndex = Math.max(0, d-1)
+  val transferInSeriesCount: UInt = lastsIn.map(_(msbIndex, msbIndex) & in.ready).reduce(_ + _)
 
   // When we have at least one series stored and sink is ready
   when(seriesStored > 0.U) {

@@ -7,6 +7,7 @@ import tydi_lib.TydiModule
 class LastSeqProcessor(val n: Int, val d: Int) extends TydiModule {
   val prevReduced: UInt = IO(Input(UInt(d.W)))
   val lasts: Vec[UInt] = IO(Input(Vec(n, UInt(d.W))))
+  val dataAt: Vec[Bool] = IO(Input(Vec(n, Bool())))
 
   val outCheck: UInt = IO(Output(UInt(n.W)))
   val outIndex: UInt = IO(Output(UInt(log2Ceil(n).W)))
@@ -15,9 +16,9 @@ class LastSeqProcessor(val n: Int, val d: Int) extends TydiModule {
   val newSeqIndictators: Vec[Bool] = Wire(Vec(n, Bool()))
 
   private var prevRed = prevReduced
-  for ((last, reduced, newSeq) <- lasts.lazyZip(reducedLasts).lazyZip(newSeqIndictators)) {
+  for ((last, reduced, newSeq, hasData) <- lasts.lazyZip(reducedLasts).lazyZip(newSeqIndictators).lazyZip(dataAt)) {
     newSeq := (last > 0.U) && (prevRed >= last)
-    reduced := Mux(newSeq, last, prevRed | last)
+    reduced := Mux(newSeq | hasData, last, prevRed | last)
     prevRed = reduced
   }
 
