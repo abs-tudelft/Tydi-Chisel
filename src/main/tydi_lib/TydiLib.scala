@@ -341,7 +341,7 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
     this.endi := bundle.endi
     this.stai := bundle.stai
     this.strb := bundle.strb
-    this.last := bundle.last.asUInt
+    this.last := VecInit(bundle.last.reverse).asUInt
     this.valid := bundle.valid
     bundle.ready := this.ready
     this.data := bundle.getDataConcat
@@ -450,7 +450,7 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
     this.strb := bundle.strb
     // There are only last bits if there is dimensionality
     if (d > 0) {
-      for ((lastLane, i) <- this.last.zipWithIndex) {
+      for ((lastLane, i) <- this.last.reverse.zipWithIndex) {
         lastLane := bundle.last((i + 1) * d - 1, i * d)
       }
     } else {
@@ -459,12 +459,15 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
     this.valid := bundle.valid
     bundle.ready := this.ready
     // Connect data bitvector back to bundle
-    this.getDataElementsRec.foldLeft(0)((i, dataField) => {
-      val width = dataField.getWidth
-      // .asTypeOf cast is necessary to prevent incompatible type errors
-      dataField := bundle.data(i + width - 1, i).asTypeOf(dataField)
-      i + width
-    })
+    for ((dataLane, i) <- this.data.reverse.zipWithIndex) {
+      val dataWidth = bundle.elWidth
+      dataLane.getDataElementsRec.foldLeft(i*dataWidth)((j, dataField) => {
+        val width = dataField.getWidth
+        // .asTypeOf cast is necessary to prevent incompatible type errors
+        dataField := bundle.data(j + width - 1, j).asTypeOf(dataField)
+        j + width
+      })
+    }
     // Connect user bitvector back to bundle
     // Todo: Investigate if this is really necessary or if connecting as Data Bundle/Vector directly is fine,
     //  since user signals are unspecified by the standard.
