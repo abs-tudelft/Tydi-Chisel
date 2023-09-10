@@ -292,6 +292,9 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
    */
   def laneValidityVec: Vec[Bool] = VecInit(laneValidity.asBools)
 
+  /** [[strb]] signal as a boolean vector */
+  def strbVec: Vec[Bool] = VecInit(strb.asBools)
+
 
   def tydiCode: String = {
     val elName = e.fingerprint
