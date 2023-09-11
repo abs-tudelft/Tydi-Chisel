@@ -55,7 +55,7 @@ sealed trait TydiEl extends Bundle with TranspileExtend {
   def getDataConcat: UInt = {
     // Filter out any `Element`s that are also streams.
     // `.asUInt` also does recursive action but we don't want sub-streams to be included.
-    getDataElementsRec.map(_.asUInt).reduce((prev, new_) => Cat(new_, prev))
+    getDataElementsRec.map(_.asUInt).reduce((prev, new_) => Cat(prev, new_))
   }
 
   def fingerprint: String = this.instanceName
@@ -464,7 +464,7 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
     // Connect data bitvector back to bundle
     for ((dataLane, i) <- this.data.zipWithIndex) {
       val dataWidth = bundle.elWidth
-      dataLane.getDataElementsRec.foldLeft(i*dataWidth)((j, dataField) => {
+      dataLane.getDataElementsRec.reverse.foldLeft(i*dataWidth)((j, dataField) => {
         val width = dataField.getWidth
         // .asTypeOf cast is necessary to prevent incompatible type errors
         dataField := bundle.data(j + width - 1, j).asTypeOf(dataField)

@@ -51,9 +51,9 @@ class TydiComplianceTest extends AnyFlatSpec with ChiselScalatestTester {
       c.in.strb.poke("b10".U)
       c.in.endi.poke(1.U)
 
-      // Least element ends up right in tydi standard.
-      // Ordering of items in datatype is not specified, so just keep Chisel's order.
-      c.mid_out.data.expect("xFFAA0055".U)
+      // Least (first) element ends up right in tydi standard.
+      // Ordering of items in datatype is not specified, but do least (first) item right as well.
+      c.mid_out.data.expect("xAAFF5500".U)
       // Same order for the last signal
       c.mid_out.last.expect("xFF00".U)
 
