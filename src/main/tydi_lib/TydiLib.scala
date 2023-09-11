@@ -55,7 +55,7 @@ sealed trait TydiEl extends Bundle with TranspileExtend {
   def getDataConcat: UInt = {
     // Filter out any `Element`s that are also streams.
     // `.asUInt` also does recursive action but we don't want sub-streams to be included.
-    getDataElementsRec.map(_.asUInt).reduce((prev, new_) => Cat(new_, prev))
+    getDataElementsRec.map(_.asUInt).reduce((prev, new_) => Cat(prev, new_))
   }
 
   def fingerprint: String = this.instanceName
@@ -292,6 +292,9 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
    */
   def laneValidityVec: Vec[Bool] = VecInit(laneValidity.asBools)
 
+  /** [[strb]] signal as a boolean vector */
+  def strbVec: Vec[Bool] = VecInit(strb.asBools)
+
 
   def tydiCode: String = {
     val elName = e.fingerprint
@@ -390,7 +393,7 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
   override def getDataType: Tel = e
   override def getUserType: Tus = u
 
-  override def getDataConcat: UInt = data.map(_.getDataConcat).reduce(Cat(_, _))
+  override def getDataConcat: UInt = data.map(_.getDataConcat).reduce((a, b) => Cat(b, a))
 
   def getUserConcat: UInt = user.asUInt
 
@@ -459,12 +462,15 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
     this.valid := bundle.valid
     bundle.ready := this.ready
     // Connect data bitvector back to bundle
-    this.getDataElementsRec.foldLeft(0)((i, dataField) => {
-      val width = dataField.getWidth
-      // .asTypeOf cast is necessary to prevent incompatible type errors
-      dataField := bundle.data(i + width - 1, i).asTypeOf(dataField)
-      i + width
-    })
+    for ((dataLane, i) <- this.data.zipWithIndex) {
+      val dataWidth = bundle.elWidth
+      dataLane.getDataElementsRec.reverse.foldLeft(i*dataWidth)((j, dataField) => {
+        val width = dataField.getWidth
+        // .asTypeOf cast is necessary to prevent incompatible type errors
+        dataField := bundle.data(j + width - 1, j).asTypeOf(dataField)
+        j + width
+      })
+    }
     // Connect user bitvector back to bundle
     // Todo: Investigate if this is really necessary or if connecting as Data Bundle/Vector directly is fine,
     //  since user signals are unspecified by the standard.
