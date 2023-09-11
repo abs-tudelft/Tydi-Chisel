@@ -275,6 +275,14 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       println(s"Stai: ${c.out.stai.peek().litValue}, Endi: ${c.out.endi.peek().litValue}")
     }
 
+    def vecLitFromString(s: String): Vec[BitsEl] = {
+//      val dontCareVal = char.Lit(_.value -> 0.U)
+//      val values = s.map(c => char.Lit(_.value -> c.U)) ++ Seq.fill(4-s.length)(dontCareVal)
+//      Vec.Lit(values: _*)
+      val mapping = s.map(c => char.Lit(_.value -> c.U)).zipWithIndex.map(v => (v._2, v._1))
+      Vec(4, new BitsEl(8.W)).Lit(mapping: _*)
+    }
+
 
     // test case body here
     test(new ManualComplexityConverterFancyWrapper(char, stream, 20)) { c =>
@@ -289,11 +297,13 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       c.exposed_currentWriteIndex.expect(0.U)
       c.exposed_seriesStored.expect(0.U)
 
-      val t1 = Vec.Lit("shei".map(c => char.Lit(_.value -> c.U)): _*)
+      val t1 = vecLitFromString("shei")
       val t3 = c.in.dataLit(0 -> 's'.asEl, 2 -> 'a'.asEl)
       val t4 = c.in.dataLit(0 -> 'd'.asEl, 2 -> 'o'.asEl, 3 -> 'l'.asEl)
       val t5 = c.in.dataLit(0 -> 'p'.asEl, 1 -> 'h'.asEl)
       val t6 = c.in.dataLit(2 -> 'i'.asEl, 3 -> 'n'.asEl)
+
+      val tOut1 = vecLitFromString("she")
 
       val lastType = Vec(stream.n, UInt(stream.d.W))
 
@@ -381,21 +391,36 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
           println("\n\n--  Output data  --")
           println("\n-- Transfer out 1")
           printOutputState(c)
+          c.out.data.expectPartial(vecLitFromString("she"))
+          c.out.last.last.expect("b01".U)
+          c.out.endi.expect(2.U)
           c.clock.step(1)
 
           println("\n-- Transfer out 2")
+          c.out.data.expectPartial(vecLitFromString("is"))
+          c.out.last.last.expect("b01".U)
+          c.out.endi.expect(1.U)
           printOutputState(c)
 
           c.clock.step(1)
           println("\n-- Transfer out 3")
+          c.out.data.expectPartial(vecLitFromString("a"))
+          c.out.last.last.expect("b01".U)
+          c.out.endi.expect(0.U)
           printOutputState(c)
 
           c.clock.step(1)
           println("\n-- Transfer out 4")
+          c.out.data.expectPartial(vecLitFromString("dolp"))
+          c.out.last.last.expect("b00".U)
+          c.out.endi.expect(3.U)
           printOutputState(c)
 
           c.clock.step(1)
           println("\n-- Transfer out 5")
+          c.out.data.expectPartial(vecLitFromString("hin"))
+          c.out.last.last.expect("b11".U)
+          c.out.endi.expect(2.U)
           printOutputState(c)
 
           c.clock.step(1)
