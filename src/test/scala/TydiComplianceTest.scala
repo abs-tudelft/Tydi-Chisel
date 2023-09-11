@@ -53,9 +53,9 @@ class TydiComplianceTest extends AnyFlatSpec with ChiselScalatestTester {
 
       // Least element ends up right in tydi standard.
       // Ordering of items in datatype is not specified, so just keep Chisel's order.
-      c.mid_out.data.expect("x0055FFAA".U)
+      c.mid_out.data.expect("xFFAA0055".U)
       // Same order for the last signal
-      c.mid_out.last.expect("x00FF".U)
+      c.mid_out.last.expect("xFF00".U)
 
       // Check if vectorify functions work well
       c.laneValidityVec.expect(Vec.Lit(0.B, 1.B))

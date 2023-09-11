@@ -344,7 +344,7 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
     this.endi := bundle.endi
     this.stai := bundle.stai
     this.strb := bundle.strb
-    this.last := VecInit(bundle.last.reverse).asUInt
+    this.last := bundle.last.asUInt
     this.valid := bundle.valid
     bundle.ready := this.ready
     this.data := bundle.getDataConcat
@@ -393,7 +393,7 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
   override def getDataType: Tel = e
   override def getUserType: Tus = u
 
-  override def getDataConcat: UInt = data.map(_.getDataConcat).reduce(Cat(_, _))
+  override def getDataConcat: UInt = data.map(_.getDataConcat).reduce((a, b) => Cat(b, a))
 
   def getUserConcat: UInt = user.asUInt
 
@@ -453,7 +453,7 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
     this.strb := bundle.strb
     // There are only last bits if there is dimensionality
     if (d > 0) {
-      for ((lastLane, i) <- this.last.reverse.zipWithIndex) {
+      for ((lastLane, i) <- this.last.zipWithIndex) {
         lastLane := bundle.last((i + 1) * d - 1, i * d)
       }
     } else {
@@ -462,7 +462,7 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
     this.valid := bundle.valid
     bundle.ready := this.ready
     // Connect data bitvector back to bundle
-    for ((dataLane, i) <- this.data.reverse.zipWithIndex) {
+    for ((dataLane, i) <- this.data.zipWithIndex) {
       val dataWidth = bundle.elWidth
       dataLane.getDataElementsRec.foldLeft(i*dataWidth)((j, dataField) => {
         val width = dataField.getWidth
