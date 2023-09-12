@@ -49,9 +49,16 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     Vec(x.n, x.getDataType).Lit(elems: _*)
   }
 
-  def enqueueNow(data: Tel): Unit = timescope {
+  def enqueueElNow(data: Tel, last: Option[UInt] = None, strb: Option[UInt] = None): Unit = timescope {
     // TODO: check for init
     x.el.poke(data)
+    if (last.isDefined) {
+      val lastLit = Vec(x.n, UInt(x.d.W)).Lit(0 -> last.get)
+      x.last.poke(lastLit)
+    }
+    if (strb.isDefined) {
+      x.strb.poke(strb.get)
+    }
     x.valid.poke(true.B)
     fork
       .withRegion(Monitor) {
@@ -60,20 +67,25 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
       .joinAndStep(getSourceClock)
   }
 
-  def enqueueNow(data: Vec[Tel]): Unit = timescope {
+  def enqueueNow(data: Vec[Tel], last: Option[Vec[UInt]] = None, strb: Option[UInt] = None): Unit = timescope {
     // TODO: check for init
-    x.data.poke(data)
+    x.data.pokePartial(data)
+    if (last.isDefined) {
+      x.last.poke(last.get)
+    }
+    if (strb.isDefined) {
+      x.strb.poke(strb.get)
+    }
     x.valid.poke(true.B)
     fork
       .withRegion(Monitor) {
         x.ready.expect(true.B)
-      }
-      .joinAndStep(getSourceClock)
+      }.joinAndStep(getSourceClock)
   }
 
-  def enqueueNow(elems: (Tel => (Data, Data))*): Unit = timescope {
+  def enqueueElNow(elems: (Tel => (Data, Data))*): Unit = timescope {
     val litValue = elLit(elems: _*) // Use splat operator to propagate repeated parameters
-    enqueueNow(litValue)
+    enqueueElNow(litValue)
   }
 
   def enqueue(data: Tel): Unit = timescope {
@@ -144,13 +156,19 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     expectDequeue(litValue)
   }
 
-  def expectDequeueNow(data: Tel): Unit = timescope {
+  def expectDequeueNow(data: Tel, last: Option[Vec[UInt]] = None, strb: Option[UInt] = None): Unit = timescope {
     // TODO: check for init
     x.ready.poke(true.B)
     fork
       .withRegion(Monitor) {
         x.valid.expect(true.B)
         x.el.expect(data)
+        if (last.isDefined) {
+          x.last.expect(last.get)
+        }
+        if (strb.isDefined) {
+          x.strb.expect(strb.get)
+        }
       }
       .joinAndStep(getSinkClock)
   }

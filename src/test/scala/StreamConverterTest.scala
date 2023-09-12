@@ -209,14 +209,14 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       println(litValIn1.litValue.toInt.toBinaryString)
 
       // Send some data in
-      c.in.enqueueNow(_.a -> 136.U, _.b -> 9.U)
+      c.in.enqueueElNow(_.a -> 136.U, _.b -> 9.U)
       c.clock.step(3)  // Check if the circuit holds its state
-      c.in.enqueueNow(_.a -> 65.U, _.b -> 4.U)
+      c.in.enqueueElNow(_.a -> 65.U, _.b -> 4.U)
       c.exposed_currentWriteIndex.expect(2.U)
       c.exposed_seriesStored.expect(0.U)
       c.out.expectInvalid()
       c.in.last(0).poke(1.U)
-      c.in.enqueueNow(_.a -> 98.U, _.b -> 7.U)
+      c.in.enqueueElNow(_.a -> 98.U, _.b -> 7.U)
       c.in.last(0).poke(0.U)
       c.exposed_currentWriteIndex.expect(3.U)
       c.exposed_seriesStored.expect(1.U)
@@ -242,47 +242,44 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
     }
   }
 
+  private val char = BitsEl(8.W)
+
+  implicit class CharExtensions1(c: Char) {
+    def asEl: BitsEl = char.Lit(_.value -> c.U)
+  }
+
+  implicit class CharExtensions2(c: BitsEl) {
+    def asChar: Char = c.litValue.toChar
+  }
+
+  implicit class CharExtensions3(c: UInt) {
+    def asChar: Char = c.litValue.toChar
+  }
+
+  implicit class StringExtensions(s: Seq[UInt]) {
+    def asString: String = s.map(_.asChar).mkString
+  }
+
+  def printInputState(c: ManualComplexityConverterFancyWrapper[BitsEl]): Unit = {
+    println(s"reducedLasts: ${binaryFromUint(c.exposed_prevReducedLast.peek())} -> ${printVecBinary(c.exposed_reducedLasts.peek())}")
+    println(s"lastSeqs: ${binaryFromUint(c.exposed_lastSeqs.peek())}")
+  }
+
+  def printOutputState(c: ManualComplexityConverterFancyWrapper[BitsEl]): Unit = {
+    print(c.out.printState())
+    println(s"Data: ${c.out.data.peek().map(_.asChar)}")
+    println(s"Items ready: ${c.exposed_outItemsReadyCount.peekInt()}, transfer: ${c.exposed_transferOutItemCount.peekInt()}")
+    println(s"Last: ${printVecBinary(c.out.last.peek())}")
+    println(s"Stai: ${c.out.stai.peek().litValue}, Endi: ${c.out.endi.peek().litValue}")
+  }
+
   it should "process 'she is a dolphin'" in {
-    val char = BitsEl(8.W)
     val stream = PhysicalStream(char, n = 4, d = 2, c = 8)
 
-    implicit class CharExtensions1(c: Char) {
-      def asEl: BitsEl = char.Lit(_.value -> c.U)
-    }
-
-    implicit class CharExtensions2(c: BitsEl) {
-      def asChar: Char = c.litValue.toChar
-    }
-
-    implicit class CharExtensions3(c: UInt) {
-      def asChar: Char = c.litValue.toChar
-    }
-
-    implicit class StringExtensions(s: Seq[UInt]) {
-      def asString: String = s.map(_.asChar).mkString
-    }
-
-    def printInputState(c: ManualComplexityConverterFancyWrapper[BitsEl]): Unit = {
-      println(s"reducedLasts: ${binaryFromUint(c.exposed_prevReducedLast.peek())} -> ${printVecBinary(c.exposed_reducedLasts.peek())}")
-      println(s"lastSeqs: ${binaryFromUint(c.exposed_lastSeqs.peek())}")
-    }
-
-    def printOutputState(c: ManualComplexityConverterFancyWrapper[BitsEl]): Unit = {
-      print(c.out.printState())
-      println(s"Data: ${c.out.data.peek().map(_.asChar)}")
-      println(s"Items ready: ${c.exposed_outItemsReadyCount.peekInt()}, transfer: ${c.exposed_transferOutItemCount.peekInt()}")
-      println(s"Last: ${printVecBinary(c.out.last.peek())}")
-      println(s"Stai: ${c.out.stai.peek().litValue}, Endi: ${c.out.endi.peek().litValue}")
-    }
-
     def vecLitFromString(s: String): Vec[BitsEl] = {
-//      val dontCareVal = char.Lit(_.value -> 0.U)
-//      val values = s.map(c => char.Lit(_.value -> c.U)) ++ Seq.fill(4-s.length)(dontCareVal)
-//      Vec.Lit(values: _*)
       val mapping = s.map(c => char.Lit(_.value -> c.U)).zipWithIndex.map(v => (v._2, v._1))
       Vec(4, new BitsEl(8.W)).Lit(mapping: _*)
     }
-
 
     // test case body here
     test(new ManualComplexityConverterFancyWrapper(char, stream, 20)) { c =>
