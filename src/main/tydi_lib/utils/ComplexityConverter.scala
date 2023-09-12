@@ -93,7 +93,7 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
   when(in.valid) {
     currentWriteIndex := writeIndexes.last + 1.U
   } otherwise {
-    currentWriteIndex := currentWriteIndex
+    currentWriteIndex := writeIndexBase
   }
 
   in.ready := currentWriteIndex < (memSize - n).U // We are ready as long as we have enough space left for a full transfer
@@ -130,7 +130,7 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
       transferOutItemCount := outItemsReadyCount
 
       // Series transferred is the number of last lanes with high MSB
-      transferOutSeriesCount := storedLasts(out.endi)(msbIndex, msbIndex)
+      transferOutSeriesCount := storedLasts(out.endi)(msbIndex)
     }
 
     // Set out stream signals

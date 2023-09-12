@@ -126,6 +126,7 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       println(s"Last: ${printVecBinary(c.exposed_storedLasts.peek())}")
       println(s"Last: ${binaryFromUint(c.exposed_lasts.peek())}")
       c.exposed_outItemsReadyCount.expect(1.U)
+      c.exposed_transferOutItemCount.expect(1.U)
       println("Step clock")
       c.clock.step()
 
@@ -136,6 +137,7 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       c.out.valid.expect(1.U) // ... means valid output
       c.exposed_currentWriteIndex.expect(1.U)
       c.exposed_outItemsReadyCount.expect(1.U)
+      c.exposed_transferOutItemCount.expect(1.U)
       println("N=1 test done")
     }
   }
