@@ -55,7 +55,7 @@ sealed trait TydiEl extends Bundle with TranspileExtend {
   def getDataConcat: UInt = {
     // Filter out any `Element`s that are also streams.
     // `.asUInt` also does recursive action but we don't want sub-streams to be included.
-    getDataElementsRec.map(_.asUInt).reduce((prev, new_) => Cat(new_, prev))
+    getDataElementsRec.map(_.asUInt).reduce((prev, new_) => Cat(prev, new_))
   }
 
   def fingerprint: String = this.instanceName
@@ -232,11 +232,11 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
    */
   val user: Data
 
-  val lastWidth: Int = if (c == 7) d * n else d
+  val lastWidth: Int = d * n
 
   /**
    * Last signal for signalling the end of nested sequences. Usage is highly dependent on complexity!<br>
-   * The state of the [[last]] signal is significant only while [[valid]] is asserted.<br>
+   * The state of the [[last]] signal is significant only while [[valid]] is asserted. It is thus <i>not</i> controlled by which data lanes are active. <br>
    * [C&lt;8] All last bits for lanes `0` to `N−2` inclusive must be driven low by the source, and may be ignored by the sink.<br>
    * [C&lt;4] It is illegal to assert a [[last]] bit for dimension `j` without also asserting the last bits for dimensions `j′`&lt;`j` in the same lane.<br>
    * [C&lt;4] It is illegal to assert the [[last]] bit for dimension `0` when the respective data lane is inactive, except for empty sequences.<br>
@@ -276,7 +276,10 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
    * @return Bitmask based on [[stai]] and [[endi]]
    */
   def indexMask: UInt = {
-    ((1.U << (endi - stai + 1.U)) - 1.U) << stai
+    // Cannot use expression directly because the width is not inferred correctly
+    val _indexMask: UInt = Wire(UInt(n.W))
+    _indexMask := ((1.U << (endi - stai + 1.U(n.W))) - 1.U) << stai
+    _indexMask
   }
 
   /**
@@ -288,6 +291,9 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
    * Returns lane validity based on the [[strb]], [[stai]], and [[endi]] signals.
    */
   def laneValidityVec: Vec[Bool] = VecInit(laneValidity.asBools)
+
+  /** [[strb]] signal as a boolean vector */
+  def strbVec: Vec[Bool] = VecInit(strb.asBools)
 
 
   def tydiCode: String = {
@@ -387,7 +393,7 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
   override def getDataType: Tel = e
   override def getUserType: Tus = u
 
-  override def getDataConcat: UInt = data.map(_.getDataConcat).reduce(Cat(_, _))
+  override def getDataConcat: UInt = data.map(_.getDataConcat).reduce((a, b) => Cat(b, a))
 
   def getUserConcat: UInt = user.asUInt
 
@@ -456,12 +462,15 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
     this.valid := bundle.valid
     bundle.ready := this.ready
     // Connect data bitvector back to bundle
-    this.getDataElementsRec.foldLeft(0)((i, dataField) => {
-      val width = dataField.getWidth
-      // .asTypeOf cast is necessary to prevent incompatible type errors
-      dataField := bundle.data(i + width - 1, i).asTypeOf(dataField)
-      i + width
-    })
+    for ((dataLane, i) <- this.data.zipWithIndex) {
+      val dataWidth = bundle.elWidth
+      dataLane.getDataElementsRec.reverse.foldLeft(i*dataWidth)((j, dataField) => {
+        val width = dataField.getWidth
+        // .asTypeOf cast is necessary to prevent incompatible type errors
+        dataField := bundle.data(j + width - 1, j).asTypeOf(dataField)
+        j + width
+      })
+    }
     // Connect user bitvector back to bundle
     // Todo: Investigate if this is really necessary or if connecting as Data Bundle/Vector directly is fine,
     //  since user signals are unspecified by the standard.
