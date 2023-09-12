@@ -432,4 +432,123 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       )
     }
   }
+
+  it should "process 'hello world'" in {
+    val stream = PhysicalStream(char, n = 6, d = 2, c = 8)
+
+    def vecLitFromString(s: String): Vec[BitsEl] = {
+      val mapping = s.map(c => char.Lit(_.value -> c.U)).zipWithIndex.map(v => (v._2, v._1))
+      Vec(6, new BitsEl(8.W)).Lit(mapping: _*)
+    }
+
+
+    // test case body here
+    test(new ManualComplexityConverterFancyWrapper(char, stream, 20)) { c =>
+      // Initialize signals
+      c.in.initSource().setSourceClock(c.clock)
+      c.out.initSink().setSinkClock(c.clock)
+      c.in.endi.poke(stream.n-1)
+      c.in.strb.poke(0.U)
+      println("Hello World test")
+      println("Initializing signals")
+      c.exposed_currentWriteIndex.expect(0.U)
+      c.exposed_seriesStored.expect(0.U)
+
+      val t1 = vecLitFromString("HelloW")
+      val t2 = vecLitFromString("orldTy")
+      val t3 = vecLitFromString("diisni")
+      val t4 = vecLitFromString("ce")
+
+      val lastType = Vec(stream.n, UInt(stream.d.W))
+
+      parallel(
+        {
+          // Send some data in
+          // HelloW
+          c.in.enqueueNow(t1,
+            last = Some(Vec.Lit("b00".U(2.W), "b00".U, "b00".U, "b00".U, "b01".U, "b00".U)),
+            strb = Some(bRev("111111")))
+          println("\n-- Transfer in 1")
+          println(s"All data: ${c.exposed_storedData.peek().asString}")
+
+          // orldTy
+          c.in.enqueueNow(t2,
+            last = Some(Vec.Lit("b00".U(2.W), "b00".U, "b00".U, "b11".U, "b00".U, "b00".U)),
+            strb = Some(bRev("111111")))
+          println("\n-- Transfer in 2")
+          println(s"All data: ${c.exposed_storedData.peek().asString}")
+
+          // diisni
+          c.in.enqueueNow(t3,
+            last = Some(Vec.Lit("b00".U(2.W), "b01".U, "b00".U, "b01".U, "b00".U, "b00".U)),
+            strb = Some(bRev("111111")))
+          println("\n-- Transfer in 3")
+          println(s"All data: ${c.exposed_storedData.peek().asString}")
+
+          // ce____
+          c.in.enqueueNow(t4,
+            last = Some(Vec.Lit("b00".U(2.W), "b00".U, "b01".U, "b10".U, "b11".U, "b10".U)),
+            strb = Some(bRev("11000")))
+          println("\n-- Transfer in 4")
+          println(s"All data: ${c.exposed_storedData.peek().asString}")
+
+          println(s"All data: ${c.exposed_storedData.peek().asString}")
+          println(s"All lasts: ${printVecBinary(c.exposed_storedLasts.peek())}")
+        },
+        {
+          c.out.waitForValid()
+          c.out.ready.poke(true)
+          println("\n-- Transfer out 1")
+          printOutputState(c)
+          c.out.data.expectPartial(vecLitFromString("Hello"))
+          c.out.last.last.expect("b01".U)
+          c.out.endi.expect(4.U)
+          c.clock.step(1)
+
+          println("\n-- Transfer out 2")
+          c.out.data.expectPartial(vecLitFromString("World"))
+          c.out.last.last.expect("b11".U)
+          c.out.endi.expect(4.U)
+          printOutputState(c)
+
+          c.clock.step(1)
+          println("\n-- Transfer out 3")
+          c.out.data.expectPartial(vecLitFromString("Tydi"))
+          c.out.last.last.expect("b01".U)
+          c.out.endi.expect(3.U)
+          printOutputState(c)
+
+          c.clock.step(1)
+          println("\n-- Transfer out 4")
+          c.out.data.expectPartial(vecLitFromString("is"))
+          c.out.last.last.expect("b01".U)
+          c.out.endi.expect(1.U)
+          printOutputState(c)
+
+          c.clock.step(1)
+          println("\n-- Transfer out 5")
+          c.out.data.expectPartial(vecLitFromString("nice"))
+//          c.out.last.last.expect("b11".U)
+//          c.out.endi.expect(3.U)
+          println(s"All data: ${c.exposed_storedData.peek().asString}")
+          println(s"All lasts: ${printVecBinary(c.exposed_storedLasts.peek())}")
+          printOutputState(c)
+
+          c.clock.step(1)
+          // Transfer should be done now.
+          println("\n-- Transfer out 6")
+          c.out.data.expectPartial(vecLitFromString(""))
+          c.out.last.last.expect("b11".U)
+          c.out.endi.expect(0.U)
+          printOutputState(c)
+
+          c.clock.step(1)
+          println("\n-- Transfer out 7")
+          c.out.last.last.expect("b10".U)
+          c.out.endi.expect(0.U)
+          printOutputState(c)
+        }
+      )
+    }
+  }
 }

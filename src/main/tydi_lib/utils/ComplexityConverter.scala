@@ -38,10 +38,18 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
 
   // Shift the whole register file by `transferCount` places by default
   dataReg.zipWithIndex.foreach { case (r, i) =>
-    r := dataReg(i.U + transferOutItemCount)
+    when(i.U + transferOutItemCount < memSize.U) {
+      r := dataReg(i.U + transferOutItemCount)
+    } otherwise {
+      r := 0.U
+    }
   }
   lastReg.zipWithIndex.foreach { case (r, i) =>
-    r := lastReg(i.U + transferOutItemCount)
+    when (i.U + transferOutItemCount < memSize.U) {
+      r := lastReg(i.U + transferOutItemCount)
+    } otherwise {
+      r := 0.U
+    }
   }
 
   /** Signal for storing the indexes the current incoming lanes should write to */
@@ -64,11 +72,13 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
   val incrementIndexAt: UInt = in.laneValidity | lastSeqProcessor.outCheck
   val relativeIndexes: Vec[UInt] = VecInit.tabulate(n)(i => PopCount(incrementIndexAt(i, 0)))
 
+  val writeIndexBase: UInt = currentWriteIndex - transferOutItemCount
+
   // Calculate & set write indexes
   for ((indexWire, i) <- writeIndexes.zipWithIndex) {
     // Count which index this lane should get
     // The strobe bit adds 1 for each item, which is why we can remove 1 here, or we would not fill the first slot.
-    indexWire := currentWriteIndex + relativeIndexes(i) - 1.U
+    indexWire := writeIndexBase + relativeIndexes(i) - 1.U
     // Empty is if the a new sequence is assigned by last bits, but the lane is not valid
     val isEmpty: Bool = lastSeqProcessor.outCheck(i) && !in.laneValidity(i)
     val isValid = in.laneValidity(i) && in.valid
@@ -86,9 +96,9 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
 
   // Index for new cycle is the one after the last index of last cycle - how many lanes we shifted out
   when(in.valid) {
-    currentWriteIndex := writeIndexes.last + 1.U - transferOutItemCount
+    currentWriteIndex := writeIndexes.last + 1.U
   } otherwise {
-    currentWriteIndex := currentWriteIndex - transferOutItemCount
+    currentWriteIndex := currentWriteIndex
   }
 
   in.ready := currentWriteIndex < (memSize - n).U // We are ready as long as we have enough space left for a full transfer
