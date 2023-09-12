@@ -80,8 +80,12 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
     when (isValid) {
       dataReg(indexWire) := lanesIn(i)
       // It should get the reduced lasts of the lane *before* the *next* valid item
-      when (indexWire > 0.U) {
-        lastReg(indexWire - 1.U) := (if (i == 0) prevReducedLast else lastSeqProcessor.reducedLasts(i - 1))
+      // If the first item has data we don't care about the previous last value anymore.
+      // If it does not, it will get set at i=1
+      if (i > 0) {
+        when(indexWire > 0.U) {
+          lastReg(indexWire - 1.U) := lastSeqProcessor.reducedLasts(i - 1)
+        }
       }
       emptyReg(indexWire) := isEmpty
     }

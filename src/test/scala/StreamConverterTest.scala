@@ -293,7 +293,6 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       c.in.strb.poke(0.U)
       println("She is a dolphin test")
       println("Initializing signals")
-//      c.in.last.poke(c.in.last.Lit(0 -> 0.U))
       c.exposed_currentWriteIndex.expect(0.U)
       c.exposed_seriesStored.expect(0.U)
 
@@ -302,8 +301,6 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       val t4 = c.in.dataLit(0 -> 'd'.asEl, 2 -> 'o'.asEl, 3 -> 'l'.asEl)
       val t5 = c.in.dataLit(0 -> 'p'.asEl, 1 -> 'h'.asEl)
       val t6 = c.in.dataLit(2 -> 'i'.asEl, 3 -> 'n'.asEl)
-
-      val tOut1 = vecLitFromString("she")
 
       val lastType = Vec(stream.n, UInt(stream.d.W))
 
