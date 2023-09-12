@@ -38,18 +38,13 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
 
   // Shift the whole register file by `transferCount` places by default
   dataReg.zipWithIndex.foreach { case (r, i) =>
-    when(i.U + transferOutItemCount < memSize.U) {
-      r := dataReg(i.U + transferOutItemCount)
-    } otherwise {
-      r := 0.U
-    }
+    r := dataReg(i.U + transferOutItemCount)
   }
   lastReg.zipWithIndex.foreach { case (r, i) =>
-    when (i.U + transferOutItemCount < memSize.U) {
-      r := lastReg(i.U + transferOutItemCount)
-    } otherwise {
-      r := 0.U
-    }
+    r := lastReg(i.U + transferOutItemCount)
+  }
+  emptyReg.zipWithIndex.foreach { case (r, i) =>
+    r := emptyReg(i.U + transferOutItemCount)
   }
 
   /** Signal for storing the indexes the current incoming lanes should write to */
@@ -81,7 +76,7 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
     indexWire := writeIndexBase + relativeIndexes(i) - 1.U
     // Empty is if the a new sequence is assigned by last bits, but the lane is not valid
     val isEmpty: Bool = lastSeqProcessor.outCheck(i) && !in.laneValidity(i)
-    val isValid = in.laneValidity(i) && in.valid
+    val isValid = incrementIndexAt(i) && in.valid
     when (isValid) {
       dataReg(indexWire) := lanesIn(i)
       // It should get the reduced lasts of the lane *before* the *next* valid item
@@ -116,13 +111,17 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
   val leastSignificantLastSignal: UInt = leastSignificantLasts.map(_.asUInt).reduce(Cat(_, _))
   // Todo: Check orientation
   val innerSeqLength: UInt = PriorityEncoder(leastSignificantLasts)
-  outItemsReadyCount := Mux(innerSeqLength > n.U, n.U, innerSeqLength)
+  outItemsReadyCount := Mux(!emptyReg(0),
+                            Mux(innerSeqLength > n.U, n.U, innerSeqLength),
+                            1.U)
 
   // Series transferred is the number of last lanes with high MSB
   val transferOutSeriesCount: UInt = Wire(UInt(1.W))
   transferOutSeriesCount := 0.U
   private val msbIndex = Math.max(0, d-1)
-  val transferInSeriesCount: UInt = lastsIn.map(_(msbIndex, msbIndex) & in.ready).reduce(_ + _)
+  val transferInSeriesCount: UInt = Mux(in.ready, PopCount(lastsIn.map(_(msbIndex))), 0.U)
+
+  seriesStored := seriesStored + transferInSeriesCount - transferOutSeriesCount
 
   // When we have at least one series stored and sink is ready
   when(seriesStored > 0.U) {
@@ -152,10 +151,7 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
     out.endi := DontCare
     out.strb := DontCare
     out.data := DontCare
-
   }
-
-  seriesStored := seriesStored + transferInSeriesCount - transferOutSeriesCount
 
   out.stai := 0.U
 

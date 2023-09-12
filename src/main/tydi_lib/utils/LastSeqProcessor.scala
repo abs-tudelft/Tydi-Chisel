@@ -17,7 +17,7 @@ class LastSeqProcessor(val n: Int, val d: Int) extends TydiModule {
 
   private var prevRed = prevReduced
   for ((last, reduced, newSeq, hasData) <- lasts.lazyZip(reducedLasts).lazyZip(newSeqIndictators).lazyZip(dataAt)) {
-    newSeq := (last > 0.U) && (prevRed >= last)
+    newSeq := ((prevRed & last) > 0.U)
     reduced := Mux(newSeq | hasData, last, prevRed | last)
     prevRed = reduced
   }

@@ -65,6 +65,7 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
     val exposed_lastLanesIn: Vec[UInt] = expose(mod.lastsIn)
     val exposed_storedData: Vec[UInt] = expose(mod.dataReg)
     val exposed_storedLasts: Vec[UInt] = expose(mod.lastReg)
+    val exposed_storedEmpties: Vec[Bool] = expose(mod.emptyReg)
     val exposed_writeIndexes: Vec[UInt] = expose(mod.writeIndexes)
     val exposed_lasts: UInt = expose(mod.leastSignificantLastSignal)
     val outDataRaw: UInt = expose(mod.out.data)
@@ -454,6 +455,7 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       c.exposed_currentWriteIndex.expect(0.U)
       c.exposed_seriesStored.expect(0.U)
 
+      // Sending ["Hello", "World"], ["Tydi", "is", "nice"], [""], []
       val t1 = vecLitFromString("HelloW")
       val t2 = vecLitFromString("orldTy")
       val t3 = vecLitFromString("diisni")
@@ -488,7 +490,7 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
           // ce____
           c.in.enqueueNow(t4,
             last = Some(Vec.Lit("b00".U(2.W), "b00".U, "b01".U, "b10".U, "b11".U, "b10".U)),
-            strb = Some(bRev("11000")))
+            strb = Some(bRev("110000")))
           println("\n-- Transfer in 4")
           println(s"All data: ${c.exposed_storedData.peek().asString}")
 
@@ -528,8 +530,8 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
           c.clock.step(1)
           println("\n-- Transfer out 5")
           c.out.data.expectPartial(vecLitFromString("nice"))
-//          c.out.last.last.expect("b11".U)
-//          c.out.endi.expect(3.U)
+          c.out.last.last.expect("b11".U)
+          c.out.endi.expect(3.U)
           println(s"All data: ${c.exposed_storedData.peek().asString}")
           println(s"All lasts: ${printVecBinary(c.exposed_storedLasts.peek())}")
           printOutputState(c)
@@ -537,14 +539,15 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
           c.clock.step(1)
           // Transfer should be done now.
           println("\n-- Transfer out 6")
-          c.out.data.expectPartial(vecLitFromString(""))
           c.out.last.last.expect("b11".U)
+          c.out.strb.expect(0.U)
           c.out.endi.expect(0.U)
           printOutputState(c)
 
           c.clock.step(1)
           println("\n-- Transfer out 7")
           c.out.last.last.expect("b10".U)
+          c.out.strb.expect(0.U)
           c.out.endi.expect(0.U)
           printOutputState(c)
         }
