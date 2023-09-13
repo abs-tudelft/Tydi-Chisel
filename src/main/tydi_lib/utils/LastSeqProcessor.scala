@@ -1,7 +1,7 @@
 package tydi_lib.utils
 
 import chisel3._
-import chisel3.util.{PriorityEncoder, log2Ceil}
+import chisel3.util.{PriorityEncoder, Reverse, log2Ceil}
 import tydi_lib.TydiModule
 
 class LastSeqProcessor(val n: Int, val d: Int) extends TydiModule {
@@ -18,7 +18,8 @@ class LastSeqProcessor(val n: Int, val d: Int) extends TydiModule {
   private var prevRed = prevReduced
   for ((last, reduced, newSeq, hasData) <- lasts.lazyZip(reducedLasts).lazyZip(newSeqIndictators).lazyZip(dataAt)) {
     // A new sequence denoted by last values alone is when a new last stops a dimension already stopped by the previous reduction.
-    newSeq := ((prevRed & last) > 0.U)
+    // For empty sequences lower dimensions do not need to be stopped, therefore the MSB index is checked.
+    newSeq := prevRed > 0.U && last > 0.U && PriorityEncoder(Reverse(prevRed)) <= PriorityEncoder(Reverse(last))
     reduced := Mux(newSeq | hasData, last, prevRed | last)
     prevRed = reduced
   }
