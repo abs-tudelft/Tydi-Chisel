@@ -23,9 +23,15 @@ object FilterCheck {
  * Implementation, defined in pack0.
  */
 class Tphc19_Filter extends Tphc19_Filter_interface {
+  lineItemsOutStream := DontCare
+  partsOutStream := DontCare
+  lineItemsInStream := DontCare
+  partsInStream := DontCare
+
   // Check p_brand = 'Brand#22'
   private val brandCheckMod = Module(new StringComparator("Brand#22"))
   brandCheckMod.in := partsInStream.el.P_Brand
+  brandCheckMod.out.ready := false.B
   val brandCheck: FilterCheck = FilterCheck(brandCheckMod.out.data(0), brandCheckMod.out.valid)
 
   // Check p_container in ('SM CASE', 'SM BOX', 'SM PACK', 'SM PKG')
@@ -35,6 +41,7 @@ class Tphc19_Filter extends Tphc19_Filter_interface {
                                                               Module(new StringComparator("SM PKG")))
   for (elem <- containerCheckMods) {
     elem.in := partsInStream.el.P_Container
+    elem.out.ready := false.B
   }
   val containerCheck: FilterCheck = FilterCheck(
     containerCheckMods.map(_.out.data(0)).reduce(_ || _),
@@ -46,6 +53,7 @@ class Tphc19_Filter extends Tphc19_Filter_interface {
                                                              Module(new StringComparator("AIR REG")))
   for (elem <- shipModeCheckMods) {
     elem.in := lineItemsInStream.el.L_ShipMode
+    elem.out.ready := false.B
   }
   val shipModeCheck: FilterCheck = FilterCheck(
     shipModeCheckMods.map(_.out.data(0)).reduce(_ || _),
@@ -55,6 +63,7 @@ class Tphc19_Filter extends Tphc19_Filter_interface {
   // Check l_shipinstruct = 'DELIVER IN PERSON'
   private val shipInstructMod = Module(new StringComparator("DELIVER IN PERSON"))
   shipInstructMod.in := lineItemsInStream.el.L_ShipInstruct
+  shipInstructMod.out.ready := false.B
   val shipInstructCheck: FilterCheck = FilterCheck(shipInstructMod.out.data(0), shipInstructMod.out.valid)
 
   // Check l_quantity >= 8 and l_quantity <= 8 + 10
@@ -90,7 +99,11 @@ class Tphc19_Filter extends Tphc19_Filter_interface {
 /**
  * Implementation, defined in pack0.
  */
-class Tphc19_Reducer extends Tphc19_Top_interface {}
+class Tphc19_Reducer extends Tphc19_Top_interface {
+  partsInStream := DontCare
+  lineItemsInStream := DontCare
+  revenueOutStream := DontCare
+}
 
 /**
  * Implementation, defined in pack0.

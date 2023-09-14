@@ -44,6 +44,7 @@ class StringComparator(compare: String) extends SubProcessorBase(new CharType, n
   }
 
   outStream.valid := resultReady
+  outStream.el.value := DontCare
 
   when (inStream.valid) {
     when (inStream.last(0)(0)) {
