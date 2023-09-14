@@ -16,10 +16,10 @@ class CharType extends BitsEl(8.W)
  * the string matches.
  * @param compare String to compare to
  */
-class StringComparator(compare: String) extends SubProcessorBase(new CharType, new BinaryResult)  {
+class StringComparator(compare: String) extends SubProcessorBase(new CharType, new BinaryResult) {
   private val charOb = new CharType
 
-  val stringLit: Seq[Int] = compare.map(_.intValue())
+  val stringLit: Seq[Int] = compare.map(_.toInt)
 
   val n: Int = compare.length
 //  val dataReg: CharType = Reg(charOb)
