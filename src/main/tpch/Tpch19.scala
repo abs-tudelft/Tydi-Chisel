@@ -109,24 +109,60 @@ class Tphc19_Reducer extends Tphc19_Top_interface {
  * Implementation, defined in pack0.
  */
 class Tphc19_Top extends Tphc19_Top_interface {
+  lineItemsInStream := DontCare
+  partsInStream := DontCare
+  revenueOutStream := DontCare
+
   // Modules
-  val filter = Module(new Tphc19_Filter)
-  val reducer = Module(new Tphc19_Reducer)
+  val filter: Tphc19_Filter = Module(new Tphc19_Filter)
+  val reducer: Tphc19_Reducer = Module(new Tphc19_Reducer)
 
   // Connections
   filter.lineItemsIn := lineItemsIn
+  filter.L_ShipInstructIn := L_ShipInstructIn
+  filter.L_ShipModeIn := L_ShipModeIn
+  filter.L_CommentIn := L_CommentIn
+  filter.L_CommitDateIn := L_CommitDateIn
+  filter.L_LineStatusIn := L_LineStatusIn
+  filter.L_ReceiptDateIn := L_ReceiptDateIn
+  filter.L_ReturnFlagIn := L_ReturnFlagIn
+  filter.L_ShipDateIn := L_ShipDateIn
+
   filter.partsIn := partsIn
+  filter.P_ContainerIn := P_ContainerIn
+  filter.P_BrandIn := P_BrandIn
+  filter.P_MfgrIn := P_MfgrIn
+  filter.P_NameIn := P_NameIn
+  filter.P_CommentIn := P_CommentIn
+  filter.P_TypeIn := P_TypeIn
+
   reducer.lineItemsIn := filter.lineItemsOut
+  reducer.L_ShipInstructIn := filter.L_ShipInstructOut
+  reducer.L_ShipModeIn := filter.L_ShipModeOut
+  reducer.L_CommentIn := filter.L_CommentOut
+  reducer.L_CommitDateIn := filter.L_CommitDateOut
+  reducer.L_LineStatusIn := filter.L_LineStatusOut
+  reducer.L_ReceiptDateIn := filter.L_ReceiptDateOut
+  reducer.L_ReturnFlagIn := filter.L_ReturnFlagOut
+  reducer.L_ShipDateIn := filter.L_ShipDateOut
+
   reducer.partsIn := filter.partsOut
+  reducer.P_ContainerIn := filter.P_ContainerOut
+  reducer.P_BrandIn := filter.P_BrandOut
+  reducer.P_MfgrIn := filter.P_MfgrOut
+  reducer.P_NameIn := filter.P_NameOut
+  reducer.P_CommentIn := filter.P_CommentOut
+  reducer.P_TypeIn := filter.P_TypeOut
+
   revenueOut := reducer.revenueOut
 }
 
 object Tpch19 extends App {
   println("Test123")
 
-  test(new Tphc19_Top()) { c =>
-    println(c.tydiCode)
-  }
+//  test(new Tphc19_Top()) { c =>
+//    println(c.tydiCode)
+//  }
 
   //  println(emitCHIRRTL(new Tphc19_Filter()))
   //  println(emitSystemVerilog(new Tphc19_Filter(), firtoolOpts = firNormalOpts))

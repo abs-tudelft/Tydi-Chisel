@@ -35,14 +35,14 @@ class Tphc19_Filter_interface extends TydiModule {
   /** IO of [[partsOutStream]] with output direction. */
   val partsOut = partsOutStream.toPhysical
 
-  val L_ShipInstructIn = lineItemsInStream.el.L_ShipInstruct.toPhysical
-  val L_ShipModeIn = lineItemsInStream.el.L_ShipMode.toPhysical
-  val L_CommentIn = lineItemsInStream.el.L_Comment.toPhysical
-  val L_CommitDateIn = lineItemsInStream.el.L_CommitDate.toPhysical
-  val L_LineStatusIn = lineItemsInStream.el.L_LineStatus.toPhysical
-  val L_ReceiptDateIn = lineItemsInStream.el.L_ReceiptDate.toPhysical
-  val L_ReturnFlagIn = lineItemsInStream.el.L_ReturnFlag.toPhysical
-  val L_ShipDateIn = lineItemsInStream.el.L_ShipDate.toPhysical
+  val L_ShipInstructIn = lineItemsInStream.el.L_ShipInstruct.flip.toPhysical
+  val L_ShipModeIn = lineItemsInStream.el.L_ShipMode.flip.toPhysical
+  val L_CommentIn = lineItemsInStream.el.L_Comment.flip.toPhysical
+  val L_CommitDateIn = lineItemsInStream.el.L_CommitDate.flip.toPhysical
+  val L_LineStatusIn = lineItemsInStream.el.L_LineStatus.flip.toPhysical
+  val L_ReceiptDateIn = lineItemsInStream.el.L_ReceiptDate.flip.toPhysical
+  val L_ReturnFlagIn = lineItemsInStream.el.L_ReturnFlag.flip.toPhysical
+  val L_ShipDateIn = lineItemsInStream.el.L_ShipDate.flip.toPhysical
 
   val L_ShipInstructOut = lineItemsOutStream.el.L_ShipInstruct.toPhysical
   val L_ShipModeOut = lineItemsOutStream.el.L_ShipMode.toPhysical
@@ -53,12 +53,12 @@ class Tphc19_Filter_interface extends TydiModule {
   val L_ReturnFlagOut = lineItemsOutStream.el.L_ReturnFlag.toPhysical
   val L_ShipDateOut = lineItemsOutStream.el.L_ShipDate.toPhysical
 
-  val P_ContainerIn = partsInStream.el.P_Container.toPhysical
-  val P_BrandIn = partsInStream.el.P_Brand.toPhysical
-  val P_MfgrIn = partsInStream.el.P_Mfgr.toPhysical
-  val P_NameIn = partsInStream.el.P_Name.toPhysical
-  val P_CommentIn = partsInStream.el.P_Comment.toPhysical
-  val P_TypeIn = partsInStream.el.P_Type.toPhysical
+  val P_ContainerIn = partsInStream.el.P_Container.flip.toPhysical
+  val P_BrandIn = partsInStream.el.P_Brand.flip.toPhysical
+  val P_MfgrIn = partsInStream.el.P_Mfgr.flip.toPhysical
+  val P_NameIn = partsInStream.el.P_Name.flip.toPhysical
+  val P_CommentIn = partsInStream.el.P_Comment.flip.toPhysical
+  val P_TypeIn = partsInStream.el.P_Type.flip.toPhysical
 
   val P_ContainerOut = partsOutStream.el.P_Container.toPhysical
   val P_BrandOut = partsOutStream.el.P_Brand.toPhysical
@@ -86,19 +86,19 @@ class Tphc19_Top_interface extends TydiModule {
   val revenueOut = revenueOutStream.toPhysical
 
 
-  val L_ShipInstructIn = lineItemsInStream.el.L_ShipInstruct.toPhysical
-  val L_ShipModeIn = lineItemsInStream.el.L_ShipMode.toPhysical
-  val L_CommentIn = lineItemsInStream.el.L_Comment.toPhysical
-  val L_CommitDateIn = lineItemsInStream.el.L_CommitDate.toPhysical
-  val L_LineStatusIn = lineItemsInStream.el.L_LineStatus.toPhysical
-  val L_ReceiptDateIn = lineItemsInStream.el.L_ReceiptDate.toPhysical
-  val L_ReturnFlagIn = lineItemsInStream.el.L_ReturnFlag.toPhysical
-  val L_ShipDateIn = lineItemsInStream.el.L_ShipDate.toPhysical
+  val L_ShipInstructIn = lineItemsInStream.el.L_ShipInstruct.flip.toPhysical
+  val L_ShipModeIn = lineItemsInStream.el.L_ShipMode.flip.toPhysical
+  val L_CommentIn = lineItemsInStream.el.L_Comment.flip.toPhysical
+  val L_CommitDateIn = lineItemsInStream.el.L_CommitDate.flip.toPhysical
+  val L_LineStatusIn = lineItemsInStream.el.L_LineStatus.flip.toPhysical
+  val L_ReceiptDateIn = lineItemsInStream.el.L_ReceiptDate.flip.toPhysical
+  val L_ReturnFlagIn = lineItemsInStream.el.L_ReturnFlag.flip.toPhysical
+  val L_ShipDateIn = lineItemsInStream.el.L_ShipDate.flip.toPhysical
 
-  val P_ContainerIn = partsInStream.el.P_Container.toPhysical
-  val P_BrandIn = partsInStream.el.P_Brand.toPhysical
-  val P_MfgrIn = partsInStream.el.P_Mfgr.toPhysical
-  val P_NameIn = partsInStream.el.P_Name.toPhysical
-  val P_CommentIn = partsInStream.el.P_Comment.toPhysical
-  val P_TypeIn = partsInStream.el.P_Type.toPhysical
+  val P_ContainerIn = partsInStream.el.P_Container.flip.toPhysical
+  val P_BrandIn = partsInStream.el.P_Brand.flip.toPhysical
+  val P_MfgrIn = partsInStream.el.P_Mfgr.flip.toPhysical
+  val P_NameIn = partsInStream.el.P_Name.flip.toPhysical
+  val P_CommentIn = partsInStream.el.P_Comment.flip.toPhysical
+  val P_TypeIn = partsInStream.el.P_Type.flip.toPhysical
 }
