@@ -22,17 +22,17 @@ class Tphc19_Filter_interface extends TydiModule {
   val lineItemsInStream = LineItem_stream().flip
   /** IO of [[lineItemsInStream]] with input direction. */
   val lineItemsIn = lineItemsInStream.toPhysical
-  /** Stream of [[lineItemsOut]] with input direction. */
-  val lineItemsOutStream = LineItem_stream().flip
-  /** IO of [[lineItemsOutStream]] with input direction. */
+  /** Stream of [[lineItemsOut]] with output direction. */
+  val lineItemsOutStream = LineItem_stream()
+  /** IO of [[lineItemsOutStream]] with output direction. */
   val lineItemsOut = lineItemsOutStream.toPhysical
   /** Stream of [[partsIn]] with input direction. */
   val partsInStream = Part_stream().flip
   /** IO of [[partsInStream]] with input direction. */
   val partsIn = partsInStream.toPhysical
-  /** Stream of [[partsOut]] with input direction. */
-  val partsOutStream = Part_stream().flip
-  /** IO of [[partsOutStream]] with input direction. */
+  /** Stream of [[partsOut]] with output direction. */
+  val partsOutStream = Part_stream()
+  /** IO of [[partsOutStream]] with output direction. */
   val partsOut = partsOutStream.toPhysical
 }
 

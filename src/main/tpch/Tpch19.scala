@@ -29,8 +29,10 @@ class Tphc19_Filter extends Tphc19_Filter_interface {
   val brandCheck: FilterCheck = FilterCheck(brandCheckMod.out.data(0), brandCheckMod.out.valid)
 
   // Check p_container in ('SM CASE', 'SM BOX', 'SM PACK', 'SM PKG')
-  private val containerTypes: Seq[String] = Seq("SM CASE", "SM BOX", "SM PACK", "SM PKG")
-  private val containerCheckMods: Seq[StringComparator] = containerTypes.map(new StringComparator(_)).map(Module(_))
+  private val containerCheckMods: Seq[StringComparator] = Seq(Module(new StringComparator("SM CASE")),
+                                                              Module(new StringComparator("SM BOX")),
+                                                              Module(new StringComparator("SM PACK")),
+                                                              Module(new StringComparator("SM PKG")))
   for (elem <- containerCheckMods) {
     elem.in := partsInStream.el.P_Container
   }
@@ -40,8 +42,8 @@ class Tphc19_Filter extends Tphc19_Filter_interface {
   )
 
   // Check l_shipmode in ('AIR', 'AIR REG')
-  private val shipModeTypes: Seq[String] = Seq("AIR", "AIR REG")
-  private val shipModeCheckMods: Seq[StringComparator] = shipModeTypes.map(new StringComparator(_)).map(Module(_))
+  private val shipModeCheckMods: Seq[StringComparator] = Seq(Module(new StringComparator("AIR")),
+                                                             Module(new StringComparator("AIR REG")))
   for (elem <- shipModeCheckMods) {
     elem.in := lineItemsInStream.el.L_ShipMode
   }
@@ -101,8 +103,8 @@ class Tphc19_Top extends Tphc19_Top_interface {
   // Connections
   filter.lineItemsIn := lineItemsIn
   filter.partsIn := partsIn
-  reducer.lineItemsIn := filter.lineItemsIn
-  reducer.partsIn := filter.partsIn
+  reducer.lineItemsIn := filter.lineItemsOut
+  reducer.partsIn := filter.partsOut
   revenueOut := reducer.revenueOut
 }
 

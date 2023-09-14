@@ -433,8 +433,11 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
       this.last := bundle.last
       this.valid := bundle.valid
       bundle.ready := this.ready
-      (this.data: Data).waiveAll :<>= (bundle.data: Data).waiveAll
-      (this.user: Data).waiveAll :<>= (bundle.user: Data).waiveAll
+      // Fixme how to handle this better
+      if (this.data.getWidth == bundle.data.getWidth)
+        (this.data: Data).waiveAll :<>= (bundle.data: Data).waiveAll
+      if (this.user.getWidth == bundle.user.getWidth)
+        (this.user: Data).waiveAll :<>= (bundle.user: Data).waiveAll
     } else {
       bundle.endi := this.endi
       bundle.stai := this.stai
@@ -442,8 +445,11 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
       bundle.last := this.last
       bundle.valid := this.valid
       this.ready := bundle.ready
-      (bundle.data: Data).waiveAll :<>= (this.data: Data).waiveAll
-      (bundle.user: Data).waiveAll :<>= (this.user: Data).waiveAll
+      // Fixme how to handle this better
+      if (this.data.getWidth == bundle.data.getWidth)
+        (bundle.data: Data).waiveAll :<>= (this.data: Data).waiveAll
+      if (this.user.getWidth == bundle.user.getWidth)
+        (bundle.user: Data).waiveAll :<>= (this.user: Data).waiveAll
     }
   }
 
