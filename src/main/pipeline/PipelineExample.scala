@@ -51,16 +51,17 @@ class NumberModuleOut extends TydiModule {
 
 class NonNegativeFilter extends SubProcessorBase(new NumberGroup, new NumberGroup) {
   val filter: Bool = inStream.el.value >= 0.S && inStream.valid
-  outStream.valid := filter
+//  outStream.valid := filter
   outStream.strb := filter
 
   inStream.ready := true.B
 }
 
 class Reducer extends SubProcessorBase(new NumberGroup, new Stats) with PipelineTypes {
-  val maxVal: BigInt = (BigInt(1) << dataWidth.get)-1  // Must work with BigInt or we get an overflow
+  val maxVal: BigInt = BigInt(Long.MaxValue)  // Must work with BigInt or we get an overflow
   val cMin: UInt = RegInit(maxVal.U(dataWidth))
   val cMax: UInt = RegInit(0.U(dataWidth))
+  val nValidSamples: Counter = Counter(Int.MaxValue)
   val nSamples: Counter = Counter(Int.MaxValue)
   val cSum: UInt = RegInit(0.U(dataWidth))
 
@@ -69,15 +70,18 @@ class Reducer extends SubProcessorBase(new NumberGroup, new Stats) with Pipeline
 
   when (inStream.valid) {
     val value = inStream.el.value.asUInt
-    cMin := cMin min value
-    cMax := cMax max value
-    cSum := cSum + value
     nSamples.inc()
+    when (inStream.strb(0)) {
+      cMin := cMin min value
+      cMax := cMax max value
+      cSum := cSum + value
+      nValidSamples.inc()
+    }
   }
   outStream.el.sum := cSum
   outStream.el.min := cMin
   outStream.el.max := cMax
-  outStream.el.average := cSum/nSamples.value
+  outStream.el.average := Mux(nValidSamples.value > 0.U, cSum/nValidSamples.value, 0.U)
 }
 
 class NumberModuleIn extends TydiModule {
