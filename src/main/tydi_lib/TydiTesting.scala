@@ -197,12 +197,13 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     }
   }
 
-  def printState(): String = {
+  def printState(renderer: Tel => String = _.toString()): String = {
     import printUtils._
     val stringBuilder = new StringBuilder
 
     val out = '↑'
     val in = '↓'
+    def logicSymbol(cond: Boolean): String = if (cond) "✔" else "✖"
     val streamDir = if (x.r) in else out
     val streamAntiDir = if (x.r) out else in
 
@@ -212,8 +213,8 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
       case e: ClockResolutionException => stringBuilder.append(s"State of \"${x.instanceName}\" $streamDir (unable to get clock):\n")
     }
     // Valid and ready signals
-    stringBuilder.append(s"valid $streamDir: ${x.valid.peek().litToBoolean}\t\t")
-    stringBuilder.append(s"ready $streamAntiDir: ${x.ready.peek().litToBoolean}\n")
+    stringBuilder.append(s"valid $streamDir: ${logicSymbol(x.valid.peek().litToBoolean)}\t\t\t")
+    stringBuilder.append(s"ready $streamAntiDir: ${logicSymbol(x.ready.peek().litToBoolean)}\n")
     // Stai and endi signals
     stringBuilder.append(s"stai ≥: ${x.stai.peek().litValue}\t\t\t")
     stringBuilder.append(s"endi ≤: ${x.endi.peek().litValue}\n")
@@ -236,7 +237,8 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     stringBuilder.append("Lanes:\n")
     x.data.zipWithIndex.foreach { case (lane, index) =>
       // Print data
-      stringBuilder.append(s"$index\tdata: ${lane.peek()}\n")
+      val dataString = renderer(lane.peek())
+      stringBuilder.append(s"$index\tdata: $dataString\n")
 
       // Last signal for this lane
       if (x.c >= 8) {
@@ -248,7 +250,7 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
       val active_stai = index >= x.stai.peek().litValue
       val active_endi = index <= x.endi.peek().litValue
       val active = active_strobe && active_stai && active_endi
-      stringBuilder.append(s"\tactive: $active \t(strb=$active_strobe; stai=$active_stai; endi=$active_endi;)\n")
+      stringBuilder.append(s"\tactive: ${logicSymbol(active)} \t\t(strb=${logicSymbol(active_strobe)}; stai=${logicSymbol(active_stai)}; endi=${logicSymbol(active_endi)};)\n")
     }
 
     stringBuilder.toString
