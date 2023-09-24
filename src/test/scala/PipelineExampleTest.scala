@@ -89,4 +89,34 @@ class PipelineExampleTest extends AnyFlatSpec with ChiselScalatestTester {
       c.out.expectDequeueNow(_.min -> 6.U, _.max -> 15.U, _.sum -> 33.U, _.average -> 11.U)
     }
   }
+
+  it should "process a sequence in parallel" in {
+    test(new PipelineWrap) { c =>
+      // Initialize signals
+      c.in.initSource().setSourceClock(c.clock)
+      c.out.initSink().setSinkClock(c.clock)
+
+      parallel(
+        {
+          // Enqueue first value
+          c.in.enqueueElNow(_.time -> 123976.U, _.value -> 6.S)
+          // Enqueue second value that should be filtered out, output remains constant
+          c.in.enqueueElNow(_.time -> 123976.U, _.value -> -6.S)
+          // Enqueue second valid value
+          c.in.enqueueElNow(_.time -> 124718.U, _.value -> 12.S)
+          // Enqueue second invalid value
+          c.in.enqueueElNow(_.time -> 124718.U, _.value -> -12.S)
+          // Enqueue third value
+          c.in.enqueueElNow(_.time -> 129976.U, _.value -> 15.S)
+        },
+        {
+          c.out.expectDequeue(_.min -> 6.U, _.max -> 6.U, _.sum -> 6.U, _.average -> 6.U)
+          c.out.expectDequeue(_.min -> 6.U, _.max -> 6.U, _.sum -> 6.U, _.average -> 6.U)
+          c.out.expectDequeue(_.min -> 6.U, _.max -> 12.U, _.sum -> 18.U, _.average -> 9.U)
+          c.out.expectDequeue(_.min -> 6.U, _.max -> 12.U, _.sum -> 18.U, _.average -> 9.U)
+          c.out.expectDequeue(_.min -> 6.U, _.max -> 15.U, _.sum -> 33.U, _.average -> 11.U)
+        }
+      )
+    }
+  }
 }
