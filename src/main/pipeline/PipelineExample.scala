@@ -52,7 +52,7 @@ class NumberModuleOut extends TydiModule {
 class NonNegativeFilter extends SubProcessorBase(new NumberGroup, new NumberGroup) {
   val filter: Bool = inStream.el.value >= 0.S && inStream.valid
 //  outStream.valid := filter
-  outStream.strb := filter
+  outStream.strb := inStream.strb(0) && filter
 
   inStream.ready := true.B
 }

@@ -162,7 +162,7 @@ class PipelineExamplePlusTest extends AnyFlatSpec with ChiselScalatestTester {
       parallel(
         {
           for (elems <- nums.grouped(4)) {
-            c.in.enqueueNow(vecLitFromSeq(elems))
+            c.in.enqueueNow(vecLitFromSeq(elems), endi = Some((elems.length-1).U))
           }
           c.in.enqueueElNow(numberGroup.Lit(_.time -> 0.U, _.value -> -1000.S), last = Some(1.U))
         },
