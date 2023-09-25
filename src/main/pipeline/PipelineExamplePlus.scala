@@ -81,7 +81,7 @@ class MultiReducer(val n: Int) extends SubProcessorBase(new NumberGroup, new Sta
   outStream.strb := 1.U
 }
 
-class MultiNonNegativeFilter extends MultiProcessorGeneral(Definition(new NonNegativeFilter), 6, new NumberGroup, new NumberGroup, d=1)
+class MultiNonNegativeFilter extends MultiProcessorGeneral(Definition(new NonNegativeFilter), 4, new NumberGroup, new NumberGroup, d=1)
 
 /*class PipelinePlusModule extends TydiModule {
   private val numberGroup = new NumberGroup
@@ -98,8 +98,12 @@ class MultiNonNegativeFilter extends MultiProcessorGeneral(Definition(new NonNeg
   statsOut := reducer.out
 }*/
 
-class PipelinePlusModule extends SimpleProcessorBase(new NumberGroup, new Stats, nIn = 4, nOut = 4, cIn = 7, cOut = 1) {
+class PipelinePlusModule extends SimpleProcessorBase(new NumberGroup, new Stats, nIn = 4, nOut = 1, cIn = 7, cOut = 1, dIn = 1, dOut = 1) {
   out := in.processWith(new MultiNonNegativeFilter).convert(20).processWith(new MultiReducer(4))
+}
+
+class PipelinePlusStart extends SimpleProcessorBase(new NumberGroup, new NumberGroup, nIn = 4, nOut = 4, cIn = 7, cOut = 7, dIn = 1, dOut = 1) {
+  out := in.processWith(new MultiNonNegativeFilter).convert(20)
 }
 
 object PipelineExamplePlus extends App {

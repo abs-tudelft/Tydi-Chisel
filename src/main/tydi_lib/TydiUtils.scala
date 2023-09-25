@@ -120,7 +120,7 @@ class MultiProcessorGeneral(val processorDef: Definition[SubProcessorSignalDef],
     processor.in.strb := in.strb(i)
     processor.in.valid := inputValid
     processor.in.last := inputLastVec(i)
-    processor.in.data := in.data((elSize*i+1)-1, elSize*i)  // Set data
+    processor.in.data := in.data(elSize*(i+1)-1, elSize*i)  // Set data
     processor.in.user := in.user
     processor.out.ready := outputReady
     processor
@@ -138,7 +138,7 @@ class MultiProcessorGeneral(val processorDef: Definition[SubProcessorSignalDef],
   outputReady := out.ready && out.valid  // Wait for all processors to be valid before we transmit the ready signal to them
 
   // Top lane is valid when sub is ready
-  out.strb := subProcessors.map(_.out.strb).reduce(Cat(_,_))
+  out.strb := subProcessors.map(_.out.strb).reduce((a, b) => Cat(b, a))
   // Re-concat all processor output data
-  out.data := subProcessors.map(_.out.data).reduce(Cat(_, _))
+  out.data := subProcessors.map(_.out.data).reduce((a, b) => Cat(b, a))
 }
