@@ -54,7 +54,7 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     x.el.poke(data)
     if (last.isDefined) {
       val lastLit = Vec(x.n, UInt(x.d.W)).Lit(0 -> last.get)
-      x.last.poke(lastLit)
+      x.last.pokePartial(lastLit)
     }
     if (strb.isDefined) {
       x.strb.poke(strb.get)

@@ -12,9 +12,10 @@ class PipelineExamplePlusTest extends AnyFlatSpec with ChiselScalatestTester {
 
   private val n: Int = 4
 
-  class NonNegativeFilterWrap extends TydiTestWrapper(new NonNegativeFilter, new NumberGroup, new NumberGroup)
+  class NonNegativeFilterWrap extends TydiTestWrapper(new MultiNonNegativeFilter, new NumberGroup, new NumberGroup)
   class ReducerWrap extends TydiProcessorTestWrapper(new MultiReducer(n))
   class PipelineWrap extends TydiTestWrapper(new PipelinePlusModule, new NumberGroup, new Stats)
+  class PipelineStartWrap extends TydiTestWrapper(new PipelinePlusStart, new NumberGroup, new NumberGroup)
 
   private val numberGroup = new NumberGroup
 
@@ -66,37 +67,76 @@ class PipelineExamplePlusTest extends AnyFlatSpec with ChiselScalatestTester {
     }
   }
 
+  it should "process a sequence in the first half" in {
+    test(new PipelineStartWrap) { c =>
+      // Initialize signals
+      c.in.initSource().setSourceClock(c.clock)
+      c.out.initSink().setSinkClock(c.clock)
+
+
+      val t1 = vecLitFromSeq(Seq(-3, 6, 9, 28))
+      val t1Last = Vec.Lit(0.U, 0.U, 0.U, 1.U)
+
+      parallel(
+        c.in.enqueueNow(t1, endi = Some(2.U), last = Some(t1Last)),
+        fork {
+          fork.withRegion(Monitor) {
+            println(c.in.printState(numRenderer))
+            println(c.out.printState(numRenderer))
+          }.joinAndStep(c.clock)
+        }
+      )
+      c.clock.step()
+      println(c.out.printState(numRenderer))
+    }
+  }
+
   it should "process a sequence" in {
     test(new PipelineWrap) { c =>
       // Initialize signals
       c.in.initSource().setSourceClock(c.clock)
       c.out.initSink().setSinkClock(c.clock)
 
-      // Enqueue first value
-      c.in.enqueueElNow(_.time -> 123976.U, _.value -> 6.S)
-      println(c.out.printState())
-      c.out.expectDequeueNow(_.min -> 6.U, _.max -> 6.U, _.sum -> 6.U, _.average -> 6.U)
 
-      // Enqueue second value that should be filtered out, output remains constant
-      c.in.enqueueElNow(_.time -> 123976.U, _.value -> -6.S)
-      println(c.out.printState())
-      c.out.expectDequeueNow(_.min -> 6.U, _.max -> 6.U, _.sum -> 6.U, _.average -> 6.U)
+      val t1 = vecLitFromSeq(Seq(-3, 6, 9, 28))
+      val t1Last = Vec.Lit(0.U, 0.U, 0.U, 1.U)
 
-      // Enqueue second valid value
-      c.in.enqueueElNow(_.time -> 124718.U, _.value -> 12.S)
-      println(c.out.printState())
-      c.out.expectDequeueNow(_.min -> 6.U, _.max -> 12.U, _.sum -> 18.U, _.average -> 9.U)
-
-      // Enqueue second invalid value
-      c.in.enqueueElNow(_.time -> 124718.U, _.value -> -12.S)
-      println(c.out.printState())
-      c.out.expectDequeueNow(_.min -> 6.U, _.max -> 12.U, _.sum -> 18.U, _.average -> 9.U)
-
-      // Enqueue third value
-      c.in.enqueueElNow(_.time -> 129976.U, _.value -> 15.S)
-      println(c.out.printState())
-      c.out.expectDequeueNow(_.min -> 6.U, _.max -> 15.U, _.sum -> 33.U, _.average -> 11.U)
+      parallel(
+        c.in.enqueueNow(t1, endi = Some(2.U), last = Some(t1Last)),
+        fork {
+          fork.withRegion(Monitor) {
+            println(c.in.printState(numRenderer))
+            println(c.out.printState(statsRenderer))
+          }.joinAndStep(c.clock)
+        }
+      )
+      c.clock.step()
+      println(c.out.printState(statsRenderer))
     }
+  }
+
+  case class StatsOb(count: BigInt = 0,
+                     min: BigInt = Long.MaxValue,
+                     max: BigInt = 0,
+                     sum: BigInt = 0,
+                     average: BigInt = 0)
+
+  def randomSeq(n: Int): Seq[BigInt] = {
+    Seq.fill(n)(
+      Int.MinValue + BigInt(32, scala.util.Random)
+    )
+  }
+
+  def processSeq(seq: Seq[BigInt]): StatsOb = {
+    val filtered = seq.filter(_ >= 0)
+    val sum = filtered.sum
+    StatsOb(
+      count = filtered.length,
+      min = filtered.min,
+      max = filtered.max,
+      sum = sum,
+      average = sum / filtered.size,
+    )
   }
 
   it should "process a sequence in parallel" in {
@@ -108,51 +148,28 @@ class PipelineExamplePlusTest extends AnyFlatSpec with ChiselScalatestTester {
       // define min and max values numbers are allowed to have
       val rangeMin = BigInt(Long.MinValue)
       val rangeMax = BigInt(Long.MaxValue)
-      val nNumbers = 100
+      val nNumbers = 50
 
       // Generate list of random numbers
-      val nums = Seq.fill(nNumbers)(
-        Int.MinValue + BigInt(32, scala.util.Random)
-      )
+      val nums = randomSeq(nNumbers)
+      val stats = processSeq(nums)
+      val filtered = nums.filter(_ >= 0)
 
-      // println(nums)
-
-      // Storage for statistics
-      case class StatsOb(count: BigInt = 0,
-                         min: BigInt = rangeMax,
-                         max: BigInt = 0,
-                         sum: BigInt = 0,
-                         average: BigInt = 0)
-
-      val initialStats = StatsOb()
-
-      // Calculate cumulative statistics
-      val statsSeq = nums.scanLeft(initialStats) { (s, num) =>
-        if (num >= 0) {
-          val newCount = s.count + 1
-          val newSum = s.sum + num
-          val newMin = s.min min num
-          val newMax = s.max max num
-          val newAverage = newSum / newCount
-
-          s.copy(count = newCount, min = newMin, max = newMax, sum = newSum, average = newAverage)
-        } else {
-          s
-        }
-      }.tail
+      println(s"Number of filtered items: ${stats.count}")
+      println(s"Stats: $stats")
 
       // Test component
       parallel(
         {
-          for ((elem, i) <- nums.zipWithIndex) {
-            c.in.enqueueElNow(_.time -> i.U, _.value -> elem.S)
+          for (elems <- nums.grouped(4)) {
+            c.in.enqueueNow(vecLitFromSeq(elems))
           }
+          c.in.enqueueElNow(numberGroup.Lit(_.time -> 0.U, _.value -> -1000.S), last = Some(1.U))
         },
         {
-          for ((elem, i) <- statsSeq.zipWithIndex) {
-            // println(s"$i: $elem")
-            c.out.expectDequeue(_.min -> elem.min.U, _.max -> elem.max.U, _.sum -> elem.sum.U, _.average -> elem.average.U)
-          }
+          c.out.waitForValid()
+          println(c.out.printState(statsRenderer))
+          c.out.expectDequeue(_.min -> stats.min.U, _.max -> stats.max.U, _.sum -> stats.sum.U, _.average -> stats.average.U)
         }
       )
     }

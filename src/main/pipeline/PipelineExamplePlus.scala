@@ -99,7 +99,7 @@ class MultiNonNegativeFilter extends MultiProcessorGeneral(Definition(new NonNeg
 }*/
 
 class PipelinePlusModule extends SimpleProcessorBase(new NumberGroup, new Stats, nIn = 4, nOut = 1, cIn = 7, cOut = 1, dIn = 1, dOut = 1) {
-  out := in.processWith(new MultiNonNegativeFilter).convert(20).processWith(new MultiReducer(4))
+  out := in.processWith(new MultiNonNegativeFilter).convert(50).processWith(new MultiReducer(4))
 }
 
 class PipelinePlusStart extends SimpleProcessorBase(new NumberGroup, new NumberGroup, nIn = 4, nOut = 4, cIn = 7, cOut = 7, dIn = 1, dOut = 1) {
