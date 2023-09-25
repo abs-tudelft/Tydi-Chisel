@@ -105,31 +105,40 @@ class MultiProcessorGeneral(val processorDef: Definition[SubProcessorSignalDef],
 
   val elSize: Int = eIn.getWidth
 
-  out.valid := true.B
-  out.last := 0.U
-  out.stai := 0.U
-  out.endi := 0.U
+  out.stai := in.stai
+  out.endi := in.endi
+
+  val inputValid: Bool = Wire(Bool())
+  val outputReady: Bool = Wire(Bool())
+  private val inputLastVec = in.lastVec
+  private val outputLastVec = out.lastVec
 
   private val subProcessors = for (i <- 0 until n) yield {
     val processor: Instance[SubProcessorSignalDef] = Instance(processorDef)
     //    val processor: SubProcessor = Module(new SubProcessor)
-    processor.in.strb := 1.U  // Static signal
     processor.in.stai := 0.U  // Static signal
     processor.in.endi := 0.U  // Static signal
-    processor.in.valid := in.strb(i)  // Sub input is valid when lane is valid
-    processor.in.last := DontCare
+    processor.in.strb := in.strb(i)
+    processor.in.valid := inputValid
+    processor.in.last := inputLastVec(i)
     processor.in.data := in.data((elSize*i+1)-1, elSize*i)  // Set data
     processor.in.user := in.user
-    processor.out.ready := out.ready
+    processor.out.ready := outputReady
     processor
   }
 
   out.user := subProcessors(0).out.user
+  out.last := outputLastVec.asUInt
 
   private val inputReadies = subProcessors.map(_.in.ready)
   in.ready := inputReadies.reduce(_&&_)  // Top input is ready when all the modules are ready
+  inputValid := in.ready && in.valid  // Wait for all processors to be ready before we transmit the valid signal to them
 
-  // Top lane is valid when sub is ready Todo: factor in out ready here
+  private val outputValids = subProcessors.map(_.out.valid)
+  out.valid := outputValids.reduce(_ && _) // Top output is valid when all the modules are valid
+  outputReady := out.ready && out.valid  // Wait for all processors to be valid before we transmit the ready signal to them
+
+  // Top lane is valid when sub is ready
   out.strb := subProcessors.map(_.out.strb).reduce(Cat(_,_))
   // Re-concat all processor output data
   out.data := subProcessors.map(_.out.data).reduce(Cat(_, _))
