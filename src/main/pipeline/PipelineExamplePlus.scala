@@ -16,7 +16,9 @@ import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
   inStream.ready := true.B
 }*/
 
-class MultiReducer extends SubProcessorBase(new NumberGroup, new Stats) with PipelineTypes {
+
+// Operating at C=1
+class MultiReducer(val n: Int) extends SubProcessorBase(new NumberGroup, new Stats, nIn=n) with PipelineTypes {
   val maxVal: BigInt = BigInt(Long.MaxValue)  // Must work with BigInt or we get an overflow
   val cMin: UInt = RegInit(maxVal.U(dataWidth))
   val cMax: UInt = RegInit(0.U(dataWidth))
@@ -24,19 +26,28 @@ class MultiReducer extends SubProcessorBase(new NumberGroup, new Stats) with Pip
   val nSamples: Counter = Counter(Int.MaxValue)
   val cSum: UInt = RegInit(0.U(dataWidth))
 
-  inStream.ready := true.B
-  outStream.valid := nSamples.value > 0.U
+  private val incomingItems = inStream.endi
+  private val last = inStream.last(n-1)
 
   when (inStream.valid) {
-    val value = inStream.el.value.asUInt
-    nSamples.inc()
-    when (inStream.strb(0)) {
-      cMin := cMin min value
-      cMax := cMax max value
-      cSum := cSum + value
-      nValidSamples.inc()
-    }
+    nSamples.value := nSamples.value + incomingItems
+    nValidSamples.value := nValidSamples.value + incomingItems
+
+    val values: Vec[UInt] = VecInit(inStream.data.zipWithIndex.map {
+      case (el, i) => Mux(i.U <= inStream.endi, el.value.asUInt, 0.U)
+    })
+
+    cMax := cMax max values.reduceTree(_ max _)
+    cSum := values.reduceTree(_ + _)
+
+    cMin := cMin min VecInit(inStream.data.zipWithIndex.map {
+      case (el, i) => Mux(i.U <= inStream.endi, el.value.asUInt, maxVal.U(dataWidth))
+    }).reduceTree(_ min _)
   }
+
+  inStream.ready := true.B
+  outStream.valid := nSamples.value > 0.U
+  outStream.last(0) := last
   outStream.el.sum := cSum
   outStream.el.min := cMin
   outStream.el.max := cMax
@@ -60,8 +71,8 @@ class MultiNonNegativeFilter extends MultiProcessorGeneral(Definition(new NonNeg
   statsOut := reducer.out
 }*/
 
-class PipelinePlusModule extends SimpleProcessorBase(new NumberGroup, new Stats) {
-  out := in.processWith(new MultiNonNegativeFilter).processWith(new MultiReducer())
+class PipelinePlusModule extends SimpleProcessorBase(new NumberGroup, new Stats, n=4, c=7) {
+  out := in.processWith(new MultiNonNegativeFilter).convert(20).processWith(new MultiReducer(4))
 }
 
 object PipelineExamplePlus extends App {
