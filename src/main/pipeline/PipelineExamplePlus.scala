@@ -26,24 +26,11 @@ class MultiReducer(val n: Int) extends SubProcessorBase(new NumberGroup, new Sta
   val cSumReg: UInt = RegInit(0.U(dataWidth))
   val nSamplesReg: UInt = RegInit(0.U(dataWidth))
   val lastReg: Bool = RegInit(false.B)
-  val cMin: UInt = Wire(UInt(dataWidth))
-  val cMax: UInt = Wire(UInt(dataWidth))
-  val cSum: UInt = Wire(UInt(dataWidth))
-  val nSamples: UInt = Wire(UInt(dataWidth))
 
   private val incomingItems = inStream.endi + 1.U(n.W)
   private val last: Bool = inStream.last(n-1)(0)
 
-  cMin := cMinReg
-  cMax := cMaxReg
-  cSum := cSumReg
-  nSamples := nSamplesReg
   lastReg := lastReg || last
-
-  cMinReg := cMin
-  cMaxReg := cMax
-  cSumReg := cSum
-  nSamplesReg := nSamples
 
   // Reset everything after transfer
   when(lastReg && outStream.ready) {
@@ -54,17 +41,18 @@ class MultiReducer(val n: Int) extends SubProcessorBase(new NumberGroup, new Sta
     lastReg := false.B
   }
 
+  // Do work when we have a valid transfer
   when (inStream.valid && inStream.ready) {
-    nSamples := nSamplesReg + incomingItems
+    nSamplesReg := nSamplesReg + incomingItems
 
     val values: Vec[UInt] = VecInit(inStream.data.zipWithIndex.map {
       case (el, i) => Mux(i.U <= inStream.endi, el.value.asUInt, 0.U)
     })
 
-    cMax := cMaxReg max values.reduceTree(_ max _)
-    cSum := cSumReg + values.reduceTree(_ + _)
+    cMaxReg := cMaxReg max values.reduceTree(_ max _)
+    cSumReg := cSumReg + values.reduceTree(_ + _)
 
-    cMin := cMinReg min VecInit(inStream.data.zipWithIndex.map {
+    cMinReg := cMinReg min VecInit(inStream.data.zipWithIndex.map {
       case (el, i) => Mux(i.U <= inStream.endi, el.value.asUInt, maxVal.U(dataWidth))
     }).reduceTree(_ min _)
   }
