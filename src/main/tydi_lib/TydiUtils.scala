@@ -99,9 +99,9 @@ abstract class SimpleProcessorBase(val eIn: TydiEl, eOut: TydiEl, val uIn: Data 
  * @param usIn Element type to use for input stream's `user` signals. Each sub-processor receives the same `user` signals.
  * @param usOut Element type to use for output stream's `user` signals. The output is set by the first sub-processor's `user` signals.
  */
-class MultiProcessorGeneral(val processorDef: Definition[SubProcessorSignalDef], val n: Int = 6, val eIn: TydiEl, val eOut: TydiEl, val usIn: Data = Null(), val usOut: Data = Null()) extends TydiModule {
-  val in: PhysicalStream = IO(Flipped(PhysicalStream(eIn, n=n, d=0, c=7, u=usIn)))
-  val out: PhysicalStream = IO(PhysicalStream(eOut, n=n, d=0, c=7, u=usOut))
+class MultiProcessorGeneral(val processorDef: Definition[SubProcessorSignalDef], val n: Int = 6, val eIn: TydiEl, val eOut: TydiEl, val usIn: Data = Null(), val usOut: Data = Null(), d: Int = 0) extends TydiModule {
+  val in: PhysicalStream = IO(Flipped(PhysicalStream(eIn, n=n, d=d, c=8, u=usIn)))
+  val out: PhysicalStream = IO(PhysicalStream(eOut, n=n, d=d, c=8, u=usOut))
 
   val elSize: Int = eIn.getWidth
 
