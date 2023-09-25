@@ -18,29 +18,44 @@ import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
 
 
 // Operating at C=1
-class MultiReducer(val n: Int) extends SubProcessorBase(new NumberGroup, new Stats, nIn=n) with PipelineTypes {
+class MultiReducer(val n: Int) extends SubProcessorBase(new NumberGroup, new Stats, nIn=n, dIn = 1, dOut = 1) with PipelineTypes {
   val maxVal: BigInt = BigInt(Long.MaxValue)  // Must work with BigInt or we get an overflow
 
   val cMinReg: UInt = RegInit(maxVal.U(dataWidth))
   val cMaxReg: UInt = RegInit(0.U(dataWidth))
   val cSumReg: UInt = RegInit(0.U(dataWidth))
+  val nSamplesReg: UInt = RegInit(0.U(dataWidth))
+  val lastReg: Bool = RegInit(false.B)
   val cMin: UInt = Wire(UInt(dataWidth))
   val cMax: UInt = Wire(UInt(dataWidth))
   val cSum: UInt = Wire(UInt(dataWidth))
+  val nSamples: UInt = Wire(UInt(dataWidth))
 
-  val nValidSamples: Counter = Counter(Int.MaxValue)
-  val nSamples: Counter = Counter(Int.MaxValue)
-
-  private val incomingItems = inStream.endi
-  private val last = inStream.last(n-1)
+  private val incomingItems = inStream.endi + 1.U(n.W)
+  private val last: Bool = inStream.last(n-1)(0)
 
   cMin := cMinReg
   cMax := cMaxReg
   cSum := cSumReg
+  nSamples := nSamplesReg
+  lastReg := lastReg || last
 
-  when (inStream.valid) {
-    nSamples.value := nSamples.value + incomingItems
-    nValidSamples.value := nValidSamples.value + incomingItems
+  cMinReg := cMin
+  cMaxReg := cMax
+  cSumReg := cSum
+  nSamplesReg := nSamples
+
+  // Reset everything after transfer
+  when(lastReg && outStream.ready) {
+    cMinReg := maxVal.U(dataWidth)
+    cMaxReg := 0.U(dataWidth)
+    cSumReg := 0.U(dataWidth)
+    nSamplesReg := 0.U
+    lastReg := false.B
+  }
+
+  when (inStream.valid && inStream.ready) {
+    nSamples := nSamplesReg + incomingItems
 
     val values: Vec[UInt] = VecInit(inStream.data.zipWithIndex.map {
       case (el, i) => Mux(i.U <= inStream.endi, el.value.asUInt, 0.U)
@@ -52,28 +67,15 @@ class MultiReducer(val n: Int) extends SubProcessorBase(new NumberGroup, new Sta
     cMin := cMinReg min VecInit(inStream.data.zipWithIndex.map {
       case (el, i) => Mux(i.U <= inStream.endi, el.value.asUInt, maxVal.U(dataWidth))
     }).reduceTree(_ min _)
-
-    // Reset everything after the last element
-    when (last >= 0.U) {
-      cMinReg := maxVal.U(dataWidth)
-      cMaxReg := 0.U(dataWidth)
-      cSumReg := 0.U(dataWidth)
-      nSamples.value := 0.U(dataWidth)
-      nValidSamples.value := 0.U(dataWidth)
-    }
   }
 
-  cMinReg := cMin
-  cMaxReg := cMax
-  cSumReg := cSum
-
-  inStream.ready := true.B
-  outStream.valid := last > 0.U
-  outStream.last(0) := last
-  outStream.el.sum := cSum
-  outStream.el.min := cMin
-  outStream.el.max := cMax
-  outStream.el.average := Mux(nValidSamples.value > 0.U, cSum/nValidSamples.value, 0.U)
+  inStream.ready := !lastReg
+  outStream.valid := lastReg
+  outStream.last(0) := lastReg
+  outStream.el.sum := cSumReg
+  outStream.el.min := cMinReg
+  outStream.el.max := cMaxReg
+  outStream.el.average := Mux(nSamplesReg > 0.U, cSumReg/nSamplesReg, 0.U)
   outStream.stai := 0.U
   outStream.endi := 1.U
   outStream.strb := 1.U

@@ -49,7 +49,7 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     Vec(x.n, x.getDataType).Lit(elems: _*)
   }
 
-  def enqueueElNow(data: Tel, last: Option[UInt] = None, strb: Option[UInt] = None): Unit = timescope {
+  def enqueueElNow(data: Tel, last: Option[UInt] = None, strb: Option[UInt] = None, stai: Option[UInt] = None, endi: Option[UInt] = None): Unit = timescope {
     // TODO: check for init
     x.el.poke(data)
     if (last.isDefined) {
@@ -59,6 +59,12 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     if (strb.isDefined) {
       x.strb.poke(strb.get)
     }
+    if (stai.isDefined) {
+      x.stai.poke(stai.get)
+    }
+    if (endi.isDefined) {
+      x.endi.poke(endi.get)
+    }
     x.valid.poke(true.B)
     fork
       .withRegion(Monitor) {
@@ -67,7 +73,7 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
       .joinAndStep(getSourceClock)
   }
 
-  def enqueueNow(data: Vec[Tel], last: Option[Vec[UInt]] = None, strb: Option[UInt] = None): Unit = timescope {
+  def enqueueNow(data: Vec[Tel], last: Option[Vec[UInt]] = None, strb: Option[UInt] = None, stai: Option[UInt] = None, endi: Option[UInt] = None): Unit = timescope {
     // TODO: check for init
     x.data.pokePartial(data)
     if (last.isDefined) {
@@ -75,6 +81,12 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     }
     if (strb.isDefined) {
       x.strb.poke(strb.get)
+    }
+    if (stai.isDefined) {
+      x.stai.poke(stai.get)
+    }
+    if (endi.isDefined) {
+      x.endi.poke(endi.get)
     }
     x.valid.poke(true.B)
     fork
@@ -156,7 +168,7 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     expectDequeue(litValue)
   }
 
-  def expectDequeueNow(data: Tel, last: Option[Vec[UInt]] = None, strb: Option[UInt] = None): Unit = timescope {
+  def expectDequeueNow(data: Tel, last: Option[Vec[UInt]] = None, strb: Option[UInt] = None, stai: Option[UInt] = None, endi: Option[UInt] = None): Unit = timescope {
     // TODO: check for init
     x.ready.poke(true.B)
     fork
@@ -165,6 +177,12 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
         x.el.expect(data)
         if (last.isDefined) {
           x.last.expect(last.get)
+        }
+        if (stai.isDefined) {
+          x.stai.expect(stai.get)
+        }
+        if (endi.isDefined) {
+          x.endi.expect(endi.get)
         }
         if (strb.isDefined) {
           x.strb.expect(strb.get)
