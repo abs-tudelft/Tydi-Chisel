@@ -49,6 +49,10 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     Vec(x.n, x.getDataType).Lit(elems: _*)
   }
 
+  def lastLit(elems: (Int, UInt)*): Vec[UInt] = {
+    Vec(x.n, UInt(x.d.W)).Lit(elems: _*)
+  }
+
   def enqueueElNow(data: Tel, last: Option[UInt] = None, strb: Option[UInt] = None, stai: Option[UInt] = None, endi: Option[UInt] = None): Unit = timescope {
     // TODO: check for init
     x.el.poke(data)
@@ -77,7 +81,7 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     // TODO: check for init
     x.data.pokePartial(data)
     if (last.isDefined) {
-      x.last.poke(last.get)
+      x.last.pokePartial(last.get)
     }
     if (strb.isDefined) {
       x.strb.poke(strb.get)
@@ -99,7 +103,7 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
   def enqueueEmptyNow(last: Option[Vec[UInt]] = None, strb: Option[UInt] = None, stai: Option[UInt] = None, endi: Option[UInt] = None): Unit = timescope {
     // TODO: check for init
     if (last.isDefined) {
-      x.last.poke(last.get)
+      x.last.pokePartial(last.get)
     }/* else {
       val litVals = Seq.tabulate(x.n)(i => (i -> 0.U))
       val lastLit = Vec(x.n, UInt(x.d.W)).Lit(litVals: _*)
