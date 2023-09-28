@@ -95,6 +95,34 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
       }.joinAndStep(getSourceClock)
   }
 
+  /** Send an empty transfer (no valid data lanes). Unless overridden, a strobe of 0's is sent. */
+  def enqueueEmptyNow(last: Option[Vec[UInt]] = None, strb: Option[UInt] = None, stai: Option[UInt] = None, endi: Option[UInt] = None): Unit = timescope {
+    // TODO: check for init
+    if (last.isDefined) {
+      x.last.poke(last.get)
+    }/* else {
+      val litVals = Seq.tabulate(x.n)(i => (i -> 0.U))
+      val lastLit = Vec(x.n, UInt(x.d.W)).Lit(litVals: _*)
+      x.last.poke(lastLit)
+    }*/
+    if (strb.isDefined) {
+      x.strb.poke(strb.get)
+    } else {
+      x.strb.poke(0.U)
+    }
+    if (stai.isDefined) {
+      x.stai.poke(stai.get)
+    }
+    if (endi.isDefined) {
+      x.endi.poke(endi.get)
+    }
+    x.valid.poke(true.B)
+    fork
+      .withRegion(Monitor) {
+        x.ready.expect(true.B)
+      }.joinAndStep(getSourceClock)
+  }
+
   def enqueueElNow(elems: (Tel => (Data, Data))*): Unit = timescope {
     val litValue = elLit(elems: _*) // Use splat operator to propagate repeated parameters
     enqueueElNow(litValue)
@@ -186,6 +214,31 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
         }
         if (strb.isDefined) {
           x.strb.expect(strb.get)
+        }
+      }
+      .joinAndStep(getSinkClock)
+  }
+
+  /** Expect an empty transfer (no valid data lanes). Unless overridden, a strobe of 0's is expected. */
+  def expectDequeueEmptyNow(last: Option[Vec[UInt]] = None, strb: Option[UInt] = None, stai: Option[UInt] = None, endi: Option[UInt] = None): Unit = timescope {
+    // TODO: check for init
+    x.ready.poke(true.B)
+    fork
+      .withRegion(Monitor) {
+        x.valid.expect(true.B)
+        if (strb.isDefined) {
+          x.strb.expect(strb.get)
+        } else {
+          x.strb.expect(0.U)
+        }
+        if (last.isDefined) {
+          x.last.expect(last.get)
+        }
+        if (stai.isDefined) {
+          x.stai.expect(stai.get)
+        }
+        if (endi.isDefined) {
+          x.endi.expect(endi.get)
         }
       }
       .joinAndStep(getSinkClock)
