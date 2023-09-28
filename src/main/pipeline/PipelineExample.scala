@@ -105,14 +105,14 @@ class NumberModuleIn extends TydiModule {
   statsOut := reducer.out
 }*/
 
-class TopLevelModule extends SimpleProcessorBase(new NumberGroup, new Stats) {
+class PipelineExampleModule extends SimpleProcessorBase(new NumberGroup, new Stats) {
   out := in.processWith(new NonNegativeFilter).processWith(new Reducer())
 }
 
 object PipelineExample extends App {
   println("Test123")
 
-  test(new TopLevelModule()) { c =>
+  test(new PipelineExampleModule()) { c =>
     println(c.tydiCode)
   }
 
@@ -122,10 +122,10 @@ object PipelineExample extends App {
 //  println(emitCHIRRTL(new Reducer()))
 //  println(emitSystemVerilog(new Reducer(), firtoolOpts = firNormalOpts))
 
-  println(emitCHIRRTL(new TopLevelModule()))
+  println(emitCHIRRTL(new PipelineExampleModule()))
 
   // These lines generate the Verilog output
-  println(emitSystemVerilog(new TopLevelModule(), firtoolOpts = firNormalOpts))
+  println(emitSystemVerilog(new PipelineExampleModule(), firtoolOpts = firNormalOpts))
 
   println("Done")
 }

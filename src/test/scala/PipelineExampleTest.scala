@@ -12,7 +12,7 @@ class PipelineExampleTest extends AnyFlatSpec with ChiselScalatestTester {
 
   class NonNegativeFilterWrap extends TydiTestWrapper(new NonNegativeFilter, new NumberGroup, new NumberGroup)
   class ReducerWrap extends TydiProcessorTestWrapper(new Reducer)
-  class PipelineWrap extends TydiTestWrapper(new TopLevelModule, new NumberGroup, new Stats)
+  class PipelineWrap extends TydiTestWrapper(new PipelineExampleModule, new NumberGroup, new Stats)
 
   it should "filter negative values" in {
     test(new NonNegativeFilterWrap) { c =>

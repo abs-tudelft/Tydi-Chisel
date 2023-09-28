@@ -29,11 +29,12 @@ class MultiReducer(val n: Int) extends SubProcessorBase(new NumberGroup, new Sta
 
   private val incomingItems = inStream.endi + 1.U(n.W)
   private val last: Bool = inStream.last(n-1)(0)
+  private val strb: Bool = inStream.strb(0)
 
   lastReg := lastReg || last
 
   // Reset everything after transfer
-  when(lastReg && outStream.ready) {
+  when (lastReg && outStream.ready) {
     cMinReg := maxVal.U(dataWidth)
     cMaxReg := 0.U(dataWidth)
     cSumReg := 0.U(dataWidth)
@@ -42,7 +43,7 @@ class MultiReducer(val n: Int) extends SubProcessorBase(new NumberGroup, new Sta
   }
 
   // Do work when we have a valid transfer
-  when (inStream.valid && inStream.ready) {
+  when (inStream.valid && inStream.ready && strb) {
     nSamplesReg := nSamplesReg + incomingItems
 
     val values: Vec[UInt] = VecInit(inStream.data.zipWithIndex.map {
@@ -69,7 +70,9 @@ class MultiReducer(val n: Int) extends SubProcessorBase(new NumberGroup, new Sta
   outStream.strb := 1.U
 }
 
-class MultiNonNegativeFilter extends MultiProcessorGeneral(Definition(new NonNegativeFilter), 4, new NumberGroup, new NumberGroup, d=1)
+class MultiNonNegativeFilter extends MultiProcessorGeneral(
+  Definition(new NonNegativeFilter), 4, new NumberGroup, new NumberGroup, d=1
+)
 
 /*class PipelinePlusModule extends TydiModule {
   private val numberGroup = new NumberGroup
@@ -86,11 +89,15 @@ class MultiNonNegativeFilter extends MultiProcessorGeneral(Definition(new NonNeg
   statsOut := reducer.out
 }*/
 
-class PipelinePlusModule extends SimpleProcessorBase(new NumberGroup, new Stats, nIn = 4, nOut = 1, cIn = 7, cOut = 1, dIn = 1, dOut = 1) {
-  out := in.processWith(new MultiNonNegativeFilter).convert(50).processWith(new MultiReducer(4))
+class PipelinePlusModule(n: Int = 4, bufferSize: Int = 50)  extends SimpleProcessorBase(
+  new NumberGroup, new Stats, nIn = n, nOut = 1, cIn = 7, cOut = 1, dIn = 1, dOut = 1) {
+  out := in.processWith(new MultiNonNegativeFilter)
+           .convert(bufferSize)
+           .processWith(new MultiReducer(n))
 }
 
-class PipelinePlusStart extends SimpleProcessorBase(new NumberGroup, new NumberGroup, nIn = 4, nOut = 4, cIn = 7, cOut = 7, dIn = 1, dOut = 1) {
+class PipelinePlusStart extends SimpleProcessorBase(
+  new NumberGroup, new NumberGroup, nIn = 4, nOut = 4, cIn = 7, cOut = 7, dIn = 1, dOut = 1) {
   out := in.processWith(new MultiNonNegativeFilter).convert(20)
 }
 
