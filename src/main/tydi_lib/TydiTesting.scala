@@ -19,7 +19,7 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
   def initSource(): this.type = {
     x.valid.poke(false.B)
     x.stai.poke(0.U)
-    x.endi.poke(0.U)
+    x.endi.poke((x.n-1).U)
     x.strb.poke(((1 << x.n)-1).U(x.n.W)) // Set strobe to all 1's
 //    val lasts = (0 until x.n).map(index => (index, 0.U))
 //    x.last.poke(x.last.Lit(lasts: _*))
@@ -49,15 +49,25 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     Vec(x.n, x.getDataType).Lit(elems: _*)
   }
 
-  def enqueueElNow(data: Tel, last: Option[UInt] = None, strb: Option[UInt] = None): Unit = timescope {
+  def lastLit(elems: (Int, UInt)*): Vec[UInt] = {
+    Vec(x.n, UInt(x.d.W)).Lit(elems: _*)
+  }
+
+  def enqueueElNow(data: Tel, last: Option[UInt] = None, strb: Option[UInt] = None, stai: Option[UInt] = None, endi: Option[UInt] = None): Unit = timescope {
     // TODO: check for init
     x.el.poke(data)
     if (last.isDefined) {
       val lastLit = Vec(x.n, UInt(x.d.W)).Lit(0 -> last.get)
-      x.last.poke(lastLit)
+      x.last.pokePartial(lastLit)
     }
     if (strb.isDefined) {
       x.strb.poke(strb.get)
+    }
+    if (stai.isDefined) {
+      x.stai.poke(stai.get)
+    }
+    if (endi.isDefined) {
+      x.endi.poke(endi.get)
     }
     x.valid.poke(true.B)
     fork
@@ -67,14 +77,48 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
       .joinAndStep(getSourceClock)
   }
 
-  def enqueueNow(data: Vec[Tel], last: Option[Vec[UInt]] = None, strb: Option[UInt] = None): Unit = timescope {
+  def enqueueNow(data: Vec[Tel], last: Option[Vec[UInt]] = None, strb: Option[UInt] = None, stai: Option[UInt] = None, endi: Option[UInt] = None): Unit = timescope {
     // TODO: check for init
     x.data.pokePartial(data)
     if (last.isDefined) {
-      x.last.poke(last.get)
+      x.last.pokePartial(last.get)
     }
     if (strb.isDefined) {
       x.strb.poke(strb.get)
+    }
+    if (stai.isDefined) {
+      x.stai.poke(stai.get)
+    }
+    if (endi.isDefined) {
+      x.endi.poke(endi.get)
+    }
+    x.valid.poke(true.B)
+    fork
+      .withRegion(Monitor) {
+        x.ready.expect(true.B)
+      }.joinAndStep(getSourceClock)
+  }
+
+  /** Send an empty transfer (no valid data lanes). Unless overridden, a strobe of 0's is sent. */
+  def enqueueEmptyNow(last: Option[Vec[UInt]] = None, strb: Option[UInt] = None, stai: Option[UInt] = None, endi: Option[UInt] = None): Unit = timescope {
+    // TODO: check for init
+    if (last.isDefined) {
+      x.last.pokePartial(last.get)
+    }/* else {
+      val litVals = Seq.tabulate(x.n)(i => (i -> 0.U))
+      val lastLit = Vec(x.n, UInt(x.d.W)).Lit(litVals: _*)
+      x.last.poke(lastLit)
+    }*/
+    if (strb.isDefined) {
+      x.strb.poke(strb.get)
+    } else {
+      x.strb.poke(0.U)
+    }
+    if (stai.isDefined) {
+      x.stai.poke(stai.get)
+    }
+    if (endi.isDefined) {
+      x.endi.poke(endi.get)
     }
     x.valid.poke(true.B)
     fork
@@ -156,7 +200,7 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     expectDequeue(litValue)
   }
 
-  def expectDequeueNow(data: Tel, last: Option[Vec[UInt]] = None, strb: Option[UInt] = None): Unit = timescope {
+  def expectDequeueNow(data: Tel, last: Option[Vec[UInt]] = None, strb: Option[UInt] = None, stai: Option[UInt] = None, endi: Option[UInt] = None): Unit = timescope {
     // TODO: check for init
     x.ready.poke(true.B)
     fork
@@ -166,8 +210,39 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
         if (last.isDefined) {
           x.last.expect(last.get)
         }
+        if (stai.isDefined) {
+          x.stai.expect(stai.get)
+        }
+        if (endi.isDefined) {
+          x.endi.expect(endi.get)
+        }
         if (strb.isDefined) {
           x.strb.expect(strb.get)
+        }
+      }
+      .joinAndStep(getSinkClock)
+  }
+
+  /** Expect an empty transfer (no valid data lanes). Unless overridden, a strobe of 0's is expected. */
+  def expectDequeueEmptyNow(last: Option[Vec[UInt]] = None, strb: Option[UInt] = None, stai: Option[UInt] = None, endi: Option[UInt] = None): Unit = timescope {
+    // TODO: check for init
+    x.ready.poke(true.B)
+    fork
+      .withRegion(Monitor) {
+        x.valid.expect(true.B)
+        if (strb.isDefined) {
+          x.strb.expect(strb.get)
+        } else {
+          x.strb.expect(0.U)
+        }
+        if (last.isDefined) {
+          x.last.expect(last.get)
+        }
+        if (stai.isDefined) {
+          x.stai.expect(stai.get)
+        }
+        if (endi.isDefined) {
+          x.endi.expect(endi.get)
         }
       }
       .joinAndStep(getSinkClock)
@@ -197,12 +272,13 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     }
   }
 
-  def printState(): String = {
+  def printState(renderer: Tel => String = _.toString()): String = {
     import printUtils._
     val stringBuilder = new StringBuilder
 
     val out = '↑'
     val in = '↓'
+    def logicSymbol(cond: Boolean): String = if (cond) "✔" else "✖"
     val streamDir = if (x.r) in else out
     val streamAntiDir = if (x.r) out else in
 
@@ -212,8 +288,8 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
       case e: ClockResolutionException => stringBuilder.append(s"State of \"${x.instanceName}\" $streamDir (unable to get clock):\n")
     }
     // Valid and ready signals
-    stringBuilder.append(s"valid $streamDir: ${x.valid.peek().litToBoolean}\t\t")
-    stringBuilder.append(s"ready $streamAntiDir: ${x.ready.peek().litToBoolean}\n")
+    stringBuilder.append(s"valid $streamDir: ${logicSymbol(x.valid.peek().litToBoolean)}\t\t\t")
+    stringBuilder.append(s"ready $streamAntiDir: ${logicSymbol(x.ready.peek().litToBoolean)}\n")
     // Stai and endi signals
     stringBuilder.append(s"stai ≥: ${x.stai.peek().litValue}\t\t\t")
     stringBuilder.append(s"endi ≤: ${x.endi.peek().litValue}\n")
@@ -236,7 +312,8 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     stringBuilder.append("Lanes:\n")
     x.data.zipWithIndex.foreach { case (lane, index) =>
       // Print data
-      stringBuilder.append(s"$index\tdata: ${lane.peek()}\n")
+      val dataString = renderer(lane.peek())
+      stringBuilder.append(s"$index\tdata: $dataString\n")
 
       // Last signal for this lane
       if (x.c >= 8) {
@@ -248,7 +325,7 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
       val active_stai = index >= x.stai.peek().litValue
       val active_endi = index <= x.endi.peek().litValue
       val active = active_strobe && active_stai && active_endi
-      stringBuilder.append(s"\tactive: $active \t(strb=$active_strobe; stai=$active_stai; endi=$active_endi;)\n")
+      stringBuilder.append(s"\tactive: ${logicSymbol(active)} \t\t(strb=${logicSymbol(active_strobe)}; stai=${logicSymbol(active_stai)}; endi=${logicSymbol(active_endi)};)\n")
     }
 
     stringBuilder.toString

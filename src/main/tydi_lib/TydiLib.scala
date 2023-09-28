@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util.{Cat, log2Ceil}
 import chisel3.internal.firrtl.Width
 import tydi_lib.ReverseTranspiler._
+import tydi_lib.utils.ComplexityConverter
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -338,6 +339,13 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
   val user: UInt = Output(UInt(userElWidth.W))
   val last: UInt = Output(UInt(lastWidth.W))
 
+  def lastVec: Vec[UInt] = {
+    if (d > 0)
+      VecInit.tabulate(n)(i => last((i+1)*d-1, i*d))
+    else
+      VecInit.tabulate(n)(i => 0.U(0.W))
+  }
+
   // Stream mounting function
   def :=[Tel <: TydiEl, Tus <: Data](bundle: PhysicalStreamDetailed[Tel, Tus]): Unit = {
     // This could be done with a :<>= but I like being explicit here to catch possible errors.
@@ -365,6 +373,17 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
 
   def processWith[T <: SubProcessorSignalDef](module: => T)(implicit parentModule: TydiModule): PhysicalStream = {
     val processingModule = parentModule.Module(module)
+    processingModule.in := this
+    processingModule.out
+  }
+
+  def processWithMod[T <: SubProcessorSignalDef](module: T): PhysicalStream = {
+    module.in := this
+    module.out
+  }
+
+  def convert(memSize: Int)(implicit parentModule: TydiModule): PhysicalStream = {
+    val processingModule = parentModule.Module(new ComplexityConverter(this, memSize))
     processingModule.in := this
     processingModule.out
   }

@@ -269,12 +269,20 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   def printOutputState(c: ManualComplexityConverterFancyWrapper[BitsEl]): Unit = {
-    print(c.out.printState())
+    print(c.out.printState(charRenderer))
     println(s"Data: ${c.out.data.peek().map(_.asChar)}")
     println(s"Items ready: ${c.exposed_outItemsReadyCount.peekInt()}, transfer: ${c.exposed_transferOutItemCount.peekInt()}")
     println(s"Last: ${printVecBinary(c.out.last.peek())}")
     println(s"Stai: ${c.out.stai.peek().litValue}, Endi: ${c.out.endi.peek().litValue}")
   }
+
+  def charRenderer(c: BitsEl): String = {
+    s"'${c.value.litValue.toChar}'"
+  }
+
+  val renderer: Option[BitsEl => String] = Some(c =>  {
+    s"'${c.value.litValue.toChar}'"
+  })
 
   it should "process 'she is a dolphin'" in {
     val stream = PhysicalStream(char, n = 4, d = 2, c = 8)
@@ -487,9 +495,18 @@ class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
           println(s"All data: ${c.exposed_storedData.peek().asString}")
 
           // ce____
-          c.in.enqueueNow(t4,
-            last = Some(Vec.Lit("b00".U(2.W), "b00".U, "b01".U, "b10".U, "b11".U, "b10".U)),
-            strb = Some(bRev("110000")))
+//          c.in.enqueueNow(t4,
+//            last = Some(Vec.Lit("b00".U(2.W), "b00".U, "b01".U, "b10".U, "b11".U, "b10".U)),
+//            strb = Some(bRev("110000")))
+
+          timescope({
+            c.in.valid.poke(true)
+            c.in.data.pokePartial(t4)
+            c.in.last.poke(Vec.Lit("b00".U(2.W), "b00".U, "b01".U, "b10".U, "b11".U, "b10".U))
+            c.in.strb.poke(bRev("110000"))
+            print(c.in.printState(charRenderer))
+            c.clock.step(1)
+          })
           println("\n-- Transfer in 4")
           println(s"All data: ${c.exposed_storedData.peek().asString}")
 
