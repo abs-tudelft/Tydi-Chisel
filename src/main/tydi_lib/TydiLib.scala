@@ -42,12 +42,27 @@ sealed trait TydiEl extends Bundle with TranspileExtend {
     case _ => true
   })
 
+  /** Gets stream elements. I.e. filters out any `Element`s that are data */
+  def getStreamElements: Seq[PhysicalStreamDetailed[_, _]] = getElements.collect {
+    case x: PhysicalStreamDetailed[_, _] => x
+  }
+
   /** Recursive way of getting only the data elements of the stream. */
   def getDataElementsRec: Seq[Data] = {
     val els = getDataElements
     val mapped = els.flatMap(x => x match {
       case x: TydiEl => x.getDataElementsRec
       case x: Bundle => x.getElements
+      case _ => x :: Nil
+    })
+    mapped
+  }
+
+  /** Recursive way of getting only the sub-stream elements of the stream. */
+  def getSubStreamsRec: Seq[PhysicalStreamDetailed[_, _]] = {
+    val els = getStreamElements
+    val mapped = els.flatMap(x => x match {
+      case x: TydiEl => x.getSubStreamsRec
       case _ => x :: Nil
     })
     mapped
@@ -409,6 +424,18 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
   val user: Tus = Output(u)
   val last: Vec[UInt] = Output(Vec(n, UInt(d.W)))
 
+  if (r) {
+    do_flip()
+  }
+
+  /** Private do_flip function that executes the flip, depth-first, but does not influence [[r]] */
+  private def do_flip(): Unit = {
+    val subStreams: Seq[PhysicalStreamDetailed[_, _]] = el.getStreamElements
+    for (subStream <- subStreams) {
+      subStream.flip
+    }
+  }
+
   override def getDataType: Tel = e
   override def getUserType: Tus = u
 
@@ -425,8 +452,10 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
 
   def el: Tel = data(0)
 
+  /** This public method flips a stream's and sub-streams' directions. */
   def flip: PhysicalStreamDetailed[Tel, Tus] = {
     r = !r
+    do_flip()
     this
   }
 
