@@ -402,6 +402,12 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
     processingModule.in := this
     processingModule.out
   }
+
+  def duplicate(k: Int)(implicit parentModule: TydiModule): Vec[PhysicalStream] = {
+    val processingModule = parentModule.Module(new StreamDuplicator(k, this))
+    processingModule.in := this
+    processingModule.out
+  }
 }
 
 object PhysicalStream {

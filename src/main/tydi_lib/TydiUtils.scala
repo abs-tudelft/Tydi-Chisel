@@ -142,3 +142,32 @@ class MultiProcessorGeneral(val processorDef: Definition[SubProcessorSignalDef],
   // Re-concat all processor output data
   out.data := subProcessors.map(_.out.data).reduce((a, b) => Cat(b, a))
 }
+
+/**
+ * A stream-duplication component. One input stream is duplicated to `k` output streams.
+ * @param k Number of streams to produce
+ * @param template Stream to use as a template
+ */
+class StreamDuplicator(val k: Int = 2, template: PhysicalStream) extends TydiModule {
+  // Create a new instance so we do not need to worry about directions.
+  private val stream: PhysicalStream = PhysicalStream(new BitsEl(template.elWidth.W), n = template.n, d = template.d, c = template.c, u = UInt(template.userElWidth.W))
+  val in: PhysicalStream = IO(Flipped(stream))
+  val out: Vec[PhysicalStream] = IO(Vec(k, stream))
+
+  // Connect input to all the output streams
+  out.foreach(_ := in)
+
+  // Input is ready when all the output streams are ready
+  in.ready := out.map(_.ready).reduce(_&&_)
+  for (valid <- out.map(_.valid)) {
+    // Set output streams valid when input is valid and all outputs are ready
+    valid := in.valid && in.ready
+  }
+}
+
+object StreamDuplicator {
+  def apply(k: Int, template: PhysicalStream): Vec[PhysicalStream] = {
+    val mod = Module(new StreamDuplicator(k, template))
+    mod.out
+  }
+}
