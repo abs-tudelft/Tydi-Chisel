@@ -505,7 +505,18 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
       this.last := bundle.last
       this.valid := bundle.valid
       bundle.ready := this.ready
-      (this.data: Data) :<>= (bundle.data: Data)
+      // The following would work if we would know with certainty that the signals are oriented the right way,
+      // but we do not -.-
+      // (this.data: Data) :<>= (bundle.data: Data)
+
+      // Using the recursive function leads to duplicate connections when connecting sub-streams, but the non-recursive
+      // version cannot be used, since non-stream elements could still contain stream items.
+      for ((thisData, bundleData) <- this.getDataElementsRec.zip(bundle.getDataElementsRec)) {
+        thisData :<>= bundleData
+      }
+      for ((thisStream: PhysicalStreamDetailed[_,_], bundleStream: PhysicalStreamDetailed[_,_]) <- this.getStreamElements.zip(bundle.getStreamElements)) {
+        thisStream := bundleStream
+      }
       (this.user: Data) :<>= (bundle.user: Data)
     } else {
       bundle.endi := this.endi
@@ -514,7 +525,18 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
       bundle.last := this.last
       bundle.valid := this.valid
       this.ready := bundle.ready
-      (bundle.data: Data) :<>= (this.data: Data)
+      // The following would work if we would know with certainty that the signals are oriented the right way,
+      // but we do not -.-
+      // (bundle.data: Data) :<>= (this.data: Data)
+
+      // Using the recursive function leads to duplicate connections when connecting sub-streams, but the non-recursive
+      // version cannot be used, since non-stream elements could still contain stream items.
+      for ((thisData, bundleData) <- this.getDataElementsRec.zip(bundle.getDataElementsRec)) {
+        bundleData :<>= thisData
+      }
+      for ((thisStream: PhysicalStreamDetailed[_, _], bundleStream: PhysicalStreamDetailed[_, _]) <- this.getStreamElements.zip(bundle.getStreamElements)) {
+        bundleStream := thisStream
+      }
       (bundle.user: Data) :<>= (this.user: Data)
     }
   }
