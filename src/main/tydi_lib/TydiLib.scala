@@ -429,6 +429,7 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
   val data: Vec[Tel] = Output(Vec(n, e))
   val user: Tus = Output(u)
   val last: Vec[UInt] = Output(Vec(n, UInt(d.W)))
+  private var extraNestedStreamsPruned = false
 
   if (r) {
     do_flip()
@@ -436,9 +437,23 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
 
   /** Private do_flip function that executes the flip, depth-first, but does not influence [[r]] */
   private def do_flip(): Unit = {
-    val subStreams: Seq[PhysicalStreamDetailed[_, _]] = el.getStreamElements
+    val subStreams: Seq[PhysicalStreamDetailed[_, _]] = getStreamElements
     for (subStream <- subStreams) {
       subStream.flip
+    }
+  }
+
+  /**
+   * In the Tydi standard, only one nested stream is exposed, even if the parent has multiple lanes.
+   * In Tydi-lib, each lane has its own nested stream copy. Therefore, this method discards each "extra"
+   * nested stream by connecting it to `DontCare`.
+   */
+  private def dumpExtraNestedStreams(): Unit = {
+    if (extraNestedStreamsPruned) return
+    extraNestedStreamsPruned = true
+    val extraStreams = data.tail.flatMap(_.getStreamElements)
+    for (stream <- extraStreams) {
+      stream := DontCare
     }
   }
 
@@ -450,6 +465,8 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
   def getUserConcat: UInt = user.asUInt
 
   override def getDataElementsRec: Seq[Data] = data.flatMap(_.getDataElementsRec)
+
+  override def getStreamElements: Seq[PhysicalStreamDetailed[_, _]] = data.flatMap(_.getStreamElements)
 
   def getUserElements: Seq[Data] = user match {
     case x: Bundle => x.getElements
@@ -466,6 +483,7 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
   }
 
   def toPhysical: PhysicalStream = {
+    dumpExtraNestedStreams()
     val flip = r
     val stream = new PhysicalStream(e, n, d, c, u)
     val io = IO(if (flip) Flipped(stream) else stream)
@@ -487,8 +505,19 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
       this.last := bundle.last
       this.valid := bundle.valid
       bundle.ready := this.ready
-      (this.data: Data).waiveAll :<>= (bundle.data: Data).waiveAll
-      (this.user: Data).waiveAll :<>= (bundle.user: Data).waiveAll
+      // The following would work if we would know with certainty that the signals are oriented the right way,
+      // but we do not -.-
+      // (this.data: Data) :<>= (bundle.data: Data)
+
+      // Using the recursive function leads to duplicate connections when connecting sub-streams, but the non-recursive
+      // version cannot be used, since non-stream elements could still contain stream items.
+      for ((thisData, bundleData) <- this.getDataElementsRec.zip(bundle.getDataElementsRec)) {
+        thisData :<>= bundleData
+      }
+      for ((thisStream: PhysicalStreamDetailed[_,_], bundleStream: PhysicalStreamDetailed[_,_]) <- this.getStreamElements.zip(bundle.getStreamElements)) {
+        thisStream := bundleStream
+      }
+      (this.user: Data) :<>= (bundle.user: Data)
     } else {
       bundle.endi := this.endi
       bundle.stai := this.stai
@@ -496,8 +525,19 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](private val e: Tel, n: 
       bundle.last := this.last
       bundle.valid := this.valid
       this.ready := bundle.ready
-      (bundle.data: Data).waiveAll :<>= (this.data: Data).waiveAll
-      (bundle.user: Data).waiveAll :<>= (this.user: Data).waiveAll
+      // The following would work if we would know with certainty that the signals are oriented the right way,
+      // but we do not -.-
+      // (bundle.data: Data) :<>= (this.data: Data)
+
+      // Using the recursive function leads to duplicate connections when connecting sub-streams, but the non-recursive
+      // version cannot be used, since non-stream elements could still contain stream items.
+      for ((thisData, bundleData) <- this.getDataElementsRec.zip(bundle.getDataElementsRec)) {
+        bundleData :<>= thisData
+      }
+      for ((thisStream: PhysicalStreamDetailed[_, _], bundleStream: PhysicalStreamDetailed[_, _]) <- this.getStreamElements.zip(bundle.getStreamElements)) {
+        bundleStream := thisStream
+      }
+      (bundle.user: Data) :<>= (this.user: Data)
     }
   }
 
