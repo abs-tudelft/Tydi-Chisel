@@ -1,13 +1,14 @@
+package nl.tudelft.tydi_chisel
+
 import chisel3._
-import chiseltest._
-import chiseltest.experimental.expose
-import org.scalatest.flatspec.AnyFlatSpec
-import tydi_lib._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chisel3.experimental.VecLiterals.{AddObjectLiteralConstructor, AddVecLiteralConstructor}
-import tydi_lib.testing.Conversions._
-import tydi_lib.testing.printUtils.{binaryFromUint, printVec, printVecBinary}
-import tydi_lib.utils.ComplexityConverter
+import chiseltest._
+import chiseltest.experimental.expose
+import nl.tudelft.tydi_chisel.Conversions._
+import nl.tudelft.tydi_chisel.printUtils._
+import nl.tudelft.tydi_chisel.utils._
+import org.scalatest.flatspec.AnyFlatSpec
 
 
 class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {

@@ -1,10 +1,11 @@
+package nl.tudelft.tydi_chisel.chisel
+
 // From https://github.com/ucb-bar/chiseltest/blob/main/src/test/scala/chiseltest/tests/BundleLiteralsSpec.scala
 
-import org.scalatest._
-
 import chisel3._
-import chiseltest._
 import chisel3.experimental.BundleLiterals._
+import chiseltest._
+import org.scalatest._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

@@ -1,11 +1,10 @@
-package TydiTesting
+package nl.tudelft.tydi_chisel
 
 import chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
-import tydi_lib._
-import tydi_lib.testing.Conversions._
-import pipeline._
+import nl.tudelft.tydi_chisel.Conversions._
+import nl.tudelft.tydi_chisel.examples.pipeline._
 
 class PipelineExampleTest extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "PipelineExample"

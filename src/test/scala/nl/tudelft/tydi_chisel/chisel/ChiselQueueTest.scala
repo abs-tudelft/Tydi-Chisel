@@ -1,12 +1,13 @@
+package nl.tudelft.tydi_chisel.chisel
+
 // Taken from https://github.com/ucb-bar/chiseltest/blob/main/src/test/scala/chiseltest/tests/QueueTest.scala
 // and https://github.com/ucb-bar/chiseltest/blob/main/src/test/scala/chiseltest/tests/TestUtils.scala
 
-import org.scalatest._
 import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chisel3.experimental.VecLiterals.AddVecLiteralConstructor
-import chiseltest._
 import chisel3.util._
+import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 
 class StaticModule[T <: Data](ioLit: T) extends Module {

@@ -1,11 +1,11 @@
-package complexity_converter
+package nl.tudelft.tydi_chisel.complexity_converter
 
 import chisel3._
 import chisel3.experimental.VecLiterals.AddObjectLiteralConstructor
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
-import tydi_lib.testing.printUtils.{binaryFromUint, printVecBinary}
-import tydi_lib.utils.LastSeqProcessor
+import nl.tudelft.tydi_chisel.printUtils._
+import nl.tudelft.tydi_chisel.utils.LastSeqProcessor
 
 class LastSeqProcessorTest extends AnyFlatSpec with ChiselScalatestTester {
   def UIntVec(elems: Int*): Vec[UInt] = {

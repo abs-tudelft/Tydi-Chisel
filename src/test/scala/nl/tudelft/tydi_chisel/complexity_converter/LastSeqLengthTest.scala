@@ -1,13 +1,12 @@
-package complexity_converter
+package nl.tudelft.tydi_chisel.complexity_converter
 
 import chisel3._
 import chisel3.experimental.VecLiterals.{AddObjectLiteralConstructor, AddVecLiteralConstructor}
 import chiseltest._
 import chiseltest.experimental.expose
 import org.scalatest.flatspec.AnyFlatSpec
-import tydi_lib._
-import tydi_lib.testing.printUtils.binaryFromUint
-import tydi_lib.utils.LastSeqLength
+import nl.tudelft.tydi_chisel.printUtils.binaryFromUint
+import nl.tudelft.tydi_chisel.utils.LastSeqLength
 
 class LastSeqLengthTest extends AnyFlatSpec with ChiselScalatestTester {
 

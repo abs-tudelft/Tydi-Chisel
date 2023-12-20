@@ -1,14 +1,10 @@
-package TydiTesting
+package nl.tudelft.tydi_chisel
 
-import org.scalatest._
 import chisel3._
-import chiseltest._
-import chisel3.util._
-import org.scalatest.flatspec.AnyFlatSpec
-import tydi_lib._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
-import chisel3.experimental.VecLiterals.AddVecLiteralConstructor
-import tydi_lib.testing.Conversions._
+import chiseltest._
+import org.scalatest.flatspec.AnyFlatSpec
+import nl.tudelft.tydi_chisel.Conversions._
 
 class SimplePassthroughModule[T <: TydiEl](ioType: T) extends SubProcessorBase(ioType, ioType)
 
@@ -19,7 +15,7 @@ class TydiPassthroughModule[T <: TydiEl](ioType: T) extends TydiModule {
   out := in
 }
 
-//class QueueModule[T <: TydiEl](ioType: T, entries: Int) extends SubProcessorSignalDef {
+//class nl.tudelft.tydi_chisel.QueueModule[T <: TydiEl](ioType: T, entries: Int) extends SubProcessorSignalDef {
 //  val out: PhysicalStream = IO(PhysicalStream(ioType))
 //  val in: PhysicalStream = IO(PhysicalStream(ioType))
 //  out <> Queue(in, entries)

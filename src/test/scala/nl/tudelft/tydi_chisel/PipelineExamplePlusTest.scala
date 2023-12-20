@@ -1,11 +1,12 @@
+package nl.tudelft.tydi_chisel
+
 import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chisel3.experimental.VecLiterals.{AddObjectLiteralConstructor, AddVecLiteralConstructor}
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
-import pipeline._
-import tydi_lib._
-import tydi_lib.testing.Conversions._
+import nl.tudelft.tydi_chisel.Conversions._
+import nl.tudelft.tydi_chisel.examples.pipeline._
 
 class PipelineExamplePlusTest extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "PipelineExamplePlus"

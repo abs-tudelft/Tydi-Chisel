@@ -1,13 +1,10 @@
+package nl.tudelft.tydi_chisel
+
 import chisel3._
-import chiseltest._
-import chiseltest.experimental.expose
-import org.scalatest.flatspec.AnyFlatSpec
-import tydi_lib._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
-import chisel3.experimental.VecLiterals.{AddObjectLiteralConstructor, AddVecLiteralConstructor}
-import tydi_lib.testing.Conversions._
-import tydi_lib.testing.printUtils.{binaryFromUint, printVec, printVecBinary}
-import tydi_lib.utils.ComplexityConverter
+import chisel3.experimental.VecLiterals.AddObjectLiteralConstructor
+import chiseltest._
+import org.scalatest.flatspec.AnyFlatSpec
 
 class TydiComplianceTest extends AnyFlatSpec with ChiselScalatestTester {
   def byteType: UInt = UInt(8.W)
@@ -38,7 +35,7 @@ class TydiComplianceTest extends AnyFlatSpec with ChiselScalatestTester {
 
   def dataLit(value1: UInt, value2: UInt): DataType = dataType.Lit(_.value1 -> value1, _.value2 -> value2)
 
-  behavior of "TydiComplianceTest"
+  behavior of "nl.tudelft.tydi_chisel.TydiComplianceTest"
   // test class body here
 
   it should "be tydi-compliant" in {
