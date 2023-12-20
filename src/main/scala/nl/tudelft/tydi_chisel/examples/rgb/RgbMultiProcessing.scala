@@ -1,6 +1,6 @@
-package rgb
+package nl.tudelft.tydi_chisel.examples.rgb
 
-import tydi_lib._
+import nl.tudelft.tydi_chisel._
 import chisel3._
 import chisel3.experimental.hierarchy._
 import chisel3.util.Cat

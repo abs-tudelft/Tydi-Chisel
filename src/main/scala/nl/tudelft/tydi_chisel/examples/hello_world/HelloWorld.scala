@@ -1,7 +1,9 @@
-import tydi_lib._
+package nl.tudelft.tydi_chisel.examples.hello_world
+
+import nl.tudelft.tydi_chisel._
 import chisel3._
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
-import tydi_lib.utils.ComplexityConverter
+import nl.tudelft.tydi_chisel.utils.ComplexityConverter
 
 trait myTypes {
   def HelloWorldStreamType: PhysicalStreamDetailed[BitsEl, Null] = PhysicalStreamDetailed(BitsEl(8.W), n = 6, d = 2, c = 7, u = new Null())

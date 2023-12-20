@@ -1,3 +1,5 @@
+package nl.tudelft.tydi_chisel.examples.chisel
+
 import chisel3._
 import chisel3.util.Counter
 import circt.stage.ChiselStage

@@ -1,6 +1,6 @@
-package timestamped_message
+package nl.tudelft.tydi_chisel.examples.timestamped_message
 
-import tydi_lib._
+import nl.tudelft.tydi_chisel._
 import chisel3._
 import chisel3.internal.firrtl.Width
 import chiseltest.RawTester.test

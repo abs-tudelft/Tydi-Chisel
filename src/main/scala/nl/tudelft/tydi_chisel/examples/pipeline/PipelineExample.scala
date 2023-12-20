@@ -1,6 +1,6 @@
-package pipeline
+package nl.tudelft.tydi_chisel.examples.pipeline
 
-import tydi_lib._
+import nl.tudelft.tydi_chisel._
 import chisel3._
 import chisel3.internal.firrtl.Width
 import chisel3.util.Counter

@@ -1,6 +1,6 @@
-package rgb
+package nl.tudelft.tydi_chisel.examples.rgb
 
-import tydi_lib._
+import nl.tudelft.tydi_chisel._
 import chisel3._
 import chisel3.internal.firrtl.Width
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
