@@ -6,27 +6,27 @@ import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import nl.tudelft.tydi_chisel.Conversions._
 
-class SimplePassthroughModule[T <: TydiEl](ioType: T) extends SubProcessorBase(ioType, ioType)
-
-class TydiPassthroughModule[T <: TydiEl](ioType: T) extends TydiModule {
-//  val mod = Module(new SimplePassthroughModule(ioType))
-  val out = IO(new PhysicalStreamDetailed(ioType, c=8))
-  val in = IO(Flipped(new PhysicalStreamDetailed(ioType, c=7, r=true)))
-  out := in
-}
-
-//class nl.tudelft.tydi_chisel.QueueModule[T <: TydiEl](ioType: T, entries: Int) extends SubProcessorSignalDef {
-//  val out: PhysicalStream = IO(PhysicalStream(ioType))
-//  val in: PhysicalStream = IO(PhysicalStream(ioType))
-//  out <> Queue(in, entries)
-//}
-
-class MyBundle extends Group {
-  val a = UInt(8.W)
-  val b = Bool()
-}
-
 class TydiStreamDriverTest extends AnyFlatSpec with ChiselScalatestTester {
+  class MyBundle extends Group {
+    val a = UInt(8.W)
+    val b = Bool()
+  }
+
+  class SimplePassthroughModule[T <: TydiEl](ioType: T) extends SubProcessorBase(ioType, ioType)
+
+  class TydiPassthroughModule[T <: TydiEl](ioType: T) extends TydiModule {
+    //  val mod = Module(new SimplePassthroughModule(ioType))
+    val out = IO(new PhysicalStreamDetailed(ioType, c=8))
+    val in = IO(Flipped(new PhysicalStreamDetailed(ioType, c=7, r=true)))
+    out := in
+  }
+
+  //class nl.tudelft.tydi_chisel.QueueModule[T <: TydiEl](ioType: T, entries: Int) extends SubProcessorSignalDef {
+  //  val out: PhysicalStream = IO(PhysicalStream(ioType))
+  //  val in: PhysicalStream = IO(PhysicalStream(ioType))
+  //  out <> Queue(in, entries)
+  //}
+
   behavior of "Testers2 with Queue"
 
   it should "pass through an aggregate" in {
