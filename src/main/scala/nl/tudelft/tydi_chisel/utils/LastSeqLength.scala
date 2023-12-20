@@ -1,8 +1,8 @@
-package tydi_lib.utils
+package nl.tudelft.tydi_chisel.utils
 
 import chisel3._
 import chisel3.util.{PriorityEncoder, log2Ceil}
-import tydi_lib.TydiModule
+import nl.tudelft.tydi_chisel.TydiModule
 
 class LastSeqLength(val n: Int, val d: Int) extends TydiModule {
   val lasts = IO(Input(Vec(n, UInt(d.W))))

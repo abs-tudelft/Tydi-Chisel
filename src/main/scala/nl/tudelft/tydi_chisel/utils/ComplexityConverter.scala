@@ -1,8 +1,8 @@
-package tydi_lib.utils
+package nl.tudelft.tydi_chisel.utils
 
 import chisel3.util.{Cat, PopCount, PriorityEncoder, log2Ceil}
 import chisel3._
-import tydi_lib.{PhysicalStream, SubProcessorSignalDef, TydiEl}
+import nl.tudelft.tydi_chisel.{PhysicalStream, SubProcessorSignalDef, TydiEl}
 
 /**
  * Component that can be used to convert a high complexity stream to a low complexity stream.

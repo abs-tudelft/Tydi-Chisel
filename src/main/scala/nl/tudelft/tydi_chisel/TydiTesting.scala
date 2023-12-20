@@ -1,11 +1,11 @@
-package tydi_lib.testing
+package nl.tudelft.tydi_chisel
 
 import chiseltest._
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chisel3.experimental.VecLiterals.AddVecLiteralConstructor
-import tydi_lib.{PhysicalStreamDetailed, TydiEl}
+import nl.tudelft.tydi_chisel.{PhysicalStreamDetailed, TydiEl}
 import scala.language.implicitConversions
 
 object Conversions {

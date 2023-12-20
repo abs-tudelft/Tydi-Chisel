@@ -1,4 +1,4 @@
-package tydi_lib
+package nl.tudelft.tydi_chisel
 
 import chisel3.Data
 import scala.collection.mutable
