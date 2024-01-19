@@ -78,10 +78,15 @@ class Reducer extends SubProcessorBase(new NumberGroup, new Stats) with Pipeline
       nValidSamples.inc()
     }
   }
+
+  outStream.last(0) := inStream.last(0)
   outStream.el.sum := cSum
   outStream.el.min := cMin
   outStream.el.max := cMax
   outStream.el.average := Mux(nValidSamples.value > 0.U, cSum/nValidSamples.value, 0.U)
+  outStream.stai := 0.U
+  outStream.endi := 1.U
+  outStream.strb := outStream.valid
 }
 
 class NumberModuleIn extends TydiModule {
