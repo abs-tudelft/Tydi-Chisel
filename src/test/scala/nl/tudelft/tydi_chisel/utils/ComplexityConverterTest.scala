@@ -1,4 +1,4 @@
-package nl.tudelft.tydi_chisel
+package nl.tudelft.tydi_chisel.utils
 
 import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
@@ -7,11 +7,11 @@ import chiseltest._
 import chiseltest.experimental.expose
 import nl.tudelft.tydi_chisel.Conversions._
 import nl.tudelft.tydi_chisel.printUtils._
-import nl.tudelft.tydi_chisel.utils._
+import nl.tudelft.tydi_chisel._
 import org.scalatest.flatspec.AnyFlatSpec
 
 
-class StreamConverterTest extends AnyFlatSpec with ChiselScalatestTester {
+class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
   class MyEl extends Group {
     val a: UInt = UInt(8.W)
     val b: UInt = UInt(4.W)
