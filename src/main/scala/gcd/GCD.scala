@@ -18,8 +18,8 @@ class GCD extends Module {
     val outputValid   = Output(Bool())
   })
 
-  val x  = Reg(UInt())
-  val y  = Reg(UInt())
+  val x = Reg(UInt())
+  val y = Reg(UInt())
 
   when(x > y) { x := x - y }
     .otherwise { y := y - x }
@@ -29,6 +29,6 @@ class GCD extends Module {
     y := io.value2
   }
 
-  io.outputGCD := x
+  io.outputGCD   := x
   io.outputValid := y === 0.U
 }

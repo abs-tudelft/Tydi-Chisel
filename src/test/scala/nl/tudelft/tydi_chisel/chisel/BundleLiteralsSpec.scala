@@ -60,8 +60,8 @@ class BundleLiteralsSpec extends AnyFlatSpec with ChiselScalatestTester with Mat
     test(new PassthroughModule(new DoubleElements)) { c =>
       c.in.poke(chiselTypeOf(c.in).Lit(_.a -> 0.U, _.b -> 1.U))
       val output = c.out.peek()
-      output.a.litValue should be (0)
-      output.b.litValue should be (1)
+      output.a.litValue should be(0)
+      output.b.litValue should be(1)
     }
   }
 
@@ -73,7 +73,7 @@ class BundleLiteralsSpec extends AnyFlatSpec with ChiselScalatestTester with Mat
     }
   }
 
-  class ABundle extends Bundle { val a = Bool() }
+  class ABundle extends Bundle { val a = Bool()    }
   class BBundle extends Bundle { val b = UInt(4.W) }
   class BundleOfBundle extends Bundle {
     val foo = new ABundle

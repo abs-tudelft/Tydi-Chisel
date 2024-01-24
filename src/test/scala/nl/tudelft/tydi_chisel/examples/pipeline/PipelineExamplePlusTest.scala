@@ -14,9 +14,9 @@ class PipelineExamplePlusTest extends AnyFlatSpec with ChiselScalatestTester {
   private val n: Int = 4
 
   class NonNegativeFilterWrap extends TydiTestWrapper(new MultiNonNegativeFilter, new NumberGroup, new NumberGroup)
-  class ReducerWrap extends TydiProcessorTestWrapper(new MultiReducer(n))
-  class PipelineWrap extends TydiTestWrapper(new PipelinePlusModule, new NumberGroup, new Stats)
-  class PipelineStartWrap extends TydiTestWrapper(new PipelinePlusStart, new NumberGroup, new NumberGroup)
+  class ReducerWrap           extends TydiProcessorTestWrapper(new MultiReducer(n))
+  class PipelineWrap          extends TydiTestWrapper(new PipelinePlusModule, new NumberGroup, new Stats)
+  class PipelineStartWrap     extends TydiTestWrapper(new PipelinePlusStart, new NumberGroup, new NumberGroup)
 
   private val numberGroup = new NumberGroup
 
@@ -39,7 +39,7 @@ class PipelineExamplePlusTest extends AnyFlatSpec with ChiselScalatestTester {
       c.in.initSource().setSourceClock(c.clock)
       c.out.initSink().setSinkClock(c.clock)
 
-      val t1 = vecLitFromSeq(Seq(3, 6, 9, 28))
+      val t1     = vecLitFromSeq(Seq(3, 6, 9, 28))
       val t1Last = Vec.Lit(0.U, 0.U, 0.U, 1.U)
 
       c.in.enqueueNow(t1, endi = Some(2.U), last = Some(t1Last))
@@ -50,9 +50,9 @@ class PipelineExamplePlusTest extends AnyFlatSpec with ChiselScalatestTester {
 
       println(c.out.printState(statsRenderer))
 
-      val t2 = vecLitFromSeq(Seq(18, 6, 9, 28))
+      val t2     = vecLitFromSeq(Seq(18, 6, 9, 28))
       val t2Last = Vec.Lit(0.U, 0.U, 0.U, 0.U)
-      val t3 = vecLitFromSeq(Seq(3, 10, 12, 0))
+      val t3     = vecLitFromSeq(Seq(3, 10, 12, 0))
       val t3Last = Vec.Lit(0.U, 0.U, 0.U, 1.U)
 
       c.clock.step()
@@ -74,17 +74,18 @@ class PipelineExamplePlusTest extends AnyFlatSpec with ChiselScalatestTester {
       c.in.initSource().setSourceClock(c.clock)
       c.out.initSink().setSinkClock(c.clock)
 
-
-      val t1 = vecLitFromSeq(Seq(-3, 6, 9, 28))
+      val t1     = vecLitFromSeq(Seq(-3, 6, 9, 28))
       val t1Last = Vec.Lit(0.U, 0.U, 0.U, 1.U)
 
       parallel(
         c.in.enqueueNow(t1, endi = Some(2.U), last = Some(t1Last)),
         fork {
-          fork.withRegion(Monitor) {
-            println(c.in.printState(numRenderer))
-            println(c.out.printState(numRenderer))
-          }.joinAndStep(c.clock)
+          fork
+            .withRegion(Monitor) {
+              println(c.in.printState(numRenderer))
+              println(c.out.printState(numRenderer))
+            }
+            .joinAndStep(c.clock)
         }
       )
       c.clock.step()
@@ -98,17 +99,18 @@ class PipelineExamplePlusTest extends AnyFlatSpec with ChiselScalatestTester {
       c.in.initSource().setSourceClock(c.clock)
       c.out.initSink().setSinkClock(c.clock)
 
-
-      val t1 = vecLitFromSeq(Seq(-3, 6, 9, 28))
+      val t1     = vecLitFromSeq(Seq(-3, 6, 9, 28))
       val t1Last = Vec.Lit(0.U, 0.U, 0.U, 1.U)
 
       parallel(
         c.in.enqueueNow(t1, endi = Some(2.U), last = Some(t1Last)),
         fork {
-          fork.withRegion(Monitor) {
-            println(c.in.printState(numRenderer))
-            println(c.out.printState(statsRenderer))
-          }.joinAndStep(c.clock)
+          fork
+            .withRegion(Monitor) {
+              println(c.in.printState(numRenderer))
+              println(c.out.printState(statsRenderer))
+            }
+            .joinAndStep(c.clock)
         }
       )
       c.clock.step()
@@ -116,28 +118,22 @@ class PipelineExamplePlusTest extends AnyFlatSpec with ChiselScalatestTester {
     }
   }
 
-  case class StatsOb(count: BigInt = 0,
-                     min: BigInt = Long.MaxValue,
-                     max: BigInt = 0,
-                     sum: BigInt = 0,
-                     average: BigInt = 0)
+  case class StatsOb(
+    count: BigInt = 0,
+    min: BigInt = Long.MaxValue,
+    max: BigInt = 0,
+    sum: BigInt = 0,
+    average: BigInt = 0
+  )
 
   def randomSeq(n: Int): Seq[BigInt] = {
-    Seq.fill(n)(
-      Int.MinValue + BigInt(32, scala.util.Random)
-    )
+    Seq.fill(n)(Int.MinValue + BigInt(32, scala.util.Random))
   }
 
   def processSeq(seq: Seq[BigInt]): StatsOb = {
     val filtered = seq.filter(_ >= 0)
-    val sum = filtered.sum
-    StatsOb(
-      count = filtered.length,
-      min = filtered.min,
-      max = filtered.max,
-      sum = sum,
-      average = sum / filtered.size,
-    )
+    val sum      = filtered.sum
+    StatsOb(count = filtered.length, min = filtered.min, max = filtered.max, sum = sum, average = sum / filtered.size)
   }
 
   it should "process a sequence in parallel" in {
@@ -152,8 +148,8 @@ class PipelineExamplePlusTest extends AnyFlatSpec with ChiselScalatestTester {
       val nNumbers = 50
 
       // Generate list of random numbers
-      val nums = randomSeq(nNumbers)
-      val stats = processSeq(nums)
+      val nums     = randomSeq(nNumbers)
+      val stats    = processSeq(nums)
       val filtered = nums.filter(_ >= 0)
 
       println(s"Number of filtered items: ${stats.count}")
@@ -163,14 +159,18 @@ class PipelineExamplePlusTest extends AnyFlatSpec with ChiselScalatestTester {
       parallel(
         {
           for (elems <- nums.grouped(4)) {
-            c.in.enqueueNow(vecLitFromSeq(elems), endi = Some((elems.length-1).U))
+            c.in.enqueueNow(vecLitFromSeq(elems), endi = Some((elems.length - 1).U))
           }
           c.in.enqueueEmptyNow(last = Some(c.in.lastLit(0 -> 1.U)))
-        },
-        {
+        }, {
           c.out.waitForValid()
           println(c.out.printState(statsRenderer))
-          c.out.expectDequeue(_.min -> stats.min.U, _.max -> stats.max.U, _.sum -> stats.sum.U, _.average -> stats.average.U)
+          c.out.expectDequeue(
+            _.min     -> stats.min.U,
+            _.max     -> stats.max.U,
+            _.sum     -> stats.sum.U,
+            _.average -> stats.average.U
+          )
         }
       )
     }

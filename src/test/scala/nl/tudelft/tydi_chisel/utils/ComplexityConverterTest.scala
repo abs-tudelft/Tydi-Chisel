@@ -6,10 +6,9 @@ import chisel3.experimental.VecLiterals.{AddObjectLiteralConstructor, AddVecLite
 import chiseltest._
 import chiseltest.experimental.expose
 import nl.tudelft.tydi_chisel.Conversions._
-import nl.tudelft.tydi_chisel.printUtils._
 import nl.tudelft.tydi_chisel._
+import nl.tudelft.tydi_chisel.printUtils._
 import org.scalatest.flatspec.AnyFlatSpec
-
 
 class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
   class MyEl extends Group {
@@ -25,52 +24,59 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
     Integer.parseInt(num.reverse, 2).U
   }
 
-  class ComplexityConverterWrapper(template: PhysicalStream, memSize: Int) extends ComplexityConverter(template, memSize) {
-    val exposed_indexMask: UInt = expose(in.indexMask)
-    val exposed_laneValidity: UInt = expose(in.laneValidity)
-    val exposed_currentWriteIndex: UInt = expose(currentWriteIndex)
-    val exposed_seriesStored: UInt = expose(seriesStored)
-    val exposed_outItemsReadyCount: UInt = expose(outItemsReadyCount)
+  class ComplexityConverterWrapper(template: PhysicalStream, memSize: Int)
+        extends ComplexityConverter(template, memSize) {
+    val exposed_indexMask: UInt            = expose(in.indexMask)
+    val exposed_laneValidity: UInt         = expose(in.laneValidity)
+    val exposed_currentWriteIndex: UInt    = expose(currentWriteIndex)
+    val exposed_seriesStored: UInt         = expose(seriesStored)
+    val exposed_outItemsReadyCount: UInt   = expose(outItemsReadyCount)
     val exposed_transferOutItemCount: UInt = expose(transferOutItemCount)
-    val exposed_lanesIn: Vec[UInt] = expose(lanesIn)
-    val exposed_lastLanesIn: Vec[UInt] = expose(lastsIn)
-    val exposed_storedData: Vec[UInt] = expose(storedData)
-    val exposed_storedLasts: Vec[UInt] = expose(storedLasts)
-    val exposed_writeIndexes: Vec[UInt] = expose(writeIndexes)
-    val exposed_lasts: UInt = expose(leastSignificantLastSignal)
+    val exposed_lanesIn: Vec[UInt]         = expose(lanesIn)
+    val exposed_lastLanesIn: Vec[UInt]     = expose(lastsIn)
+    val exposed_storedData: Vec[UInt]      = expose(storedData)
+    val exposed_storedLasts: Vec[UInt]     = expose(storedLasts)
+    val exposed_writeIndexes: Vec[UInt]    = expose(writeIndexes)
+    val exposed_lasts: UInt                = expose(leastSignificantLastSignal)
   }
 
-  class ComplexityConverterFancyWrapper(template: PhysicalStream, memSize: Int) extends TydiTestWrapper(new ComplexityConverter(template, memSize), new MyEl, new MyEl)
+  class ComplexityConverterFancyWrapper(template: PhysicalStream, memSize: Int)
+        extends TydiTestWrapper(new ComplexityConverter(template, memSize), new MyEl, new MyEl)
 
-  class ManualComplexityConverterFancyWrapper[T <: TydiEl](el: T, template: PhysicalStream, memSize: Int) extends TydiModule {
+  class ManualComplexityConverterFancyWrapper[T <: TydiEl](el: T, template: PhysicalStream, memSize: Int)
+        extends TydiModule {
     val mod: ComplexityConverter = Module(new ComplexityConverter(template, memSize))
-    private val out_ref = mod.out
-    private val in_ref = mod.in
-    val out: PhysicalStreamDetailed[T, Null] = IO(new PhysicalStreamDetailed(el, out_ref.n, out_ref.d, out_ref.c, r = false))
-    val in: PhysicalStreamDetailed[T, Null] = IO(Flipped(new PhysicalStreamDetailed(el, in_ref.n, in_ref.d, c=8, r = true)))
+    private val out_ref          = mod.out
+    private val in_ref           = mod.in
+    val out: PhysicalStreamDetailed[T, Null] = IO(
+      new PhysicalStreamDetailed(el, out_ref.n, out_ref.d, out_ref.c, r = false)
+    )
+    val in: PhysicalStreamDetailed[T, Null] = IO(
+      Flipped(new PhysicalStreamDetailed(el, in_ref.n, in_ref.d, c = 8, r = true))
+    )
 
-    out := mod.out
+    out    := mod.out
     mod.in := in
 
-    val exposed_indexMask: UInt = expose(in.indexMask)
-    val exposed_laneValidity: UInt = expose(in.laneValidity)
-    val exposed_incrementIndexAt: UInt = expose(mod.incrementIndexAt)
-    val exposed_lastSeqs: UInt = expose(mod.lastSeqProcessor.outCheck)
-    val exposed_reducedLasts: Vec[UInt] = expose(mod.lastSeqProcessor.reducedLasts)
-    val exposed_prevReducedLast: UInt = expose(mod.prevReducedLast)
-    val exposed_currentWriteIndex: UInt = expose(mod.currentWriteIndex)
-    val exposed_seriesStored: UInt = expose(mod.seriesStored)
-    val exposed_outItemsReadyCount: UInt = expose(mod.outItemsReadyCount)
+    val exposed_indexMask: UInt            = expose(in.indexMask)
+    val exposed_laneValidity: UInt         = expose(in.laneValidity)
+    val exposed_incrementIndexAt: UInt     = expose(mod.incrementIndexAt)
+    val exposed_lastSeqs: UInt             = expose(mod.lastSeqProcessor.outCheck)
+    val exposed_reducedLasts: Vec[UInt]    = expose(mod.lastSeqProcessor.reducedLasts)
+    val exposed_prevReducedLast: UInt      = expose(mod.prevReducedLast)
+    val exposed_currentWriteIndex: UInt    = expose(mod.currentWriteIndex)
+    val exposed_seriesStored: UInt         = expose(mod.seriesStored)
+    val exposed_outItemsReadyCount: UInt   = expose(mod.outItemsReadyCount)
     val exposed_transferOutItemCount: UInt = expose(mod.transferOutItemCount)
-    val exposed_lanesIn: Vec[UInt] = expose(mod.lanesIn)
-    val exposed_lastLanesIn: Vec[UInt] = expose(mod.lastsIn)
-    val exposed_storedData: Vec[UInt] = expose(mod.dataReg)
-    val exposed_storedLasts: Vec[UInt] = expose(mod.lastReg)
-    val exposed_storedEmpties: Vec[Bool] = expose(mod.emptyReg)
-    val exposed_writeIndexes: Vec[UInt] = expose(mod.writeIndexes)
-    val exposed_lasts: UInt = expose(mod.leastSignificantLastSignal)
-    val outDataRaw: UInt = expose(mod.out.data)
-    val inDataRaw: UInt = expose(mod.in.data)
+    val exposed_lanesIn: Vec[UInt]         = expose(mod.lanesIn)
+    val exposed_lastLanesIn: Vec[UInt]     = expose(mod.lastsIn)
+    val exposed_storedData: Vec[UInt]      = expose(mod.dataReg)
+    val exposed_storedLasts: Vec[UInt]     = expose(mod.lastReg)
+    val exposed_storedEmpties: Vec[Bool]   = expose(mod.emptyReg)
+    val exposed_writeIndexes: Vec[UInt]    = expose(mod.writeIndexes)
+    val exposed_lasts: UInt                = expose(mod.leastSignificantLastSignal)
+    val outDataRaw: UInt                   = expose(mod.out.data)
+    val inDataRaw: UInt                    = expose(mod.in.data)
   }
 
   behavior of "ComplexityConverter"
@@ -111,7 +117,7 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       c.exposed_currentWriteIndex.expect(1.U)
       c.exposed_transferOutItemCount.expect(0.U) // Not transferring yet because output is not ready
       c.exposed_seriesStored.expect(0.U)
-      c.in.data.poke(0xABC.U)
+      c.in.data.poke(0xabc.U)
       c.in.strb.poke(1.U)
       c.in.last.poke(1.U)
       c.out.valid.expect(0.U) // No full series stored yet
@@ -122,7 +128,7 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       c.in.valid.poke(false.B)
       c.out.ready.poke(true.B)
       c.exposed_seriesStored.expect(1.U) // One series stored
-      c.out.valid.expect(1.U) // ... means valid output
+      c.out.valid.expect(1.U)            // ... means valid output
       c.exposed_currentWriteIndex.expect(2.U)
       println(s"Last: ${printVecBinary(c.exposed_storedLasts.peek())}")
       println(s"Last: ${binaryFromUint(c.exposed_lasts.peek())}")
@@ -135,7 +141,7 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       println(s"Last: ${printVecBinary(c.exposed_storedLasts.peek())}")
       println(s"Last: ${binaryFromUint(c.exposed_lasts.peek())}")
       c.exposed_seriesStored.expect(1.U) // Still outputting first series
-      c.out.valid.expect(1.U) // ... means valid output
+      c.out.valid.expect(1.U)            // ... means valid output
       c.exposed_currentWriteIndex.expect(1.U)
       c.exposed_outItemsReadyCount.expect(1.U)
       c.exposed_transferOutItemCount.expect(1.U)
@@ -144,7 +150,7 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   it should "work with n=2" in {
-    val stream = PhysicalStream(new MyEl, n=2, d=1, c=7)
+    val stream = PhysicalStream(new MyEl, n = 2, d = 1, c = 7)
 
     // test case body here
     test(new ComplexityConverterWrapper(stream, 10)) { c =>
@@ -165,7 +171,7 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       println(s"Data: ${printVec(c.exposed_storedData.peek())}")
       println(s"Last: ${printVecBinary(c.exposed_storedLasts.peek())}")
       c.exposed_currentWriteIndex.expect(1.U)
-      c.in.data.poke(0xABCDEF.U)
+      c.in.data.poke(0xabcdef.U)
       c.in.strb.poke(b("11"))
       c.in.last.poke(b("10"))
       c.clock.step()
@@ -214,7 +220,7 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
 
       // Send some data in
       c.in.enqueueElNow(_.a -> 136.U, _.b -> 9.U)
-      c.clock.step(3)  // Check if the circuit holds its state
+      c.clock.step(3) // Check if the circuit holds its state
       c.in.enqueueElNow(_.a -> 65.U, _.b -> 4.U)
       c.exposed_currentWriteIndex.expect(2.U)
       c.exposed_seriesStored.expect(0.U)
@@ -265,14 +271,18 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   def printInputState(c: ManualComplexityConverterFancyWrapper[BitsEl]): Unit = {
-    println(s"reducedLasts: ${binaryFromUint(c.exposed_prevReducedLast.peek())} -> ${printVecBinary(c.exposed_reducedLasts.peek())}")
+    println(
+      s"reducedLasts: ${binaryFromUint(c.exposed_prevReducedLast.peek())} -> ${printVecBinary(c.exposed_reducedLasts.peek())}"
+    )
     println(s"lastSeqs: ${binaryFromUint(c.exposed_lastSeqs.peek())}")
   }
 
   def printOutputState(c: ManualComplexityConverterFancyWrapper[BitsEl]): Unit = {
     print(c.out.printState(charRenderer))
     println(s"Data: ${c.out.data.peek().map(_.asChar)}")
-    println(s"Items ready: ${c.exposed_outItemsReadyCount.peekInt()}, transfer: ${c.exposed_transferOutItemCount.peekInt()}")
+    println(
+      s"Items ready: ${c.exposed_outItemsReadyCount.peekInt()}, transfer: ${c.exposed_transferOutItemCount.peekInt()}"
+    )
     println(s"Last: ${printVecBinary(c.out.last.peek())}")
     println(s"Stai: ${c.out.stai.peek().litValue}, Endi: ${c.out.endi.peek().litValue}")
   }
@@ -281,7 +291,7 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
     s"'${c.value.litValue.toChar}'"
   }
 
-  val renderer: Option[BitsEl => String] = Some(c =>  {
+  val renderer: Option[BitsEl => String] = Some(c => {
     s"'${c.value.litValue.toChar}'"
   })
 
@@ -298,7 +308,7 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       // Initialize signals
       c.in.initSource().setSourceClock(c.clock)
       c.out.initSink().setSinkClock(c.clock)
-      c.in.endi.poke(stream.n-1)
+      c.in.endi.poke(stream.n - 1)
       c.in.strb.poke(0.U)
       println("She is a dolphin test")
       println("Initializing signals")
@@ -390,8 +400,7 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
 
           println(s"All data: ${c.exposed_storedData.peek().asString}")
           println(s"All lasts: ${printVecBinary(c.exposed_storedLasts.peek())}")
-        },
-        {
+        }, {
           c.out.waitForValid()
           c.out.ready.poke(true)
           println("\n\n--  Output data  --")
@@ -450,13 +459,12 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
       Vec(6, new BitsEl(8.W)).Lit(mapping: _*)
     }
 
-
     // test case body here
     test(new ManualComplexityConverterFancyWrapper(char, stream, 20)) { c =>
       // Initialize signals
       c.in.initSource().setSourceClock(c.clock)
       c.out.initSink().setSinkClock(c.clock)
-      c.in.endi.poke(stream.n-1)
+      c.in.endi.poke(stream.n - 1)
       c.in.strb.poke(0.U)
       println("Hello World test")
       println("Initializing signals")
@@ -475,23 +483,29 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
         {
           // Send some data in
           // HelloW
-          c.in.enqueueNow(t1,
+          c.in.enqueueNow(
+            t1,
             last = Some(Vec.Lit("b00".U(2.W), "b00".U, "b00".U, "b00".U, "b01".U, "b00".U)),
-            strb = Some(bRev("111111")))
+            strb = Some(bRev("111111"))
+          )
           println("\n-- Transfer in 1")
           println(s"All data: ${c.exposed_storedData.peek().asString}")
 
           // orldTy
-          c.in.enqueueNow(t2,
+          c.in.enqueueNow(
+            t2,
             last = Some(Vec.Lit("b00".U(2.W), "b00".U, "b00".U, "b11".U, "b00".U, "b00".U)),
-            strb = Some(bRev("111111")))
+            strb = Some(bRev("111111"))
+          )
           println("\n-- Transfer in 2")
           println(s"All data: ${c.exposed_storedData.peek().asString}")
 
           // diisni
-          c.in.enqueueNow(t3,
+          c.in.enqueueNow(
+            t3,
             last = Some(Vec.Lit("b00".U(2.W), "b01".U, "b00".U, "b01".U, "b00".U, "b00".U)),
-            strb = Some(bRev("111111")))
+            strb = Some(bRev("111111"))
+          )
           println("\n-- Transfer in 3")
           println(s"All data: ${c.exposed_storedData.peek().asString}")
 
@@ -513,8 +527,7 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
 
           println(s"All data: ${c.exposed_storedData.peek().asString}")
           println(s"All lasts: ${printVecBinary(c.exposed_storedLasts.peek())}")
-        },
-        {
+        }, {
           c.out.waitForValid()
           c.out.ready.poke(true)
           println("\n-- Transfer out 1")
