@@ -34,22 +34,23 @@ class TydiStreamDriverTest extends AnyFlatSpec with ChiselScalatestTester {
       c.in.initSource().setSourceClock(c.clock)
       c.out.initSink().setSinkClock(c.clock)
 
-      var state = c.out.printState()
-      print(state)
-
       val whatever: Seq[MyBundle => (Data, Data)] = Seq(_.a -> 0.U, _.b -> false.B)
 
       val bundle = new MyBundle
       val testVal = bundle.Lit(_.a -> 42.U, _.b -> true.B)
       val testVal2 = c.in.elLit(_.a -> 43.U, _.b -> false.B)
 
-//      c.out.expectInvalid()
+      c.out.expectInvalid()
+      c.clock.step()
       parallel(
         c.in.enqueueElNow(testVal),
         c.out.expectDequeueNow(_.a -> 42.U, _.b -> true.B)
       )
-      state = c.out.printState()
-      print(state)
+      // Clock step is required because else we are still in the same moment as the parallel functions from before.
+      // Because they are timescoped, the printState does not give very interesting results.
+//      c.clock.step()
+//      state = c.out.printState()
+//      print(state)
       parallel(
         c.in.enqueueElNow(_.a -> 43.U, _.b -> false.B),
         c.out.expectDequeueNow(testVal2)
