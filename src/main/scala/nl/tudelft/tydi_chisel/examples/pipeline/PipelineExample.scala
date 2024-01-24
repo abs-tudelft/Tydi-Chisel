@@ -1,11 +1,11 @@
 package nl.tudelft.tydi_chisel.examples.pipeline
 
-import nl.tudelft.tydi_chisel._
 import chisel3._
 import chisel3.internal.firrtl.Width
 import chisel3.util.Counter
 import chiseltest.RawTester.test
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
+import nl.tudelft.tydi_chisel._
 
 trait PipelineTypes {
   val dataWidth: Width   = 64.W

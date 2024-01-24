@@ -1,7 +1,7 @@
 package nl.tudelft.tydi_chisel.utils
 
 import chisel3._
-import chisel3.util.{PriorityEncoder, log2Ceil}
+import chisel3.util.{log2Ceil, PriorityEncoder}
 import nl.tudelft.tydi_chisel.TydiModule
 
 class LastSeqLength(val n: Int, val d: Int) extends TydiModule {

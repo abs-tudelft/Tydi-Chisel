@@ -6,8 +6,8 @@ import chisel3.experimental.VecLiterals.{AddObjectLiteralConstructor, AddVecLite
 import chiseltest._
 import chiseltest.experimental.expose
 import nl.tudelft.tydi_chisel.Conversions._
-import nl.tudelft.tydi_chisel.printUtils._
 import nl.tudelft.tydi_chisel._
+import nl.tudelft.tydi_chisel.printUtils._
 import org.scalatest.flatspec.AnyFlatSpec
 
 class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {

@@ -1,7 +1,7 @@
 package nl.tudelft.tydi_chisel.utils
 
-import chisel3.util.{Cat, PopCount, PriorityEncoder, log2Ceil}
 import chisel3._
+import chisel3.util.{log2Ceil, Cat, PopCount, PriorityEncoder}
 import nl.tudelft.tydi_chisel.{PhysicalStream, SubProcessorSignalDef, TydiEl}
 
 /**

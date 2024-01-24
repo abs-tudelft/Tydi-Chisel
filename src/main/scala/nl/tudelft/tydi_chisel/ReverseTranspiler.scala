@@ -1,7 +1,8 @@
 package nl.tudelft.tydi_chisel
 
-import chisel3.Data
 import scala.collection.mutable
+
+import chisel3.Data
 
 object ReverseTranspiler {
   implicit class BitsTranspile(e: Data) extends TranspileExtend {

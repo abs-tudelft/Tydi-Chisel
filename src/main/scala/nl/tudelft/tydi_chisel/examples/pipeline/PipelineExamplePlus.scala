@@ -1,12 +1,12 @@
 package nl.tudelft.tydi_chisel.examples.pipeline
 
-import nl.tudelft.tydi_chisel._
 import chisel3._
 import chisel3.experimental.hierarchy.Definition
 import chisel3.internal.firrtl.Width
 import chisel3.util.Counter
 import chiseltest.RawTester.test
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
+import nl.tudelft.tydi_chisel._
 
 /*class NonNegativeFilter extends SubProcessorBase(new NumberGroup, new NumberGroup) {
   val filter: Bool = inStream.el.value >= 0.S && inStream.valid

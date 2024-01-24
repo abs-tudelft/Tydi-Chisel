@@ -3,9 +3,9 @@
 package gcd
 
 import chisel3._
+import chisel3.experimental.BundleLiterals._
 import chiseltest._
 import org.scalatest.freespec.AnyFreeSpec
-import chisel3.experimental.BundleLiterals._
 
 /**
   * This is a trivial example of how to run this Specification

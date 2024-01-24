@@ -1,11 +1,11 @@
 package nl.tudelft.tydi_chisel.examples.rgb
 
-import nl.tudelft.tydi_chisel._
 import chisel3._
-import chisel3.util.{Cat, Decoupled, log2Ceil}
 import chisel3.experimental.dataview._
 import chisel3.internal.firrtl.Width
+import chisel3.util.{log2Ceil, Cat, Decoupled}
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
+import nl.tudelft.tydi_chisel._
 
 /*class RgbBundle extends Group {
   private val channelWidth: Width = 8.W
@@ -20,7 +20,7 @@ class RgbRaw extends Group {
 
 object RgbRaw {
   // Don't be afraid of the use of implicits, we will discuss this pattern in more detail later
-  implicit val axiView = DataView[RgbRaw, RgbBundle](
+  implicit val axiView: DataView[RgbRaw, RgbBundle] = DataView[RgbRaw, RgbBundle](
     // The first argument is a function constructing an object of View type (RgbBundle)
     // from an object of the Target type (RgbRaw)
     vab => new RgbBundle(),

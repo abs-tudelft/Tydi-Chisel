@@ -1,13 +1,13 @@
 package nl.tudelft.tydi_chisel
 
-import chisel3._
-import chisel3.util.{Cat, log2Ceil}
-import chisel3.internal.firrtl.Width
-import nl.tudelft.tydi_chisel.ReverseTranspiler._
-import nl.tudelft.tydi_chisel.utils.ComplexityConverter
-
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
+
+import chisel3._
+import chisel3.internal.firrtl.Width
+import chisel3.util.{log2Ceil, Cat}
+import nl.tudelft.tydi_chisel.ReverseTranspiler._
+import nl.tudelft.tydi_chisel.utils.ComplexityConverter
 
 trait TranspileExtend {
 

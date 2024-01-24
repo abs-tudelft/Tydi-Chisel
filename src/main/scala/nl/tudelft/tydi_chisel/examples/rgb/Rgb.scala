@@ -1,9 +1,9 @@
 package nl.tudelft.tydi_chisel.examples.rgb
 
-import nl.tudelft.tydi_chisel._
 import chisel3._
 import chisel3.internal.firrtl.Width
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
+import nl.tudelft.tydi_chisel._
 
 class RgbBundle extends Group {
   private val channelWidth: Width = 8.W

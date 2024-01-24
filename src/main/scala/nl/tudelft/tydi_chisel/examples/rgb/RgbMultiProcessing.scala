@@ -1,10 +1,10 @@
 package nl.tudelft.tydi_chisel.examples.rgb
 
-import nl.tudelft.tydi_chisel._
 import chisel3._
 import chisel3.experimental.hierarchy._
 import chisel3.util.Cat
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
+import nl.tudelft.tydi_chisel._
 
 /**
  * A simple rgb pixel processor with a 1-lane low complexity input stream.

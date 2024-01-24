@@ -3,8 +3,8 @@ package nl.tudelft.tydi_chisel
 import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chiseltest._
-import org.scalatest.flatspec.AnyFlatSpec
 import nl.tudelft.tydi_chisel.Conversions._
+import org.scalatest.flatspec.AnyFlatSpec
 
 class TydiStreamDriverTest extends AnyFlatSpec with ChiselScalatestTester {
   class MyBundle extends Group {

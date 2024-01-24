@@ -1,8 +1,8 @@
 package nl.tudelft.tydi_chisel
 
 import chisel3._
-import chisel3.experimental.hierarchy.{Definition, Instance, instantiable, public}
-import chisel3.util.{Cat, PopCount, PriorityEncoder, log2Ceil}
+import chisel3.experimental.hierarchy.{instantiable, public, Definition, Instance}
+import chisel3.util.{log2Ceil, Cat, PopCount, PriorityEncoder}
 
 class TydiTestWrapper[Tinel <: TydiEl, Toutel <: TydiEl, Tinus <: TydiEl, Toutus <: TydiEl](
   module: => SubProcessorSignalDef,

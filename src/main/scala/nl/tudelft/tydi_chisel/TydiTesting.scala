@@ -1,12 +1,13 @@
 package nl.tudelft.tydi_chisel
 
-import chiseltest._
+import scala.language.implicitConversions
+
 import chisel3._
-import chisel3.util._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chisel3.experimental.VecLiterals.AddVecLiteralConstructor
+import chisel3.util._
+import chiseltest._
 import nl.tudelft.tydi_chisel.{PhysicalStreamDetailed, TydiEl}
-import scala.language.implicitConversions
 
 object Conversions {
   implicit def tydiStreamToDriver[Tel <: TydiEl, Tus <: Data](

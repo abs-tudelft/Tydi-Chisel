@@ -1,8 +1,8 @@
 package nl.tudelft.tydi_chisel.examples.hello_world
 
-import nl.tudelft.tydi_chisel._
 import chisel3._
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
+import nl.tudelft.tydi_chisel._
 import nl.tudelft.tydi_chisel.utils.ComplexityConverter
 
 trait myTypes {
