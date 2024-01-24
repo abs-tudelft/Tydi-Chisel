@@ -10,8 +10,8 @@ class PipelineExampleTest extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "PipelineExample"
 
   class NonNegativeFilterWrap extends TydiTestWrapper(new NonNegativeFilter, new NumberGroup, new NumberGroup)
-  class ReducerWrap extends TydiProcessorTestWrapper(new Reducer)
-  class PipelineWrap extends TydiTestWrapper(new PipelineExampleModule, new NumberGroup, new Stats)
+  class ReducerWrap           extends TydiProcessorTestWrapper(new Reducer)
+  class PipelineWrap          extends TydiTestWrapper(new PipelineExampleModule, new NumberGroup, new Stats)
 
   it should "filter negative values" in {
     test(new NonNegativeFilterWrap) { c =>
@@ -21,21 +21,23 @@ class PipelineExampleTest extends AnyFlatSpec with ChiselScalatestTester {
 
       parallel(
         c.in.enqueueElNow(_.time -> 123976.U, _.value -> 6.S),
-        c.out.expectDequeueNow(_.time -> 123976.U, _.value -> 6.S),
+        c.out.expectDequeueNow(_.time -> 123976.U, _.value -> 6.S)
       )
 
       parallel(
         c.in.enqueueElNow(_.time -> 123976.U, _.value -> 0.S),
-        c.out.expectDequeueNow(_.time -> 123976.U, _.value -> 0.S),
+        c.out.expectDequeueNow(_.time -> 123976.U, _.value -> 0.S)
       )
 
       parallel(
         c.in.enqueueElNow(_.time -> 123976.U, _.value -> -7.S),
         timescope {
           c.out.ready.poke(true.B)
-          fork.withRegion(Monitor) {
-            c.out.strb.expect(0.U)
-          }.joinAndStep(c.clock)
+          fork
+            .withRegion(Monitor) {
+              c.out.strb.expect(0.U)
+            }
+            .joinAndStep(c.clock)
         }
       )
     }
@@ -106,35 +108,37 @@ class PipelineExampleTest extends AnyFlatSpec with ChiselScalatestTester {
       val nNumbers = 100
 
       // Generate list of random numbers
-      val nums = Seq.fill(nNumbers)(
-        Int.MinValue + BigInt(32, scala.util.Random)
-      )
+      val nums = Seq.fill(nNumbers)(Int.MinValue + BigInt(32, scala.util.Random))
 
       // println(nums)
 
       // Storage for statistics
-      case class StatsOb(count: BigInt = 0,
-                         min: BigInt = rangeMax,
-                         max: BigInt = 0,
-                         sum: BigInt = 0,
-                         average: BigInt = 0)
+      case class StatsOb(
+        count: BigInt = 0,
+        min: BigInt = rangeMax,
+        max: BigInt = 0,
+        sum: BigInt = 0,
+        average: BigInt = 0
+      )
 
       val initialStats = StatsOb()
 
       // Calculate cumulative statistics
-      val statsSeq = nums.scanLeft(initialStats) { (s, num) =>
-        if (num >= 0) {
-          val newCount = s.count + 1
-          val newSum = s.sum + num
-          val newMin = s.min min num
-          val newMax = s.max max num
-          val newAverage = newSum / newCount
+      val statsSeq = nums
+        .scanLeft(initialStats) { (s, num) =>
+          if (num >= 0) {
+            val newCount   = s.count + 1
+            val newSum     = s.sum + num
+            val newMin     = s.min min num
+            val newMax     = s.max max num
+            val newAverage = newSum / newCount
 
-          s.copy(count = newCount, min = newMin, max = newMax, sum = newSum, average = newAverage)
-        } else {
-          s
+            s.copy(count = newCount, min = newMin, max = newMax, sum = newSum, average = newAverage)
+          } else {
+            s
+          }
         }
-      }.tail
+        .tail
 
       // Test component
       parallel(
@@ -142,11 +146,11 @@ class PipelineExampleTest extends AnyFlatSpec with ChiselScalatestTester {
           for ((elem, i) <- nums.zipWithIndex) {
             c.in.enqueueElNow(_.time -> i.U, _.value -> elem.S)
           }
-        },
-        {
+        }, {
           for ((elem, i) <- statsSeq.zipWithIndex) {
             // println(s"$i: $elem")
-            c.out.expectDequeue(_.min -> elem.min.U, _.max -> elem.max.U, _.sum -> elem.sum.U, _.average -> elem.average.U)
+            c.out
+              .expectDequeue(_.min -> elem.min.U, _.max -> elem.max.U, _.sum -> elem.sum.U, _.average -> elem.average.U)
           }
         }
       )

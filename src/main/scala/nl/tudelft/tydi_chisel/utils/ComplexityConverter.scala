@@ -12,27 +12,30 @@ import nl.tudelft.tydi_chisel.{PhysicalStream, SubProcessorSignalDef, TydiEl}
  */
 class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extends SubProcessorSignalDef {
   // Get some information from the template
-  private val elWidth = template.elWidth
-  private val n = template.n
-  private val d = template.d
+  private val elWidth        = template.elWidth
+  private val n              = template.n
+  private val d              = template.d
   private val elType: TydiEl = template.getDataType
   // Create in- and output IO streams based on template
-  override val in: PhysicalStream = IO(Flipped(PhysicalStream(elType, n, d = d, c = template.c)))
+  override val in: PhysicalStream  = IO(Flipped(PhysicalStream(elType, n, d = d, c = template.c)))
   override val out: PhysicalStream = IO(PhysicalStream(elType, n, d = d, c = 1))
 
-  in.user := DontCare
+  in.user  := DontCare
   out.user := DontCare
 
   /** How many bits are required to represent an index of memSize */
   val indexSize: Int = log2Ceil(memSize)
+
   /** Stores index to write new data to in the register */
   val currentWriteIndex: UInt = RegInit(0.U(indexSize.W))
-  val lastWidth: Int = d // Assuming c = 7 here, or that this is the case for all complexities. Todo: Should still verify that.
+  val lastWidth: Int =
+    d // Assuming c = 7 here, or that this is the case for all complexities. Todo: Should still verify that.
 
   // Create actual element storage
-  val dataReg: Vec[UInt] = Reg(Vec(memSize, UInt(elWidth.W)))
-  val lastReg: Vec[UInt] = Reg(Vec(memSize, UInt(lastWidth.W)))
+  val dataReg: Vec[UInt]  = Reg(Vec(memSize, UInt(elWidth.W)))
+  val lastReg: Vec[UInt]  = Reg(Vec(memSize, UInt(lastWidth.W)))
   val emptyReg: Vec[Bool] = Reg(Vec(memSize, Bool()))
+
   /** How many elements/lanes are being transferred *out* this cycle */
   val transferOutItemCount: UInt = Wire(UInt(indexSize.W))
 
@@ -61,10 +64,10 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
   val lastSeqProcessor: LastSeqProcessor = LastSeqProcessor(lastsIn)
   lastSeqProcessor.dataAt := in.laneValidityVec
   val prevReducedLast: UInt = RegInit(0.U(d.W))
-  prevReducedLast := lastSeqProcessor.reducedLasts.last
+  prevReducedLast              := lastSeqProcessor.reducedLasts.last
   lastSeqProcessor.prevReduced := prevReducedLast
 
-  val incrementIndexAt: UInt = in.laneValidity | lastSeqProcessor.outCheck
+  val incrementIndexAt: UInt     = in.laneValidity | lastSeqProcessor.outCheck
   val relativeIndexes: Vec[UInt] = VecInit.tabulate(n)(i => PopCount(incrementIndexAt(i, 0)))
 
   val writeIndexBase: UInt = currentWriteIndex - transferOutItemCount
@@ -76,8 +79,8 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
     indexWire := writeIndexBase + relativeIndexes(i) - 1.U
     // Empty is if the a new sequence is assigned by last bits, but the lane is not valid
     val isEmpty: Bool = lastSeqProcessor.outCheck(i) && !in.laneValidity(i)
-    val isValid = incrementIndexAt(i) && in.valid
-    when (isValid) {
+    val isValid       = incrementIndexAt(i) && in.valid
+    when(isValid) {
       dataReg(indexWire) := lanesIn(i)
       // It should get the reduced lasts of the lane *before* the *next* valid item
       // If the first item has data we don't care about the previous last value anymore.
@@ -104,7 +107,7 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
 
   transferOutItemCount := 0.U // Default, overwritten below
 
-  val storedData: Vec[UInt] = VecInit(dataReg.slice(0, n))
+  val storedData: Vec[UInt]  = VecInit(dataReg.slice(0, n))
   val storedLasts: Vec[UInt] = VecInit(lastReg.slice(0, n))
   //  val storedEmpty: Vec[UInt] = VecInit(emptyReg.slice(0, n))
   var outItemsReadyCount: UInt = Wire(UInt(indexSize.W))
@@ -115,14 +118,12 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
   val leastSignificantLastSignal: UInt = leastSignificantLasts.map(_.asUInt).reduce(Cat(_, _))
   // Todo: Check orientation
   val innerSeqLength: UInt = PriorityEncoder(leastSignificantLasts)
-  outItemsReadyCount := Mux(!emptyReg(0),
-                            Mux(innerSeqLength > n.U, n.U, innerSeqLength),
-                            1.U)
+  outItemsReadyCount := Mux(!emptyReg(0), Mux(innerSeqLength > n.U, n.U, innerSeqLength), 1.U)
 
   // Series transferred is the number of last lanes with high MSB
   val transferOutSeriesCount: UInt = Wire(UInt(1.W))
   transferOutSeriesCount := 0.U
-  private val msbIndex = Math.max(0, d-1)
+  private val msbIndex            = Math.max(0, d - 1)
   val transferInSeriesCount: UInt = Mux(in.ready, PopCount(lastsIn.map(_(msbIndex))), 0.U)
 
   seriesStored := seriesStored + transferInSeriesCount - transferOutSeriesCount
@@ -139,8 +140,8 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
 
     // Set out stream signals
     out.valid := true.B
-    out.data := storedData.reduce((a, b) => Cat(b, a)) // Re-concatenate all the data lanes
-    out.endi := outItemsReadyCount - 1.U // Encodes the index of the last valid lane.
+    out.data  := storedData.reduce((a, b) => Cat(b, a)) // Re-concatenate all the data lanes
+    out.endi  := outItemsReadyCount - 1.U               // Encodes the index of the last valid lane.
     // If there is an empty item/seq, it will for sure be the first one at C=1, else it would not be empty
     when(!emptyReg(0)) {
       out.strb := (1.U << outItemsReadyCount) - 1.U
@@ -148,13 +149,13 @@ class ComplexityConverter(val template: PhysicalStream, val memSize: Int) extend
       out.strb := 0.U
     }
     // This should be okay since you cannot have an end to a higher dimension without an end to a lower dimension first
-    out.last := storedLasts(out.endi) << ((n-1)*lastWidth)
+    out.last := storedLasts(out.endi) << ((n - 1) * lastWidth)
   }.otherwise {
     out.valid := false.B
-    out.last := DontCare
-    out.endi := DontCare
-    out.strb := DontCare
-    out.data := DontCare
+    out.last  := DontCare
+    out.endi  := DontCare
+    out.strb  := DontCare
+    out.data  := DontCare
   }
 
   out.stai := 0.U

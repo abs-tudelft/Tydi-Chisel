@@ -11,20 +11,18 @@ import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
  */
 class SubProcessor extends SubProcessorBase(new RgbBundle, new RgbBundle) {
   // Do some data processing
-  outStream.el.r := inStream.el.r * 2.U
-  outStream.el.g := inStream.el.g * 2.U
-  outStream.el.b := inStream.el.b * 2.U
-  outStream.last := DontCare
+  outStream.el.r  := inStream.el.r * 2.U
+  outStream.el.g  := inStream.el.g * 2.U
+  outStream.el.b  := inStream.el.b * 2.U
+  outStream.last  := DontCare
   outStream.valid := true.B // Fixme
-  inStream.ready := true.B
+  inStream.ready  := true.B
 }
-
 
 /**
  * A MIMO pixel processor that consists of multiple sub-processors.
  */
 class MainProcessor extends MultiProcessorGeneral(Definition(new SubProcessor), 6, new RgbBundle, new RgbBundle)
-
 
 object RgbMultiProcessing extends App {
   import chiseltest.RawTester.test
@@ -35,7 +33,8 @@ object RgbMultiProcessing extends App {
   }
   println(emitCHIRRTL(new MainProcessor()))
 
-  private val noOptimizationVerilog: String = emitSystemVerilog(new MainProcessor(), firtoolOpts = firNoOptimizationOpts)
+  private val noOptimizationVerilog: String =
+    emitSystemVerilog(new MainProcessor(), firtoolOpts = firNoOptimizationOpts)
   private val normalVerilog: String = emitSystemVerilog(new MainProcessor(), firtoolOpts = firNormalOpts)
 //  private val optimizedVerilog: String = emitSystemVerilog(new MainProcessor(), firtoolOpts = firReleaseOpts)
   //  println("\n\n\n")

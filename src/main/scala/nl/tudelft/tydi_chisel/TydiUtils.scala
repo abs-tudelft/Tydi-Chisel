@@ -4,27 +4,41 @@ import chisel3._
 import chisel3.experimental.hierarchy.{Definition, Instance, instantiable, public}
 import chisel3.util.{Cat, PopCount, PriorityEncoder, log2Ceil}
 
-class TydiTestWrapper[Tinel <: TydiEl, Toutel <: TydiEl, Tinus <: TydiEl, Toutus <: TydiEl]
-(module: => SubProcessorSignalDef, val eIn: Tinel, eOut: Toutel, val uIn: Tinus = Null(), val uOut: Toutus = Null()) extends TydiModule {
+class TydiTestWrapper[Tinel <: TydiEl, Toutel <: TydiEl, Tinus <: TydiEl, Toutus <: TydiEl](
+  module: => SubProcessorSignalDef,
+  val eIn: Tinel,
+  eOut: Toutel,
+  val uIn: Tinus = Null(),
+  val uOut: Toutus = Null()
+) extends TydiModule {
   val mod: SubProcessorSignalDef = Module(module)
-  private val out_ref = mod.out
-  private val in_ref = mod.in
-  val out: PhysicalStreamDetailed[Toutel, Toutus] = IO(new PhysicalStreamDetailed(eOut, out_ref.n, out_ref.d, out_ref.c, r=false, uOut))
-  val in: PhysicalStreamDetailed[Tinel, Tinus] = IO(Flipped(new PhysicalStreamDetailed(eIn, in_ref.n, in_ref.d, in_ref.c, r=true, uIn)))
+  private val out_ref            = mod.out
+  private val in_ref             = mod.in
+  val out: PhysicalStreamDetailed[Toutel, Toutus] = IO(
+    new PhysicalStreamDetailed(eOut, out_ref.n, out_ref.d, out_ref.c, r = false, uOut)
+  )
+  val in: PhysicalStreamDetailed[Tinel, Tinus] = IO(
+    Flipped(new PhysicalStreamDetailed(eIn, in_ref.n, in_ref.d, in_ref.c, r = true, uIn))
+  )
 
-  out := mod.out
+  out    := mod.out
   mod.in := in
 }
 
-class TydiProcessorTestWrapper[Tinel <: TydiEl, Toutel <: TydiEl, Tinus <: TydiEl, Toutus <: TydiEl]
-(module: => SubProcessorBase[Tinel, Toutel, Tinus, Toutus]) extends TydiModule {
+class TydiProcessorTestWrapper[Tinel <: TydiEl, Toutel <: TydiEl, Tinus <: TydiEl, Toutus <: TydiEl](
+  module: => SubProcessorBase[Tinel, Toutel, Tinus, Toutus]
+) extends TydiModule {
   val mod: SubProcessorBase[Tinel, Toutel, Tinus, Toutus] = Module(module)
-  private val out_ref = mod.out
-  private val in_ref = mod.in
-  val out: PhysicalStreamDetailed[Toutel, Toutus] = IO(new PhysicalStreamDetailed(mod.eOut, out_ref.n, out_ref.d, out_ref.c, r = false, mod.uOut))
-  val in: PhysicalStreamDetailed[Tinel, Tinus] = IO(Flipped(new PhysicalStreamDetailed(mod.eIn, in_ref.n, in_ref.d, in_ref.c, r = true, mod.uIn)))
+  private val out_ref                                     = mod.out
+  private val in_ref                                      = mod.in
+  val out: PhysicalStreamDetailed[Toutel, Toutus] = IO(
+    new PhysicalStreamDetailed(mod.eOut, out_ref.n, out_ref.d, out_ref.c, r = false, mod.uOut)
+  )
+  val in: PhysicalStreamDetailed[Tinel, Tinus] = IO(
+    Flipped(new PhysicalStreamDetailed(mod.eIn, in_ref.n, in_ref.d, in_ref.c, r = true, mod.uIn))
+  )
 
-  out := mod.out
+  out    := mod.out
   mod.in := in
 }
 
@@ -50,14 +64,25 @@ abstract class SubProcessorSignalDef extends TydiModule {
  * @tparam Toutus Element type of the output stream's user signals
  */
 @instantiable
-abstract class SubProcessorBase[Tinel <: TydiEl, Toutel <: TydiEl, Tinus <: TydiEl, Toutus <: TydiEl]
-(val eIn: Tinel, val eOut: Toutel, val uIn: Tinus = Null(), val uOut: Toutus = Null(),
- nIn: Int = 1, dIn: Int = 0, cIn: Int = 1, nOut: Int = 1, dOut: Int = 0, cOut: Int = 1) extends SubProcessorSignalDef {
+abstract class SubProcessorBase[Tinel <: TydiEl, Toutel <: TydiEl, Tinus <: TydiEl, Toutus <: TydiEl](
+  val eIn: Tinel,
+  val eOut: Toutel,
+  val uIn: Tinus = Null(),
+  val uOut: Toutus = Null(),
+  nIn: Int = 1,
+  dIn: Int = 0,
+  cIn: Int = 1,
+  nOut: Int = 1,
+  dOut: Int = 0,
+  cOut: Int = 1
+) extends SubProcessorSignalDef {
   // Declare streams
-  val outStream: PhysicalStreamDetailed[Toutel, Toutus] = PhysicalStreamDetailed(eOut, n = nOut, d = dOut, c = cOut, r = false, u=uOut)
-  val inStream: PhysicalStreamDetailed[Tinel, Tinus] = PhysicalStreamDetailed(eIn, n = nIn, d = dIn, c = cIn, r = true, u=uIn)
+  val outStream: PhysicalStreamDetailed[Toutel, Toutus] =
+    PhysicalStreamDetailed(eOut, n = nOut, d = dOut, c = cOut, r = false, u = uOut)
+  val inStream: PhysicalStreamDetailed[Tinel, Tinus] =
+    PhysicalStreamDetailed(eIn, n = nIn, d = dIn, c = cIn, r = true, u = uIn)
   val out: PhysicalStream = outStream.toPhysical
-  val in: PhysicalStream = inStream.toPhysical
+  val in: PhysicalStream  = inStream.toPhysical
 
   // Connect streams
   if (eIn.typeName == eOut.typeName && nIn == nOut && dIn == dOut)
@@ -72,12 +97,21 @@ abstract class SubProcessorBase[Tinel <: TydiEl, Toutel <: TydiEl, Tinus <: Tydi
  * @param uOut Element type to use for output stream's user signals
  */
 @instantiable
-abstract class SimpleProcessorBase(val eIn: TydiEl, eOut: TydiEl, val uIn: Data = Null(), val uOut: Data = Null(),
-                                   nIn: Int = 1, dIn: Int = 0, cIn: Int = 1, nOut: Int = 1, dOut: Int = 0, cOut: Int = 1)
-  extends SubProcessorSignalDef {
+abstract class SimpleProcessorBase(
+  val eIn: TydiEl,
+  eOut: TydiEl,
+  val uIn: Data = Null(),
+  val uOut: Data = Null(),
+  nIn: Int = 1,
+  dIn: Int = 0,
+  cIn: Int = 1,
+  nOut: Int = 1,
+  dOut: Int = 0,
+  cOut: Int = 1
+) extends SubProcessorSignalDef {
   // Declare streams
-  val out: PhysicalStream = IO(PhysicalStream(eOut, n = nOut, d = dOut, c = cOut, u=uOut))
-  val in: PhysicalStream = IO(Flipped(PhysicalStream(eIn, n = nIn, d = dIn, c = cIn, u=uIn)))
+  val out: PhysicalStream = IO(PhysicalStream(eOut, n = nOut, d = dOut, c = cOut, u = uOut))
+  val in: PhysicalStream  = IO(Flipped(PhysicalStream(eIn, n = nIn, d = dIn, c = cIn, u = uIn)))
 
   // Connect streams
   if (eIn.getWidth == eOut.getWidth && nIn == nOut && dIn == dOut)
@@ -98,44 +132,52 @@ abstract class SimpleProcessorBase(val eIn: TydiEl, eOut: TydiEl, val uIn: Data 
  * @param usIn Element type to use for input stream's `user` signals. Each sub-processor receives the same `user` signals.
  * @param usOut Element type to use for output stream's `user` signals. The output is set by the first sub-processor's `user` signals.
  */
-class MultiProcessorGeneral(val processorDef: Definition[SubProcessorSignalDef], val n: Int = 6, val eIn: TydiEl, val eOut: TydiEl, val usIn: Data = Null(), val usOut: Data = Null(), d: Int = 0) extends SubProcessorSignalDef {
-  val in: PhysicalStream = IO(Flipped(PhysicalStream(eIn, n=n, d=d, c=8, u=usIn)))
-  val out: PhysicalStream = IO(PhysicalStream(eOut, n=n, d=d, c=8, u=usOut))
+class MultiProcessorGeneral(
+  val processorDef: Definition[SubProcessorSignalDef],
+  val n: Int = 6,
+  val eIn: TydiEl,
+  val eOut: TydiEl,
+  val usIn: Data = Null(),
+  val usOut: Data = Null(),
+  d: Int = 0
+) extends SubProcessorSignalDef {
+  val in: PhysicalStream  = IO(Flipped(PhysicalStream(eIn, n = n, d = d, c = 8, u = usIn)))
+  val out: PhysicalStream = IO(PhysicalStream(eOut, n = n, d = d, c = 8, u = usOut))
 
   val elSize: Int = eIn.getWidth
 
   out.stai := in.stai
   out.endi := in.endi
 
-  val inputValid: Bool = Wire(Bool())
-  val outputReady: Bool = Wire(Bool())
-  private val inputLastVec = in.lastVec
+  val inputValid: Bool      = Wire(Bool())
+  val outputReady: Bool     = Wire(Bool())
+  private val inputLastVec  = in.lastVec
   private val outputLastVec = out.lastVec
 
   private val subProcessors = for (i <- 0 until n) yield {
     val processor: Instance[SubProcessorSignalDef] = Instance(processorDef)
     //    val processor: SubProcessor = Module(new SubProcessor)
-    processor.in.stai := 0.U  // Static signal
-    processor.in.endi := 0.U  // Static signal
-    processor.in.strb := in.strb(i)
-    processor.in.valid := inputValid
-    processor.in.last := inputLastVec(i)
-    processor.in.data := in.data(elSize*(i+1)-1, elSize*i)  // Set data
-    processor.in.user := in.user
+    processor.in.stai   := 0.U                                       // Static signal
+    processor.in.endi   := 0.U                                       // Static signal
+    processor.in.strb   := in.strb(i)
+    processor.in.valid  := inputValid
+    processor.in.last   := inputLastVec(i)
+    processor.in.data   := in.data(elSize * (i + 1) - 1, elSize * i) // Set data
+    processor.in.user   := in.user
     processor.out.ready := outputReady
     processor
   }
 
   out.user := subProcessors(0).out.user
-  out.last := inputLastVec.asUInt  // Todo, is there a better option here?
+  out.last := inputLastVec.asUInt // Todo, is there a better option here?
 
   private val inputReadies = subProcessors.map(_.in.ready)
-  in.ready := inputReadies.reduce(_&&_)  // Top input is ready when all the modules are ready
-  inputValid := in.ready && in.valid  // Wait for all processors to be ready before we transmit the valid signal to them
+  in.ready := inputReadies.reduce(_ && _) // Top input is ready when all the modules are ready
+  inputValid := in.ready && in.valid // Wait for all processors to be ready before we transmit the valid signal to them
 
   private val outputValids = subProcessors.map(_.out.valid)
   out.valid := outputValids.reduce(_ && _) // Top output is valid when all the modules are valid
-  outputReady := out.ready && out.valid  // Wait for all processors to be valid before we transmit the ready signal to them
+  outputReady := out.ready && out.valid // Wait for all processors to be valid before we transmit the ready signal to them
 
   // Top lane is valid when sub is ready
   out.strb := subProcessors.map(_.out.strb).reduce((a, b) => Cat(b, a))
@@ -150,15 +192,21 @@ class MultiProcessorGeneral(val processorDef: Definition[SubProcessorSignalDef],
  */
 class StreamDuplicator(val k: Int = 2, template: PhysicalStream) extends TydiModule {
   // Create a new instance so we do not need to worry about directions.
-  private val stream: PhysicalStream = PhysicalStream(new BitsEl(template.elWidth.W), n = template.n, d = template.d, c = template.c, u = UInt(template.userElWidth.W))
-  val in: PhysicalStream = IO(Flipped(stream))
+  private val stream: PhysicalStream = PhysicalStream(
+    new BitsEl(template.elWidth.W),
+    n = template.n,
+    d = template.d,
+    c = template.c,
+    u = UInt(template.userElWidth.W)
+  )
+  val in: PhysicalStream       = IO(Flipped(stream))
   val out: Vec[PhysicalStream] = IO(Vec(k, stream))
 
   // Connect input to all the output streams
   out.foreach(_ := in)
 
   // Input is ready when all the output streams are ready
-  in.ready := out.map(_.ready).reduce(_&&_)
+  in.ready := out.map(_.ready).reduce(_ && _)
   for (valid <- out.map(_.valid)) {
     // Set output streams valid when input is valid and all outputs are ready
     valid := in.valid && in.ready

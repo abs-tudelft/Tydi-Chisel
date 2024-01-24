@@ -19,17 +19,21 @@ class TydiComplianceTest extends AnyFlatSpec with ChiselScalatestTester {
     val n = 2
     val d = 8
     val c = 8
-    val in: PhysicalStreamDetailed[DataType, Null] = IO(Flipped(new PhysicalStreamDetailed(new DataType(), n=n, d=d, c=c).flip))
-    val out: PhysicalStreamDetailed[DataType, Null] = IO(new PhysicalStreamDetailed(new DataType(), n=n, d=d, c=c))
-    val mid: PhysicalStream = Wire(PhysicalStream(new DataType, n=n, d=d, c=c))
-    val mid_out: PhysicalStream = IO(PhysicalStream(new DataType, n=n, d=d, c=c))
+    val in: PhysicalStreamDetailed[DataType, Null] = IO(
+      Flipped(new PhysicalStreamDetailed(new DataType(), n = n, d = d, c = c).flip)
+    )
+    val out: PhysicalStreamDetailed[DataType, Null] = IO(
+      new PhysicalStreamDetailed(new DataType(), n = n, d = d, c = c)
+    )
+    val mid: PhysicalStream        = Wire(PhysicalStream(new DataType, n = n, d = d, c = c))
+    val mid_out: PhysicalStream    = IO(PhysicalStream(new DataType, n = n, d = d, c = c))
     val laneValidityVec: Vec[Bool] = IO(in.laneValidityVec.cloneType)
     laneValidityVec := in.laneValidityVec
     val strbVec: Vec[Bool] = IO(in.strbVec.cloneType)
     strbVec := in.strbVec
 
-    mid := in
-    out := mid
+    mid     := in
+    out     := mid
     mid_out := mid
   }
 

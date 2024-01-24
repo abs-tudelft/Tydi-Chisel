@@ -37,26 +37,26 @@ class RgbDataviewOut extends Module {
   val view = tydi_port.viewAs[RgbBundle]
 
   // Assign values to logical stream group elements directly
-  private val rgbVal:Seq[Int] = Seq(0, 166, 244)  // TU Delft blue
+  private val rgbVal: Seq[Int] = Seq(0, 166, 244) // TU Delft blue
   view.r := rgbVal(0).U
   view.g := rgbVal(1).U
   view.b := rgbVal(2).U
 }
 
 class RgbDataviewIn extends Module {
-  val io = IO(Flipped(new PhysicalStream(new RgbBundle, n=1, d=2, c=7, u=new Null())))
+  val io = IO(Flipped(new PhysicalStream(new RgbBundle, n = 1, d = 2, c = 7, u = new Null())))
   io :<= DontCare
   io.ready := DontCare
 }
 
 class TopLevelRgbDataviewModule extends Module {
   val io = IO(new Bundle {
-    val in = Input(UInt(64.W))
+    val in  = Input(UInt(64.W))
     val out = Output(SInt(128.W))
   })
 
   val rgbOut = Module(new RgbDataviewOut())
-  val rgbIn = Module(new RgbDataviewIn())
+  val rgbIn  = Module(new RgbDataviewIn())
 
   // Bi-directional connection
   rgbIn.io.data :<>= rgbOut.tydi_port.data
@@ -64,7 +64,8 @@ class TopLevelRgbDataviewModule extends Module {
 }
 
 object RgbDataview extends App {
-  private val firOpts: Array[String] = Array("-disable-opt", "-O=debug", "-disable-all-randomization", "-strip-debug-info"/*, "-preserve-values=all"*/)
+  private val firOpts: Array[String] =
+    Array("-disable-opt", "-O=debug", "-disable-all-randomization", "-strip-debug-info" /*, "-preserve-values=all"*/ )
   println("Test123")
 
   println(emitCHIRRTL(new RgbDataviewOut()))

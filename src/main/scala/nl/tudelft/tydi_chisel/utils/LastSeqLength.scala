@@ -5,10 +5,10 @@ import chisel3.util.{PriorityEncoder, log2Ceil}
 import nl.tudelft.tydi_chisel.TydiModule
 
 class LastSeqLength(val n: Int, val d: Int) extends TydiModule {
-  val lasts = IO(Input(Vec(n, UInt(d.W))))
-  val outCheck: UInt = IO(Output(UInt(n.W)))
-  val outIndex: UInt = IO(Output(UInt(log2Ceil(n).W)))
-  val reducedLasts: Vec[UInt] = VecInit.tabulate(n) { i => lasts.slice(0, i+1).reduce(_ | _) }
+  val lasts                   = IO(Input(Vec(n, UInt(d.W))))
+  val outCheck: UInt          = IO(Output(UInt(n.W)))
+  val outIndex: UInt          = IO(Output(UInt(log2Ceil(n).W)))
+  val reducedLasts: Vec[UInt] = VecInit.tabulate(n) { i => lasts.slice(0, i + 1).reduce(_ | _) }
 
   private val check: Vec[Bool] = VecInit(
     // Fixme: The reducedLast should lag 1 behind the last to make this work

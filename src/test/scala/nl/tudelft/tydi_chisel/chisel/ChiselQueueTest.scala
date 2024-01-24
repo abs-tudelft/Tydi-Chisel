@@ -20,25 +20,25 @@ class InputOnlyModule[T <: Data](ioType: T) extends Module {
 }
 
 class PassthroughModule[T <: Data](ioType: T) extends Module {
-  val in = IO(Input(ioType))
+  val in  = IO(Input(ioType))
   val out = IO(Output(ioType))
   out := in
 }
 
 class PassthroughQueue[T <: Data](ioType: T) extends Module {
-  val in = IO(Flipped(Decoupled(ioType)))
+  val in  = IO(Flipped(Decoupled(ioType)))
   val out = IO(Decoupled(ioType))
   out <> in
 }
 
 class ShifterModule[T <: Data](ioType: T, cycles: Int = 1) extends Module {
-  val in = IO(Input(ioType))
+  val in  = IO(Input(ioType))
   val out = IO(Output(ioType))
   out := ShiftRegister(in, cycles)
 }
 
 class QueueModule[T <: Data](ioType: T, entries: Int) extends Module {
-  val in = IO(Flipped(Decoupled(ioType)))
+  val in  = IO(Flipped(Decoupled(ioType)))
   val out = IO(Decoupled(ioType))
   out <> Queue(in, entries)
 }
@@ -48,27 +48,24 @@ class MyBundle extends Bundle {
   val b = Bool()
 }
 
-
 class ChiselQueueTest extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "Testers2 with Queue"
 
   it should "pass through a vector of bundles, using enqueueNow" in {
     val bundle = new MyBundle
-    val myVec = Vec(2, bundle)
+    val myVec  = Vec(2, bundle)
 
     test(new QueueModule(myVec, 2)) { c =>
       c.in.initSource().setSourceClock(c.clock)
       c.out.initSink().setSinkClock(c.clock)
 
       val testVal = myVec.Lit(0 -> bundle.Lit(_.a -> 42.U, _.b -> true.B), 1 -> bundle.Lit(_.a -> 43.U, _.b -> false.B))
-      val testVal2 = myVec.Lit(0 -> bundle.Lit(_.a -> 44.U, _.b -> false.B), 1 -> bundle.Lit(_.a -> 45.U, _.b -> true.B))
+      val testVal2 =
+        myVec.Lit(0 -> bundle.Lit(_.a -> 44.U, _.b -> false.B), 1 -> bundle.Lit(_.a -> 45.U, _.b -> true.B))
 
       c.out.expectInvalid()
       c.in.enqueueNow(testVal)
-      parallel(
-        c.out.expectDequeueNow(testVal),
-        c.in.enqueueNow(testVal2)
-      )
+      parallel(c.out.expectDequeueNow(testVal), c.in.enqueueNow(testVal2))
       c.out.expectDequeueNow(testVal2)
     }
   }
@@ -80,15 +77,12 @@ class ChiselQueueTest extends AnyFlatSpec with ChiselScalatestTester {
       c.in.initSource().setSourceClock(c.clock)
       c.out.initSink().setSinkClock(c.clock)
 
-      val testVal = myVec.Lit(0 -> 42.U, 1 -> 43.U)
+      val testVal  = myVec.Lit(0 -> 42.U, 1 -> 43.U)
       val testVal2 = myVec.Lit(0 -> 44.U, 1 -> 45.U)
 
       c.out.expectInvalid()
       c.in.enqueueNow(testVal)
-      parallel(
-        c.out.expectDequeueNow(testVal),
-        c.in.enqueueNow(testVal2)
-      )
+      parallel(c.out.expectDequeueNow(testVal), c.in.enqueueNow(testVal2))
       c.out.expectDequeueNow(testVal2)
     }
   }
@@ -98,16 +92,13 @@ class ChiselQueueTest extends AnyFlatSpec with ChiselScalatestTester {
       c.in.initSource().setSourceClock(c.clock)
       c.out.initSink().setSinkClock(c.clock)
 
-      val bundle = new MyBundle
-      val testVal = bundle.Lit(_.a -> 42.U, _.b -> true.B)
+      val bundle   = new MyBundle
+      val testVal  = bundle.Lit(_.a -> 42.U, _.b -> true.B)
       val testVal2 = bundle.Lit(_.a -> 43.U, _.b -> false.B)
 
       c.out.expectInvalid()
       c.in.enqueueNow(testVal)
-      parallel(
-        c.out.expectDequeueNow(testVal),
-        c.in.enqueueNow(testVal2)
-      )
+      parallel(c.out.expectDequeueNow(testVal), c.in.enqueueNow(testVal2))
       c.out.expectDequeueNow(testVal2)
     }
   }
@@ -119,10 +110,7 @@ class ChiselQueueTest extends AnyFlatSpec with ChiselScalatestTester {
 
       c.out.expectInvalid()
       c.in.enqueueNow(42.U)
-      parallel(
-        c.out.expectDequeueNow(42.U),
-        c.in.enqueueNow(43.U)
-      )
+      parallel(c.out.expectDequeueNow(42.U), c.in.enqueueNow(43.U))
       c.out.expectDequeueNow(43.U)
     }
   }
@@ -137,9 +125,9 @@ class ChiselQueueTest extends AnyFlatSpec with ChiselScalatestTester {
       }
 
       c.out.expectInvalid()
-      c.clock.step(1)  // wait for first element to enqueue
+      c.clock.step(1) // wait for first element to enqueue
       c.out.expectDequeueNow(42.U)
-      c.out.expectPeek(43.U)  // check that queue stalls
+      c.out.expectPeek(43.U) // check that queue stalls
       c.clock.step(1)
       c.out.expectDequeueNow(43.U)
       c.out.expectDequeueNow(44.U)
@@ -162,20 +150,17 @@ class ChiselQueueTest extends AnyFlatSpec with ChiselScalatestTester {
     }
   }
 
-  it should "work with IrrevocableIO" in{
-    test(new Module{
-      val io = IO(new Bundle{
-        val in = Flipped(Irrevocable(UInt(8.W)))
+  it should "work with IrrevocableIO" in {
+    test(new Module {
+      val io = IO(new Bundle {
+        val in  = Flipped(Irrevocable(UInt(8.W)))
         val out = Irrevocable(UInt(8.W))
       })
       io.out <> Queue(io.in)
-    }){c =>
+    }) { c =>
       c.io.in.initSource().setSourceClock(c.clock)
       c.io.out.initSink().setSinkClock(c.clock)
-      parallel(
-        c.io.in.enqueueSeq(Seq(5.U, 2.U)),
-        c.io.out.expectDequeueSeq(Seq(5.U, 2.U))
-      )
+      parallel(c.io.in.enqueueSeq(Seq(5.U, 2.U)), c.io.out.expectDequeueSeq(Seq(5.U, 2.U)))
     }
   }
 
@@ -189,7 +174,7 @@ class ChiselQueueTest extends AnyFlatSpec with ChiselScalatestTester {
       }
 
       c.out.expectInvalid()
-      c.clock.step(1)  // wait for first element to enqueue
+      c.clock.step(1) // wait for first element to enqueue
       c.out.expectDequeueNow(0.U)
       c.clock.step(1)
       c.out.expectDequeueNow(0.U)
