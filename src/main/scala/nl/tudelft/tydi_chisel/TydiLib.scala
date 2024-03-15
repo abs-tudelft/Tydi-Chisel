@@ -4,6 +4,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 import chisel3._
+import chisel3.experimental.{BaseModule, ExtModule}
 import chisel3.internal.firrtl.Width
 import chisel3.util.{log2Ceil, Cat}
 import nl.tudelft.tydi_chisel.ReverseTranspiler._
@@ -395,7 +396,7 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
     this.user    := bundle.user
   }
 
-  def processWith[T <: SubProcessorSignalDef](module: => T)(implicit parentModule: TydiModule): PhysicalStream = {
+  def processWith[T <: SubProcessorSignalDef](module: => T)(implicit parentModule: TydiModuleMixin): PhysicalStream = {
     val processingModule = parentModule.Module(module)
     processingModule.in := this
     processingModule.out
@@ -406,13 +407,13 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
     module.out
   }
 
-  def convert(memSize: Int)(implicit parentModule: TydiModule): PhysicalStream = {
+  def convert(memSize: Int)(implicit parentModule: TydiModuleMixin): PhysicalStream = {
     val processingModule = parentModule.Module(new ComplexityConverter(this, memSize))
     processingModule.in := this
     processingModule.out
   }
 
-  def duplicate(k: Int)(implicit parentModule: TydiModule): Vec[PhysicalStream] = {
+  def duplicate(k: Int)(implicit parentModule: TydiModuleMixin): Vec[PhysicalStream] = {
     val processingModule = parentModule.Module(new StreamDuplicator(k, this))
     processingModule.in := this
     processingModule.out
@@ -610,19 +611,21 @@ object PhysicalStreamDetailed {
   ): PhysicalStreamDetailed[Tel, Tus] = Wire(new PhysicalStreamDetailed(e, n, d, c, r, u))
 }
 
-class TydiModule extends Module with TranspileExtend {
+trait TydiModuleMixin extends BaseModule with TranspileExtend {
+  implicit var parentModule: TydiModuleMixin = this
 
-  implicit var parentModule: TydiModule = this
-
-  private val moduleList = ListBuffer[TydiModule]()
+  private val moduleList = ListBuffer[TydiModuleMixin]()
 
   def mount[Tel <: TydiEl, Tus <: Data](bundle: PhysicalStreamDetailed[Tel, Data], io: PhysicalStream): Unit = {
     io := bundle
   }
 
-  def Module[T <: TydiModule](bc: => T): T = {
+  def Module[T <: BaseModule](bc: => T): T = {
     val v = chisel3.Module.apply(bc)
-    moduleList += v
+    // If we are actually dealing with a TydiModule, add it to our module list.
+    v match {
+      case v: TydiModuleMixin => moduleList += v
+    }
     v
   }
 
@@ -702,3 +705,6 @@ class TydiModule extends Module with TranspileExtend {
 
   override def fingerprint: String = this.name
 }
+
+abstract class TydiModule    extends Module with TydiModuleMixin
+abstract class TydiExtModule extends ExtModule with TydiModuleMixin
