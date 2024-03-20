@@ -54,18 +54,18 @@ class TimestampedMessageModuleOut extends TydiModule {
   //   We have 1 lane in this case
 
   // Top stream
-  stream.valid := true.B
-  stream.strb  := 1.U
-  stream.stai  := 0.U
-  stream.endi  := 1.U
-  stream.last  := 0.U
+  stream.valid   := true.B
+  stream.strb    := 1.U
+  stream.stai    := 0.U
+  stream.endi    := 1.U
+  stream.last(0) := 0.U
 
   // Child stream
   stream.el.message.valid := true.B
   stream.el.message.strb  := 1.U
   stream.el.message.stai  := 0.U
   stream.el.message.endi  := 1.U
-  stream.el.message.last  := 0.U
+  stream.el.message.last.foreach(_ := 0.U)
 }
 
 class TimestampedMessageModuleIn extends TydiModule {
