@@ -380,8 +380,16 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
     this.last    := bundle.last.asUInt
     this.valid   := bundle.valid
     bundle.ready := this.ready
-    this.data    := bundle.getDataConcat
-    this.user    := bundle.getUserConcat
+    if (elWidth > 0) {
+      this.data := bundle.getDataConcat
+    } else {
+      this.data := DontCare
+    }
+    if (userElWidth > 0) {
+      this.user := bundle.getUserConcat
+    } else {
+      this.user := DontCare
+    }
   }
 
   def :=(bundle: PhysicalStream): Unit = {
