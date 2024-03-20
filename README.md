@@ -28,7 +28,7 @@ Concretely, it contains:
 ## Related Tools
 * [tydi-lang-2](https://github.com/twoentartian/tydi-lang-2)  
 A tool for converting Tydi-lang code to a `json` representation of all logic types, streamlets, and implementations
-* [tydi-lang-2-chisel](https://github.com/twoentartian/tydi-lang-2)  
+* [tydi-lang-2-chisel](https://github.com/ccromjongh/Tydi-lang-2-chisel)  
 Consequtively converts the `json` tydi definitions to Chisel code utilising Tydi-Chisel
 * [Tydi repository](https://github.com/abs-tudelft/tydi)  
 Contains Tydi standard documentation and first implementation of a compiler. 
