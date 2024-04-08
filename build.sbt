@@ -1,5 +1,3 @@
-ThisBuild / name                 := "Tydi-Chisel"
-ThisBuild / description          := "Tydi-Chisel is an implementation of Tydi concepts in the Chisel HDL."
 ThisBuild / homepage             := Some(url("https://github.com/abs-tudelft/tydi-chisel"))
 ThisBuild / organizationHomepage := Some(url("https://github.com/abs-tudelft/"))
 ThisBuild / licenses             := List(License.Apache2)
@@ -14,6 +12,8 @@ val chiselVersion = "5.1.0"
 
 lazy val root = (project in file("."))
   .settings(
+    name        := "Tydi-Chisel",
+    description := "Tydi-Chisel is an implementation of Tydi concepts in the Chisel HDL.",
     libraryDependencies += "org.chipsalliance" %% "chisel"     % chiselVersion,
     libraryDependencies += "edu.berkeley.cs"   %% "chiseltest" % "5.0.2",
     scalacOptions ++= Seq(
@@ -26,13 +26,10 @@ lazy val root = (project in file("."))
     addCompilerPlugin("org.chipsalliance" % "chisel-plugin" % chiselVersion cross CrossVersion.full)
   )
 
-inThisBuild(
-  List(
-    semanticdbEnabled          := true,
-    semanticdbVersion          := scalafixSemanticdb.revision,
-    scalafixScalaBinaryVersion := scalaBinaryVersion.value
-  )
-)
+// Settings required for scalafix
+ThisBuild / semanticdbEnabled          := true
+ThisBuild / semanticdbVersion          := scalafixSemanticdb.revision
+ThisBuild / scalafixScalaBinaryVersion := scalaBinaryVersion.value
 
 val CICommands =
   Seq("clean", "compile", "test", "scalafmtCheckAll", "scalafmtSbtCheck", "scalafixAll --check").mkString(";")
