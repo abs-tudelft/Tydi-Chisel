@@ -11,4 +11,4 @@ target/
 test_run_dir/
 
 build/
-src/tydi/*/*.scala
+library/src/tydi/*/*.scala
