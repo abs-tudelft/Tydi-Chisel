@@ -1,4 +1,4 @@
-package nl.tudelft.tydi_chisel
+package nl.tudelft.tydi_chisel_test
 
 import scala.language.implicitConversions
 
