@@ -15,7 +15,7 @@ lazy val root = (project in file("."))
     name        := "Tydi-Chisel",
     description := "Tydi-Chisel is an implementation of Tydi concepts in the Chisel HDL.",
     libraryDependencies += "org.chipsalliance" %% "chisel"     % chiselVersion,
-    libraryDependencies += "edu.berkeley.cs"   %% "chiseltest" % "5.0.2",
+    libraryDependencies += "edu.berkeley.cs"   %% "chiseltest" % "5.0.2" % Test,
     scalacOptions ++= Seq(
       "-language:reflectiveCalls",
       "-deprecation",

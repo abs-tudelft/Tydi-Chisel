@@ -4,7 +4,6 @@ import chisel3._
 import chisel3.experimental.hierarchy.Definition
 import chisel3.internal.firrtl.Width
 import chisel3.util.Counter
-import chiseltest.RawTester.test
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
 import nl.tudelft.tydi_chisel._
 
@@ -113,10 +112,6 @@ class PipelinePlusStart
 
 object PipelineExamplePlus extends App {
   println("Test123")
-
-//  test(new PipelinePlusModule()) { c =>
-//    println(c.tydiCode)
-//  }
 
 //  println(emitCHIRRTL(new MultiNonNegativeFilter()))
 //  println(emitSystemVerilog(new NonNegativeFilter(), firtoolOpts = firNormalOpts))

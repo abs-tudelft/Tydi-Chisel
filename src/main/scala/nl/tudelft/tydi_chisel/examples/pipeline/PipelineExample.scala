@@ -3,7 +3,6 @@ package nl.tudelft.tydi_chisel.examples.pipeline
 import chisel3._
 import chisel3.internal.firrtl.Width
 import chisel3.util.Counter
-import chiseltest.RawTester.test
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
 import nl.tudelft.tydi_chisel._
 
@@ -116,8 +115,6 @@ class PipelineExampleModule extends SimpleProcessorBase(new NumberGroup, new Sta
 
 object PipelineExample extends App {
   println("Test123")
-
-  test(new PipelineExampleModule()) { c => println(c.tydiCode) }
 
 //  println(emitCHIRRTL(new NonNegativeFilter()))
 //  println(emitSystemVerilog(new NonNegativeFilter(), firtoolOpts = firNormalOpts))

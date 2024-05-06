@@ -2,7 +2,6 @@ package nl.tudelft.tydi_chisel.examples.timestamped_message
 
 import chisel3._
 import chisel3.internal.firrtl.Width
-import chiseltest.RawTester.test
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
 import nl.tudelft.tydi_chisel._
 
@@ -96,8 +95,6 @@ object TimestampedMessage extends App {
   private val firOpts: Array[String] =
     Array("-disable-opt", "-O=debug", "-disable-all-randomization", "-strip-debug-info" /*, "-preserve-values=all"*/ )
   println("Test123")
-
-  test(new TopLevelModule()) { c => println(c.tydiCode) }
 
   println((new NestedBundle).createEnum)
 
