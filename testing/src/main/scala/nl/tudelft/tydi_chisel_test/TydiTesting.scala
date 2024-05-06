@@ -20,26 +20,13 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
   // Source (enqueue) functions
   //
   def initSource(): this.type = {
-    x.valid.poke(false.B)
+    x.valid.poke(false)
     x.stai.poke(0.U)
     x.endi.poke((x.n - 1).U)
     x.strb.poke(((1 << x.n) - 1).U(x.n.W)) // Set strobe to all 1's
 //    val lasts = (0 until x.n).map(index => (index, 0.U))
 //    x.last.poke(x.last.Lit(lasts: _*))
     this
-  }
-
-  def setSourceClock(clock: Clock): this.type = {
-    ClockResolutionUtils.setClock(TydiStreamDriver.decoupledSourceKey, x, clock)
-    this
-  }
-
-  protected def getSourceClock: Clock = {
-    ClockResolutionUtils.getClock(
-      TydiStreamDriver.decoupledSourceKey,
-      x,
-      x.ready.getSourceClock()
-    ) // TODO: validate against bits/valid sink clocks
   }
 
   def elLit(elems: (Tel => (Data, Data))*): Tel = {
@@ -62,8 +49,7 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     strb: Option[UInt] = None,
     stai: Option[UInt] = None,
     endi: Option[UInt] = None
-  ): Unit = timescope {
-    // TODO: check for init
+  ): Unit = {
     x.el.poke(data)
     if (last.isDefined) {
       val lastLit = Vec(x.n, UInt(x.d.W)).Lit(0 -> last.get)
@@ -78,12 +64,13 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     if (endi.isDefined) {
       x.endi.poke(endi.get)
     }
-    x.valid.poke(true.B)
+    x.valid.poke(true)
     fork
       .withRegion(Monitor) {
-        x.ready.expect(true.B)
+        x.ready.expect(true)
       }
-      .joinAndStep(getSourceClock)
+      .joinAndStep()
+    x.valid.poke(false)
   }
 
   def enqueueNow(
@@ -92,8 +79,7 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     strb: Option[UInt] = None,
     stai: Option[UInt] = None,
     endi: Option[UInt] = None
-  ): Unit = timescope {
-    // TODO: check for init
+  ): Unit = {
     x.data.pokePartial(data)
     if (last.isDefined) {
       x.last.pokePartial(last.get)
@@ -107,12 +93,13 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     if (endi.isDefined) {
       x.endi.poke(endi.get)
     }
-    x.valid.poke(true.B)
+    x.valid.poke(true)
     fork
       .withRegion(Monitor) {
-        x.ready.expect(true.B)
+        x.ready.expect(true)
       }
-      .joinAndStep(getSourceClock)
+      .joinAndStep()
+    x.valid.poke(false)
   }
 
   /** Send an empty transfer (no valid data lanes). Unless overridden, a strobe of 0's is sent. */
@@ -121,8 +108,7 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     strb: Option[UInt] = None,
     stai: Option[UInt] = None,
     endi: Option[UInt] = None
-  ): Unit = timescope {
-    // TODO: check for init
+  ): Unit = {
     if (last.isDefined) {
       x.last.pokePartial(last.get)
     } /* else {
@@ -141,38 +127,39 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     if (endi.isDefined) {
       x.endi.poke(endi.get)
     }
-    x.valid.poke(true.B)
+    x.valid.poke(true)
     fork
       .withRegion(Monitor) {
-        x.ready.expect(true.B)
+        x.ready.expect(true)
       }
-      .joinAndStep(getSourceClock)
+      .joinAndStep()
+    x.valid.poke(true)
   }
 
-  def enqueueElNow(elems: (Tel => (Data, Data))*): Unit = timescope {
+  def enqueueElNow(elems: (Tel => (Data, Data))*): Unit = {
     val litValue = elLit(elems: _*) // Use splat operator to propagate repeated parameters
     enqueueElNow(litValue)
   }
 
-  def enqueue(data: Tel): Unit = timescope {
-    // TODO: check for init
+  def enqueue(data: Tel): Unit = {
     x.el.poke(data)
-    x.valid.poke(true.B)
+    x.valid.poke(true)
     fork
       .withRegion(Monitor) {
-        while (x.ready.peek().litToBoolean == false) {
-          getSourceClock.step(1)
+        while (!x.ready.peekBoolean()) {
+          step(1)
         }
       }
-      .joinAndStep(getSourceClock)
+      .joinAndStep()
+    x.valid.poke(true)
   }
 
-  def enqueue(elems: (Tel => (Data, Data))*): Unit = timescope {
+  def enqueue(elems: (Tel => (Data, Data))*): Unit = {
     val litValue = elLit(elems: _*) // Use splat operator to propagate repeated parameters
     enqueue(litValue)
   }
 
-  def enqueueSeq(data: Seq[Tel]): Unit = timescope {
+  def enqueueSeq(data: Seq[Tel]): Unit = {
     for (elt <- data) {
       enqueue(elt)
     }
@@ -181,43 +168,37 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
   // Sink (dequeue) functions
   //
   def initSink(): this.type = {
-    x.ready.poke(false.B)
+    x.ready.poke(false)
     this
   }
 
-  def setSinkClock(clock: Clock): this.type = {
-    ClockResolutionUtils.setClock(TydiStreamDriver.decoupledSinkKey, x, clock)
-    this
-  }
-
-  protected def getSinkClock: Clock = {
-    ClockResolutionUtils.getClock(
-      TydiStreamDriver.decoupledSinkKey,
-      x,
-      x.valid.getSourceClock()
-    ) // TODO: validate against bits/valid sink clocks
-  }
+  @deprecated("You no longer need to set the clock explicitly.", since = "6.0.x")
+  protected val decoupledSourceKey = new Object()
+  def setSourceClock(clock: Clock): this.type = this
+  protected val decoupledSinkKey = new Object()
+  @deprecated("You no longer need to set the clock explicitly.", since = "6.0.x")
+  def setSinkClock(clock: Clock): this.type = this
 
   // NOTE: this doesn't happen in the Monitor phase, unlike public functions
   def waitForValid(): Unit = {
     while (!x.valid.peek().litToBoolean) {
-      getSinkClock.step(1)
+      step(1)
     }
   }
 
-  def expectDequeue(data: Tel): Unit = timescope {
-    // TODO: check for init
-    x.ready.poke(true.B)
+  def expectDequeue(data: Tel): Unit = {
+    x.ready.poke(true)
     fork
       .withRegion(Monitor) {
         waitForValid()
-        x.valid.expect(true.B)
+        x.valid.expect(true)
         x.el.expect(data)
       }
-      .joinAndStep(getSinkClock)
+      .joinAndStep()
+    x.ready.poke(false)
   }
 
-  def expectDequeue(elems: (Tel => (Data, Data))*): Unit = timescope {
+  def expectDequeue(elems: (Tel => (Data, Data))*): Unit = {
     val litValue = elLit(elems: _*) // Use splat operator to propagate repeated parameters
     expectDequeue(litValue)
   }
@@ -228,12 +209,11 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     strb: Option[UInt] = None,
     stai: Option[UInt] = None,
     endi: Option[UInt] = None
-  ): Unit = timescope {
-    // TODO: check for init
-    x.ready.poke(true.B)
+  ): Unit = {
+    x.ready.poke(true)
     fork
       .withRegion(Monitor) {
-        x.valid.expect(true.B)
+        x.valid.expect(true)
         x.el.expect(data)
         if (last.isDefined) {
           x.last.expect(last.get)
@@ -248,7 +228,8 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
           x.strb.expect(strb.get)
         }
       }
-      .joinAndStep(getSinkClock)
+      .joinAndStep()
+    x.ready.poke(false)
   }
 
   /** Expect an empty transfer (no valid data lanes). Unless overridden, a strobe of 0's is expected. */
@@ -257,12 +238,11 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     strb: Option[UInt] = None,
     stai: Option[UInt] = None,
     endi: Option[UInt] = None
-  ): Unit = timescope {
-    // TODO: check for init
-    x.ready.poke(true.B)
+  ): Unit = {
+    x.ready.poke(true)
     fork
       .withRegion(Monitor) {
-        x.valid.expect(true.B)
+        x.valid.expect(true)
         if (strb.isDefined) {
           x.strb.expect(strb.get)
         } else {
@@ -278,15 +258,16 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
           x.endi.expect(endi.get)
         }
       }
-      .joinAndStep(getSinkClock)
+      .joinAndStep()
+    x.ready.poke(false)
   }
 
-  def expectDequeueNow(elems: (Tel => (Data, Data))*): Unit = timescope {
+  def expectDequeueNow(elems: (Tel => (Data, Data))*): Unit = {
     val litValue = elLit(elems: _*) // Use splat operator to propagate repeated parameters
     expectDequeueNow(litValue)
   }
 
-  def expectDequeueSeq(data: Seq[Tel]): Unit = timescope {
+  def expectDequeueSeq(data: Seq[Tel]): Unit = {
     for (elt <- data) {
       expectDequeue(elt)
     }
@@ -294,14 +275,14 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
 
   def expectPeek(data: Tel): Unit = {
     fork.withRegion(Monitor) {
-      x.valid.expect(true.B)
+      x.valid.expect(true)
       x.el.expect(data)
     }
   }
 
   def expectInvalid(): Unit = {
     fork.withRegion(Monitor) {
-      x.valid.expect(false.B)
+      x.valid.expect(false)
     }
   }
 
@@ -316,14 +297,14 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     val streamAntiDir                      = if (x.r) out else in
 
     try
-      stringBuilder.append(s"State of \"${x.instanceName}\" $streamDir @ clk-step ${getSinkClock.getStepCount}:\n")
+      stringBuilder.append(s"State of \"${x.instanceName}\" $streamDir @ clk-step ${x.getSourceClock().getStepCount}:\n")
     catch {
       case e: ClockResolutionException =>
         stringBuilder.append(s"State of \"${x.instanceName}\" $streamDir (unable to get clock):\n")
     }
     // Valid and ready signals
-    stringBuilder.append(s"valid $streamDir: ${logicSymbol(x.valid.peek().litToBoolean)}\t\t\t")
-    stringBuilder.append(s"ready $streamAntiDir: ${logicSymbol(x.ready.peek().litToBoolean)}\n")
+    stringBuilder.append(s"valid $streamDir: ${logicSymbol(x.valid.peekBoolean())}\t\t\t")
+    stringBuilder.append(s"ready $streamAntiDir: ${logicSymbol(x.ready.peekBoolean())}\n")
     // Stai and endi signals
     stringBuilder.append(s"stai ≥: ${x.stai.peek().litValue}\t\t\t")
     stringBuilder.append(s"endi ≤: ${x.endi.peek().litValue}\n")
@@ -366,11 +347,6 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
 
     stringBuilder.toString
   }
-}
-
-object TydiStreamDriver {
-  protected val decoupledSourceKey = new Object()
-  protected val decoupledSinkKey   = new Object()
 }
 
 object printUtils {
