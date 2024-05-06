@@ -5,8 +5,8 @@ import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chisel3.experimental.VecLiterals.{AddObjectLiteralConstructor, AddVecLiteralConstructor}
 import chiseltest._
 import chiseltest.experimental.expose
-import nl.tudelft.tydi_chisel_test.Conversions._
 import nl.tudelft.tydi_chisel._
+import nl.tudelft.tydi_chisel_test.Conversions._
 import nl.tudelft.tydi_chisel_test.printUtils._
 import org.scalatest.flatspec.AnyFlatSpec
 

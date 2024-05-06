@@ -4,8 +4,8 @@ import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chisel3.experimental.VecLiterals.{AddObjectLiteralConstructor, AddVecLiteralConstructor}
 import chiseltest._
-import nl.tudelft.tydi_chisel_test.Conversions._
 import nl.tudelft.tydi_chisel.{TydiProcessorTestWrapper, TydiTestWrapper}
+import nl.tudelft.tydi_chisel_test.Conversions._
 import org.scalatest.flatspec.AnyFlatSpec
 
 class PipelineExamplePlusTest extends AnyFlatSpec with ChiselScalatestTester {
