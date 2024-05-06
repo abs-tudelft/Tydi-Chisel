@@ -3,7 +3,7 @@ package nl.tudelft.tydi_chisel.utils
 import chisel3._
 import chisel3.experimental.VecLiterals.AddObjectLiteralConstructor
 import chiseltest._
-import nl.tudelft.tydi_chisel.printUtils._
+import nl.tudelft.tydi_chisel_test.printUtils._
 import org.scalatest.flatspec.AnyFlatSpec
 
 class LastSeqProcessorTest extends AnyFlatSpec with ChiselScalatestTester {

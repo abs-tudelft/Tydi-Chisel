@@ -2,7 +2,7 @@ package nl.tudelft.tydi_chisel.examples.pipeline
 
 import chisel3._
 import chiseltest._
-import nl.tudelft.tydi_chisel.Conversions._
+import nl.tudelft.tydi_chisel_test.Conversions._
 import nl.tudelft.tydi_chisel.{TydiProcessorTestWrapper, TydiTestWrapper}
 import org.scalatest.flatspec.AnyFlatSpec
 
