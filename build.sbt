@@ -20,7 +20,7 @@ lazy val commonSettings = Seq(
   addCompilerPlugin("org.chipsalliance" % "chisel-plugin" % chiselVersion cross CrossVersion.full)
 )
 
-lazy val library: Project = (project in file("."))
+lazy val library: Project = (project in file("library"))
   .settings(
     commonSettings,
     name                                     := "Tydi-Chisel",
