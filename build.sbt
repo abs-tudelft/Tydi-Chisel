@@ -1,4 +1,4 @@
-val chiselVersion = "5.1.0"
+val chiselVersion = "6.3.0"
 
 ThisBuild / scalaVersion := "2.13.12"
 
@@ -25,7 +25,7 @@ lazy val library: Project = (project in file("library"))
     commonSettings,
     name                                     := "Tydi-Chisel",
     description                              := "Tydi-Chisel is an implementation of Tydi concepts in the Chisel HDL.",
-    libraryDependencies += "edu.berkeley.cs" %% "chiseltest" % "5.0.2" % Test
+    libraryDependencies += "edu.berkeley.cs" %% "chiseltest" % "6.0.0" % Test
   )
 //  .dependsOn(testingTools % "test->test")
 
@@ -34,7 +34,7 @@ lazy val testingTools: Project = (project in file("testing"))
     commonSettings,
     name                                     := "Tydi-Chisel-Test",
     description                              := "This package contains the testing tools for Tydi-Chisel",
-    libraryDependencies += "edu.berkeley.cs" %% "chiseltest" % "5.0.2"
+    libraryDependencies += "edu.berkeley.cs" %% "chiseltest" % "6.0.0"
   )
   .dependsOn(library % "compile->compile") // Make testingTools project depend on the library project
 
