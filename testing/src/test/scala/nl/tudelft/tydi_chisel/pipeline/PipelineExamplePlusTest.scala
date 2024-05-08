@@ -36,8 +36,8 @@ class PipelineExamplePlusTest extends AnyFlatSpec with ChiselScalatestTester {
   it should "reduce" in {
     test(new ReducerWrap) { c =>
       // Initialize signals
-      c.in.initSource().setSourceClock(c.clock)
-      c.out.initSink().setSinkClock(c.clock)
+      c.in.initSource()
+      c.out.initSink()
 
       val t1     = vecLitFromSeq(Seq(3, 6, 9, 28))
       val t1Last = Vec.Lit(0.U, 0.U, 0.U, 1.U)
@@ -71,8 +71,8 @@ class PipelineExamplePlusTest extends AnyFlatSpec with ChiselScalatestTester {
   it should "process a sequence in the first half" in {
     test(new PipelineStartWrap) { c =>
       // Initialize signals
-      c.in.initSource().setSourceClock(c.clock)
-      c.out.initSink().setSinkClock(c.clock)
+      c.in.initSource()
+      c.out.initSink()
 
       val t1     = vecLitFromSeq(Seq(-3, 6, 9, 28))
       val t1Last = Vec.Lit(0.U, 0.U, 0.U, 1.U)
@@ -96,8 +96,8 @@ class PipelineExamplePlusTest extends AnyFlatSpec with ChiselScalatestTester {
   it should "process a sequence" in {
     test(new PipelineWrap) { c =>
       // Initialize signals
-      c.in.initSource().setSourceClock(c.clock)
-      c.out.initSink().setSinkClock(c.clock)
+      c.in.initSource()
+      c.out.initSink()
 
       val t1     = vecLitFromSeq(Seq(-3, 6, 9, 28))
       val t1Last = Vec.Lit(0.U, 0.U, 0.U, 1.U)
@@ -139,8 +139,8 @@ class PipelineExamplePlusTest extends AnyFlatSpec with ChiselScalatestTester {
   it should "process a sequence in parallel" in {
     test(new PipelineWrap) { c =>
       // Initialize signals
-      c.in.initSource().setSourceClock(c.clock)
-      c.out.initSink().setSinkClock(c.clock)
+      c.in.initSource()
+      c.out.initSink()
 
       // define min and max values numbers are allowed to have
       val rangeMin = BigInt(Long.MinValue)

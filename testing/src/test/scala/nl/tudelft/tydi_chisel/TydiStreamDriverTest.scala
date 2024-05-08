@@ -31,8 +31,8 @@ class TydiStreamDriverTest extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "pass through an aggregate" in {
     test(new TydiPassthroughModule(new MyBundle)) { c =>
-      c.in.initSource().setSourceClock(c.clock)
-      c.out.initSink().setSinkClock(c.clock)
+      c.in.initSource()
+      c.out.initSink()
 
       val whatever: Seq[MyBundle => (Data, Data)] = Seq(_.a -> 0.U, _.b -> false.B)
 

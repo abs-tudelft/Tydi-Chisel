@@ -205,8 +205,8 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
     // test case body here
     test(new ManualComplexityConverterFancyWrapper(new MyEl, stream, 10)) { c =>
       // Initialize signals
-      c.in.initSource().setSourceClock(c.clock)
-      c.out.initSink().setSinkClock(c.clock)
+      c.in.initSource()
+      c.out.initSink()
       println("N=1 test with fancy wrapper")
       println("Initializing signals")
 //      c.in.last.poke(c.in.last.Lit(0 -> 0.U))
@@ -306,8 +306,8 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
     // test case body here
     test(new ManualComplexityConverterFancyWrapper(char, stream, 20)) { c =>
       // Initialize signals
-      c.in.initSource().setSourceClock(c.clock)
-      c.out.initSink().setSinkClock(c.clock)
+      c.in.initSource()
+      c.out.initSink()
       c.in.endi.poke(stream.n - 1)
       c.in.strb.poke(0.U)
       println("She is a dolphin test")
@@ -457,8 +457,8 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
     // test case body here
     test(new ManualComplexityConverterFancyWrapper(char, stream, 20)) { c =>
       // Initialize signals
-      c.in.initSource().setSourceClock(c.clock)
-      c.out.initSink().setSinkClock(c.clock)
+      c.in.initSource()
+      c.out.initSink()
       c.in.endi.poke(stream.n - 1)
       c.in.strb.poke(0.U)
       println("Hello World test")

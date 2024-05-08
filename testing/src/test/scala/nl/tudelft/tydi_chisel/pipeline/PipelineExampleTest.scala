@@ -16,8 +16,8 @@ class PipelineExampleTest extends AnyFlatSpec with ChiselScalatestTester {
   it should "filter negative values" in {
     test(new NonNegativeFilterWrap) { c =>
       // Initialize signals
-      c.in.initSource().setSourceClock(c.clock)
-      c.out.initSink().setSinkClock(c.clock)
+      c.in.initSource()
+      c.out.initSink()
 
       parallel(
         c.in.enqueueElNow(_.time -> 123976.U, _.value -> 6.S),
@@ -46,8 +46,8 @@ class PipelineExampleTest extends AnyFlatSpec with ChiselScalatestTester {
   it should "reduce" in {
     test(new ReducerWrap) { c =>
       // Initialize signals
-      c.in.initSource().setSourceClock(c.clock)
-      c.out.initSink().setSinkClock(c.clock)
+      c.in.initSource()
+      c.out.initSink()
 
       c.in.enqueueElNow(_.time -> 123976.U, _.value -> 6.S)
       println(c.out.printState())
@@ -66,8 +66,8 @@ class PipelineExampleTest extends AnyFlatSpec with ChiselScalatestTester {
   it should "process a sequence" in {
     test(new PipelineWrap) { c =>
       // Initialize signals
-      c.in.initSource().setSourceClock(c.clock)
-      c.out.initSink().setSinkClock(c.clock)
+      c.in.initSource()
+      c.out.initSink()
 
       // Enqueue first value
       c.in.enqueueElNow(_.time -> 123976.U, _.value -> 6.S)
@@ -99,8 +99,8 @@ class PipelineExampleTest extends AnyFlatSpec with ChiselScalatestTester {
   it should "process a sequence in parallel" in {
     test(new PipelineWrap) { c =>
       // Initialize signals
-      c.in.initSource().setSourceClock(c.clock)
-      c.out.initSink().setSinkClock(c.clock)
+      c.in.initSource()
+      c.out.initSink()
 
       // define min and max values numbers are allowed to have
       val rangeMin = BigInt(Long.MinValue)

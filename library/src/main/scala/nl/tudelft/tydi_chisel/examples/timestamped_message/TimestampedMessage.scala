@@ -1,7 +1,6 @@
 package nl.tudelft.tydi_chisel.examples.timestamped_message
 
 import chisel3._
-import chisel3.internal.firrtl.Width
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
 import nl.tudelft.tydi_chisel._
 
