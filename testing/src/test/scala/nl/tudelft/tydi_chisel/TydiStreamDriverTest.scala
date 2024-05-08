@@ -31,8 +31,8 @@ class TydiStreamDriverTest extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "pass through an aggregate" in {
     test(new TydiPassthroughModule(new MyBundle)) { c =>
-      c.in.initSource().setSourceClock(c.clock)
-      c.out.initSink().setSinkClock(c.clock)
+      c.in.initSource()
+      c.out.initSink()
 
       val whatever: Seq[MyBundle => (Data, Data)] = Seq(_.a -> 0.U, _.b -> false.B)
 
@@ -42,13 +42,15 @@ class TydiStreamDriverTest extends AnyFlatSpec with ChiselScalatestTester {
 
       c.out.expectInvalid()
       c.clock.step()
-      parallel(c.in.enqueueElNow(testVal), c.out.expectDequeueNow(_.a -> 42.U, _.b -> true.B))
-      // Clock step is required because else we are still in the same moment as the parallel functions from before.
-      // Because they are timescoped, the printState does not give very interesting results.
-//      c.clock.step()
-//      state = c.out.printState()
-//      print(state)
-      parallel(c.in.enqueueElNow(_.a -> 43.U, _.b -> false.B), c.out.expectDequeueNow(testVal2))
+      parallel(
+        {
+          c.in.enqueueElNow(testVal)
+          c.in.enqueueElNow(_.a -> 43.U, _.b -> false.B)
+        }, {
+          c.out.expectDequeueNow(_.a -> 42.U, _.b -> true.B)
+          c.out.expectDequeueNow(testVal2)
+        }
+      )
     }
   }
 }

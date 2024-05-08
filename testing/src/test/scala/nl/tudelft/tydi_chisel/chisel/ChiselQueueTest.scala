@@ -56,8 +56,8 @@ class ChiselQueueTest extends AnyFlatSpec with ChiselScalatestTester {
     val myVec  = Vec(2, bundle)
 
     test(new QueueModule(myVec, 2)) { c =>
-      c.in.initSource().setSourceClock(c.clock)
-      c.out.initSink().setSinkClock(c.clock)
+      c.in.initSource()
+      c.out.initSink()
 
       val testVal = myVec.Lit(0 -> bundle.Lit(_.a -> 42.U, _.b -> true.B), 1 -> bundle.Lit(_.a -> 43.U, _.b -> false.B))
       val testVal2 =
@@ -74,8 +74,8 @@ class ChiselQueueTest extends AnyFlatSpec with ChiselScalatestTester {
     val myVec = Vec(2, UInt(8.W))
 
     test(new QueueModule(myVec, 2)) { c =>
-      c.in.initSource().setSourceClock(c.clock)
-      c.out.initSink().setSinkClock(c.clock)
+      c.in.initSource()
+      c.out.initSink()
 
       val testVal  = myVec.Lit(0 -> 42.U, 1 -> 43.U)
       val testVal2 = myVec.Lit(0 -> 44.U, 1 -> 45.U)
@@ -89,8 +89,8 @@ class ChiselQueueTest extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "pass through an aggregate, using enqueueNow" in {
     test(new QueueModule(new MyBundle, 2)) { c =>
-      c.in.initSource().setSourceClock(c.clock)
-      c.out.initSink().setSinkClock(c.clock)
+      c.in.initSource()
+      c.out.initSink()
 
       val bundle   = new MyBundle
       val testVal  = bundle.Lit(_.a -> 42.U, _.b -> true.B)
@@ -105,8 +105,8 @@ class ChiselQueueTest extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "pass through elements, using enqueueNow" in {
     test(new QueueModule(UInt(8.W), 2)) { c =>
-      c.in.initSource().setSourceClock(c.clock)
-      c.out.initSink().setSinkClock(c.clock)
+      c.in.initSource()
+      c.out.initSink()
 
       c.out.expectInvalid()
       c.in.enqueueNow(42.U)
@@ -117,8 +117,8 @@ class ChiselQueueTest extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "pass through elements, using enqueueSeq" in {
     test(new QueueModule(UInt(8.W), 2)) { c =>
-      c.in.initSource().setSourceClock(c.clock)
-      c.out.initSink().setSinkClock(c.clock)
+      c.in.initSource()
+      c.out.initSink()
 
       fork {
         c.in.enqueueSeq(Seq(42.U, 43.U, 44.U))
@@ -138,9 +138,7 @@ class ChiselQueueTest extends AnyFlatSpec with ChiselScalatestTester {
   it should "work with a combinational queue" in {
     test(new PassthroughQueue(UInt(8.W))) { c =>
       c.in.initSource()
-      c.in.setSourceClock(c.clock)
       c.out.initSink()
-      c.out.setSinkClock(c.clock)
 
       fork {
         c.in.enqueueSeq(Seq(42.U, 43.U, 44.U))
@@ -158,16 +156,16 @@ class ChiselQueueTest extends AnyFlatSpec with ChiselScalatestTester {
       })
       io.out <> Queue(io.in)
     }) { c =>
-      c.io.in.initSource().setSourceClock(c.clock)
-      c.io.out.initSink().setSinkClock(c.clock)
+      c.io.in.initSource()
+      c.io.out.initSink()
       parallel(c.io.in.enqueueSeq(Seq(5.U, 2.U)), c.io.out.expectDequeueSeq(Seq(5.U, 2.U)))
     }
   }
 
   it should "enqueue/dequeue zero-width data" in {
     test(new QueueModule(UInt(0.W), 2)) { c =>
-      c.in.initSource().setSourceClock(c.clock)
-      c.out.initSink().setSinkClock(c.clock)
+      c.in.initSource()
+      c.out.initSink()
 
       fork {
         c.in.enqueueSeq(Seq(0.U, 0.U, 0.U))
