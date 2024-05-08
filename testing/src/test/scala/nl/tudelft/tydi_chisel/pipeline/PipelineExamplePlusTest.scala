@@ -42,7 +42,7 @@ class PipelineExamplePlusTest extends AnyFlatSpec with ChiselScalatestTester {
       val t1     = vecLitFromSeq(Seq(3, 6, 9, 28))
       val t1Last = Vec.Lit(0.U, 0.U, 0.U, 1.U)
 
-      c.in.enqueueNow(t1, endi = Some(2.U), last = Some(t1Last))
+      c.in.enqueueNow(t1, endi = Some(2.U), last = Some(t1Last), reset=true)
       println(c.out.printState(statsRenderer))
       c.clock.step()
       println(c.out.printState(statsRenderer))
@@ -57,10 +57,10 @@ class PipelineExamplePlusTest extends AnyFlatSpec with ChiselScalatestTester {
 
       c.clock.step()
       println(c.out.printState(statsRenderer))
-      c.in.enqueueNow(t2, endi = Some(3.U), last = Some(t2Last))
+      c.in.enqueueNow(t2, endi = Some(3.U), last = Some(t2Last), reset=true)
       println(c.out.printState(statsRenderer))
       c.out.expectInvalid()
-      c.in.enqueueNow(t3, endi = Some(3.U), last = Some(t3Last))
+      c.in.enqueueNow(t3, endi = Some(3.U), last = Some(t3Last), reset=true)
       println(c.out.printState(statsRenderer))
       c.clock.step()
       println(c.out.printState(statsRenderer))

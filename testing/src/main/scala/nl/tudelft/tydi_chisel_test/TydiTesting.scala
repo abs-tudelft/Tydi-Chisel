@@ -1,10 +1,9 @@
 package nl.tudelft.tydi_chisel_test
 
 import scala.language.implicitConversions
-
 import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
-import chisel3.experimental.VecLiterals.AddVecLiteralConstructor
+import chisel3.experimental.VecLiterals.{AddObjectLiteralConstructor, AddVecLiteralConstructor}
 import chisel3.util._
 import chiseltest._
 import nl.tudelft.tydi_chisel.{PhysicalStreamDetailed, TydiEl}
@@ -24,8 +23,10 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     x.stai.poke(0.U)
     x.endi.poke((x.n - 1).U)
     x.strb.poke(((1 << x.n) - 1).U(x.n.W)) // Set strobe to all 1's
-//    val lasts = (0 until x.n).map(index => (index, 0.U))
-//    x.last.poke(x.last.Lit(lasts: _*))
+    if (x.d > 0) {
+      val lasts: Seq[UInt] = Seq.fill(x.n)(0.U(x.d.W))
+      x.last.poke(Vec.Lit(lasts: _*))
+    }
     this
   }
 
@@ -49,7 +50,8 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     strb: Option[UInt] = None,
     stai: Option[UInt] = None,
     endi: Option[UInt] = None,
-    run: => Unit = {}
+    run: => Unit = {},
+    reset: Boolean = false
   ): Unit = {
     x.el.poke(data)
     if (last.isDefined) {
@@ -73,6 +75,7 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
       }
       .joinAndStep()
     x.valid.poke(false)
+    if (reset) { initSource() }
   }
 
   def enqueueNow(
@@ -81,7 +84,8 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     strb: Option[UInt] = None,
     stai: Option[UInt] = None,
     endi: Option[UInt] = None,
-    run: => Unit = {}
+    run: => Unit = {},
+    reset: Boolean = false
   ): Unit = {
     x.data.pokePartial(data)
     if (last.isDefined) {
@@ -104,6 +108,7 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
       }
       .joinAndStep()
     x.valid.poke(false)
+    if (reset) { initSource() }
   }
 
   /** Send an empty transfer (no valid data lanes). Unless overridden, a strobe of 0's is sent. */
@@ -112,7 +117,8 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     strb: Option[UInt] = None,
     stai: Option[UInt] = None,
     endi: Option[UInt] = None,
-    run: => Unit = {}
+    run: => Unit = {},
+    reset: Boolean = false
   ): Unit = {
     if (last.isDefined) {
       x.last.pokePartial(last.get)
@@ -140,6 +146,7 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
       }
       .joinAndStep()
     x.valid.poke(true)
+    if (reset) { initSource() }
   }
 
   def enqueueElNow(elems: (Tel => (Data, Data))*): Unit = {
