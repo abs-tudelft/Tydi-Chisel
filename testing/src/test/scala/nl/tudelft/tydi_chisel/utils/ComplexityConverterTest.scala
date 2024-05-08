@@ -327,76 +327,71 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
         {
           // Send some data in
           // shei
-          timescope({
-            c.in.valid.poke(true)
-            c.in.data.pokePartial(t1)
-            c.in.strb.poke(bRev("1111"))
-            c.in.last.poke(Vec.Lit("b00".U(2.W), "b00".U, "b01".U, "b00".U))
-            println("\n-- Transfer in 1")
-            printInputState(c)
-            c.clock.step(1)
-            println(s"All data: ${c.exposed_storedData.peek().asString}")
-          })
+          c.in.enqueueNow(t1,
+            Option(Vec.Lit("b00".U(2.W), "b00".U, "b01".U, "b00".U)),
+            Option(bRev("1111")),
+            run = {
+              println("\n-- Transfer in 1")
+              printInputState(c)
+            }
+          )
+          println(s"All data: ${c.exposed_storedData.peek().asString}")
 
-          timescope({
-            c.clock.step(1)
-          })
+          c.clock.step(1)
 
           // s_a_
-          timescope({
-            c.in.valid.poke(true)
-            c.in.data.pokePartial(t3)
-            c.in.strb.poke(bRev("1010"))
-            c.in.last.poke(Vec.Lit("b01".U(2.W), "b00".U, "b01".U, "b00".U))
-            println("\n-- Transfer in 3")
-            printInputState(c)
-            c.clock.step(1)
-            println(s"All data: ${c.exposed_storedData.peek().asString}")
-          })
+          c.in.enqueueNow(t3,
+            Option(Vec.Lit("b01".U(2.W), "b00".U, "b01".U, "b00".U)),
+            Option(bRev("1010")),
+            run = {
+              println("\n-- Transfer in 3")
+              printInputState(c)
+            }
+          )
+          println(s"All data: ${c.exposed_storedData.peek().asString}")
 
           // d_ol
-          timescope({
-            c.in.valid.poke(true)
-            c.in.data.pokePartial(t4)
-            c.in.strb.poke(bRev("1011"))
-            c.in.last.poke(Vec.Lit("b00".U(2.W), "b00".U, "b00".U, "b00".U))
-            println("\n-- Transfer in 4")
-            printInputState(c)
-            c.clock.step(1)
-            println(s"All data: ${c.exposed_storedData.peek().asString}")
-          })
+          c.in.enqueueNow(t4,
+            Option(Vec.Lit("b00".U(2.W), "b00".U, "b00".U, "b00".U)),
+            Option(bRev("1011")),
+            run = {
+              println("\n-- Transfer in 4")
+              printInputState(c)
+            }
+          )
+          println(s"All data: ${c.exposed_storedData.peek().asString}")
 
           // ph__
-          timescope({
-            c.in.valid.poke(true)
-            c.in.data.pokePartial(t5)
-            c.in.strb.poke(bRev("1100"))
-            c.in.last.poke(Vec.Lit("b00".U(2.W), "b00".U, "b00".U, "b00".U))
-            println("\n-- Transfer in 5")
-            printInputState(c)
-            c.clock.step(1)
-            println(s"All data: ${c.exposed_storedData.peek().asString}")
-          })
+          c.in.enqueueNow(t5,
+            Option(Vec.Lit("b00".U(2.W), "b00".U, "b00".U, "b00".U)),
+            Option(bRev("1100")),
+            run = {
+              println("\n-- Transfer in 5")
+              printInputState(c)
+            }
+          )
+          println(s"All data: ${c.exposed_storedData.peek().asString}")
 
           // __in
-          timescope({
-            c.in.valid.poke(true)
-            c.in.data.pokePartial(t6)
-            c.in.strb.poke(bRev("0011"))
-            println("\n-- Transfer in 6")
-            printInputState(c)
-            c.clock.step(1)
-            println(s"All data: ${c.exposed_storedData.peek().asString}")
-          })
+          c.in.enqueueNow(t6,
+            None,
+            Option(bRev("0011")),
+            run = {
+              println("\n-- Transfer in 6")
+              printInputState(c)
+            }
+          )
+          println(s"All data: ${c.exposed_storedData.peek().asString}")
 
           // close off
-          timescope({
-            c.in.valid.poke(true)
-            c.in.last.poke(Vec.Lit("b11".U(2.W), "b00".U, "b00".U, "b00".U))
-            println("\n-- Transfer in 7")
-            printInputState(c)
-            c.clock.step(1)
-          })
+          c.in.enqueueEmptyNow(
+            Option(Vec.Lit("b11".U(2.W), "b00".U, "b00".U, "b00".U)),
+            Option(bRev("0000")),
+            run = {
+              println("\n-- Transfer in 7")
+              printInputState(c)
+            }
+          )
 
           println(s"All data: ${c.exposed_storedData.peek().asString}")
           println(s"All lasts: ${printVecBinary(c.exposed_storedLasts.peek())}")
@@ -510,21 +505,12 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
           println(s"All data: ${c.exposed_storedData.peek().asString}")
 
           // ce____
-//          c.in.enqueueNow(t4,
-//            last = Some(Vec.Lit("b00".U(2.W), "b00".U, "b01".U, "b10".U, "b11".U, "b10".U)),
-//            strb = Some(bRev("110000")))
+          c.in.enqueueNow(t4,
+            last = Some(Vec.Lit("b00".U(2.W), "b00".U, "b01".U, "b10".U, "b11".U, "b10".U)),
+            strb = Some(bRev("110000")))
+          print(c.in.printState(charRenderer))
 
-          timescope({
-            c.in.valid.poke(true)
-            c.in.data.pokePartial(t4)
-            c.in.last.poke(Vec.Lit("b00".U(2.W), "b00".U, "b01".U, "b10".U, "b11".U, "b10".U))
-            c.in.strb.poke(bRev("110000"))
-            print(c.in.printState(charRenderer))
-            c.clock.step(1)
-          })
           println("\n-- Transfer in 4")
-          println(s"All data: ${c.exposed_storedData.peek().asString}")
-
           println(s"All data: ${c.exposed_storedData.peek().asString}")
           println(s"All lasts: ${printVecBinary(c.exposed_storedLasts.peek())}")
         }, {

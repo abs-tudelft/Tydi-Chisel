@@ -48,7 +48,8 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     last: Option[UInt] = None,
     strb: Option[UInt] = None,
     stai: Option[UInt] = None,
-    endi: Option[UInt] = None
+    endi: Option[UInt] = None,
+    run: => Unit = {}
   ): Unit = {
     x.el.poke(data)
     if (last.isDefined) {
@@ -65,6 +66,7 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
       x.endi.poke(endi.get)
     }
     x.valid.poke(true)
+    run
     fork
       .withRegion(Monitor) {
         x.ready.expect(true)
@@ -78,7 +80,8 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     last: Option[Vec[UInt]] = None,
     strb: Option[UInt] = None,
     stai: Option[UInt] = None,
-    endi: Option[UInt] = None
+    endi: Option[UInt] = None,
+    run: => Unit = {}
   ): Unit = {
     x.data.pokePartial(data)
     if (last.isDefined) {
@@ -94,6 +97,7 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
       x.endi.poke(endi.get)
     }
     x.valid.poke(true)
+    run
     fork
       .withRegion(Monitor) {
         x.ready.expect(true)
@@ -107,7 +111,8 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     last: Option[Vec[UInt]] = None,
     strb: Option[UInt] = None,
     stai: Option[UInt] = None,
-    endi: Option[UInt] = None
+    endi: Option[UInt] = None,
+    run: => Unit = {}
   ): Unit = {
     if (last.isDefined) {
       x.last.pokePartial(last.get)
@@ -128,6 +133,7 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
       x.endi.poke(endi.get)
     }
     x.valid.poke(true)
+    run
     fork
       .withRegion(Monitor) {
         x.ready.expect(true)
@@ -208,12 +214,14 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     last: Option[Vec[UInt]] = None,
     strb: Option[UInt] = None,
     stai: Option[UInt] = None,
-    endi: Option[UInt] = None
+    endi: Option[UInt] = None,
+    run: => Unit = {}
   ): Unit = {
     x.ready.poke(true)
     fork
       .withRegion(Monitor) {
         x.valid.expect(true)
+        run
         x.el.expect(data)
         if (last.isDefined) {
           x.last.expect(last.get)
@@ -237,12 +245,14 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     last: Option[Vec[UInt]] = None,
     strb: Option[UInt] = None,
     stai: Option[UInt] = None,
-    endi: Option[UInt] = None
+    endi: Option[UInt] = None,
+    run: => Unit = {}
   ): Unit = {
     x.ready.poke(true)
     fork
       .withRegion(Monitor) {
         x.valid.expect(true)
+        run
         if (strb.isDefined) {
           x.strb.expect(strb.get)
         } else {
