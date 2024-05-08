@@ -327,7 +327,8 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
         {
           // Send some data in
           // shei
-          c.in.enqueueNow(t1,
+          c.in.enqueueNow(
+            t1,
             Option(Vec.Lit("b00".U(2.W), "b00".U, "b01".U, "b00".U)),
             Option(bRev("1111")),
             run = {
@@ -340,7 +341,8 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
           c.clock.step(1)
 
           // s_a_
-          c.in.enqueueNow(t3,
+          c.in.enqueueNow(
+            t3,
             Option(Vec.Lit("b01".U(2.W), "b00".U, "b01".U, "b00".U)),
             Option(bRev("1010")),
             run = {
@@ -351,7 +353,8 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
           println(s"All data: ${c.exposed_storedData.peek().asString}")
 
           // d_ol
-          c.in.enqueueNow(t4,
+          c.in.enqueueNow(
+            t4,
             Option(Vec.Lit("b00".U(2.W), "b00".U, "b00".U, "b00".U)),
             Option(bRev("1011")),
             run = {
@@ -362,7 +365,8 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
           println(s"All data: ${c.exposed_storedData.peek().asString}")
 
           // ph__
-          c.in.enqueueNow(t5,
+          c.in.enqueueNow(
+            t5,
             Option(Vec.Lit("b00".U(2.W), "b00".U, "b00".U, "b00".U)),
             Option(bRev("1100")),
             run = {
@@ -373,7 +377,8 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
           println(s"All data: ${c.exposed_storedData.peek().asString}")
 
           // __in
-          c.in.enqueueNow(t6,
+          c.in.enqueueNow(
+            t6,
             None,
             Option(bRev("0011")),
             run = {
@@ -505,9 +510,11 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
           println(s"All data: ${c.exposed_storedData.peek().asString}")
 
           // ce____
-          c.in.enqueueNow(t4,
+          c.in.enqueueNow(
+            t4,
             last = Some(Vec.Lit("b00".U(2.W), "b00".U, "b01".U, "b10".U, "b11".U, "b10".U)),
-            strb = Some(bRev("110000")))
+            strb = Some(bRev("110000"))
+          )
           print(c.in.printState(charRenderer))
 
           println("\n-- Transfer in 4")

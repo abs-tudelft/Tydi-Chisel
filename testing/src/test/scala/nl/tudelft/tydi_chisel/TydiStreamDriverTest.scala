@@ -42,13 +42,15 @@ class TydiStreamDriverTest extends AnyFlatSpec with ChiselScalatestTester {
 
       c.out.expectInvalid()
       c.clock.step()
-      parallel({
-        c.in.enqueueElNow(testVal)
-        c.in.enqueueElNow(_.a -> 43.U, _.b -> false.B)
-      }, {
-        c.out.expectDequeueNow(_.a -> 42.U, _.b -> true.B)
-        c.out.expectDequeueNow(testVal2)
-      })
+      parallel(
+        {
+          c.in.enqueueElNow(testVal)
+          c.in.enqueueElNow(_.a -> 43.U, _.b -> false.B)
+        }, {
+          c.out.expectDequeueNow(_.a -> 42.U, _.b -> true.B)
+          c.out.expectDequeueNow(testVal2)
+        }
+      )
     }
   }
 }

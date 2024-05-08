@@ -1,6 +1,7 @@
 package nl.tudelft.tydi_chisel_test
 
 import scala.language.implicitConversions
+
 import chisel3._
 import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chisel3.experimental.VecLiterals.{AddObjectLiteralConstructor, AddVecLiteralConstructor}
@@ -45,14 +46,14 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
   }
 
   private def _enqueueNow(
-                          data: Option[Vec[Tel]],
-                          last: Option[Vec[UInt]] = None,
-                          strb: Option[UInt] = None,
-                          stai: Option[UInt] = None,
-                          endi: Option[UInt] = None,
-                          run: => Unit = {},
-                          reset: Boolean = false
-                        ): Unit = {
+    data: Option[Vec[Tel]],
+    last: Option[Vec[UInt]] = None,
+    strb: Option[UInt] = None,
+    stai: Option[UInt] = None,
+    endi: Option[UInt] = None,
+    run: => Unit = {},
+    reset: Boolean = false
+  ): Unit = {
     if (data.isDefined) {
       x.data.pokePartial(data.get)
     }
@@ -162,9 +163,9 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
   }
 
   @deprecated("You no longer need to set the clock explicitly.", since = "6.0.x")
-  protected val decoupledSourceKey = new Object()
+  protected val decoupledSourceKey            = new Object()
   def setSourceClock(clock: Clock): this.type = this
-  protected val decoupledSinkKey = new Object()
+  protected val decoupledSinkKey              = new Object()
   @deprecated("You no longer need to set the clock explicitly.", since = "6.0.x")
   def setSinkClock(clock: Clock): this.type = this
 
@@ -193,13 +194,13 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
   }
 
   private def _expectDequeueNow(
-                        data: Option[Tel],
-                        last: Option[Vec[UInt]] = None,
-                        strb: Option[UInt] = None,
-                        stai: Option[UInt] = None,
-                        endi: Option[UInt] = None,
-                        run: => Unit = {}
-                      ): Unit = {
+    data: Option[Tel],
+    last: Option[Vec[UInt]] = None,
+    strb: Option[UInt] = None,
+    stai: Option[UInt] = None,
+    endi: Option[UInt] = None,
+    run: => Unit = {}
+  ): Unit = {
     x.ready.poke(true)
     fork
       .withRegion(Monitor) {
@@ -287,7 +288,9 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     val streamAntiDir                      = if (x.r) out else in
 
     try
-      stringBuilder.append(s"State of \"${x.instanceName}\" $streamDir @ clk-step ${x.getSourceClock().getStepCount}:\n")
+      stringBuilder.append(
+        s"State of \"${x.instanceName}\" $streamDir @ clk-step ${x.getSourceClock().getStepCount}:\n"
+      )
     catch {
       case e: ClockResolutionException =>
         stringBuilder.append(s"State of \"${x.instanceName}\" $streamDir (unable to get clock):\n")
