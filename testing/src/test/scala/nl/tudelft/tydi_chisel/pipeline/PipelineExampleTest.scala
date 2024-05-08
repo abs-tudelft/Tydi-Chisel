@@ -20,24 +20,15 @@ class PipelineExampleTest extends AnyFlatSpec with ChiselScalatestTester {
       c.out.initSink()
 
       parallel(
-        c.in.enqueueElNow(_.time -> 123976.U, _.value -> 6.S),
-        c.out.expectDequeueNow(_.time -> 123976.U, _.value -> 6.S)
-      )
-
-      parallel(
-        c.in.enqueueElNow(_.time -> 123976.U, _.value -> 0.S),
-        c.out.expectDequeueNow(_.time -> 123976.U, _.value -> 0.S)
-      )
-
-      parallel(
-        c.in.enqueueElNow(_.time -> 123976.U, _.value -> -7.S),
-        timescope {
-          c.out.ready.poke(true.B)
-          fork
-            .withRegion(Monitor) {
-              c.out.strb.expect(0.U)
-            }
-            .joinAndStep(c.clock)
+        {
+          c.in.enqueueElNow(_.time -> 123976.U, _.value -> 6.S)
+          c.in.enqueueElNow(_.time -> 123976.U, _.value -> 0.S)
+          c.in.enqueueElNow(_.time -> 123976.U, _.value -> -7.S)
+        },
+        {
+          c.out.expectDequeueNow(c.out.elLit(_.time -> 123976.U, _.value -> 6.S))
+          c.out.expectDequeueNow(c.out.elLit(_.time -> 123976.U, _.value -> 0.S))
+          c.out.expectDequeueEmptyNow(strb = Some(0.U))
         }
       )
     }
