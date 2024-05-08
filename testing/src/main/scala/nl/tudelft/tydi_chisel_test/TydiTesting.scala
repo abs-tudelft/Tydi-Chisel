@@ -44,19 +44,20 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     Vec(x.n, UInt(x.d.W)).Lit(elems: _*)
   }
 
-  def enqueueElNow(
-    data: Tel,
-    last: Option[UInt] = None,
-    strb: Option[UInt] = None,
-    stai: Option[UInt] = None,
-    endi: Option[UInt] = None,
-    run: => Unit = {},
-    reset: Boolean = false
-  ): Unit = {
-    x.el.poke(data)
+  private def _enqueueNow(
+                          data: Option[Vec[Tel]],
+                          last: Option[Vec[UInt]] = None,
+                          strb: Option[UInt] = None,
+                          stai: Option[UInt] = None,
+                          endi: Option[UInt] = None,
+                          run: => Unit = {},
+                          reset: Boolean = false
+                        ): Unit = {
+    if (data.isDefined) {
+      x.data.pokePartial(data.get)
+    }
     if (last.isDefined) {
-      val lastLit = Vec(x.n, UInt(x.d.W)).Lit(0 -> last.get)
-      x.last.pokePartial(lastLit)
+      x.last.pokePartial(last.get)
     }
     if (strb.isDefined) {
       x.strb.poke(strb.get)
@@ -76,6 +77,23 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
       .joinAndStep()
     x.valid.poke(false)
     if (reset) { initSource() }
+  }
+
+  def enqueueElNow(
+    data: Tel,
+    last: Option[UInt] = None,
+    strb: Option[UInt] = None,
+    stai: Option[UInt] = None,
+    endi: Option[UInt] = None,
+    run: => Unit = {},
+    reset: Boolean = false
+  ): Unit = {
+    val lastLit = if (last.isDefined) {
+      Option(Vec(x.n, UInt(x.d.W)).Lit(0 -> last.get))
+    } else {
+      None
+    }
+    _enqueueNow(Option(dataLit(0 -> data)), lastLit, strb, stai, endi, run, reset)
   }
 
   def enqueueNow(
@@ -87,28 +105,7 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     run: => Unit = {},
     reset: Boolean = false
   ): Unit = {
-    x.data.pokePartial(data)
-    if (last.isDefined) {
-      x.last.pokePartial(last.get)
-    }
-    if (strb.isDefined) {
-      x.strb.poke(strb.get)
-    }
-    if (stai.isDefined) {
-      x.stai.poke(stai.get)
-    }
-    if (endi.isDefined) {
-      x.endi.poke(endi.get)
-    }
-    x.valid.poke(true)
-    run
-    fork
-      .withRegion(Monitor) {
-        x.ready.expect(true)
-      }
-      .joinAndStep()
-    x.valid.poke(false)
-    if (reset) { initSource() }
+    _enqueueNow(Option(data), last, strb, stai, endi, run, reset)
   }
 
   /** Send an empty transfer (no valid data lanes). Unless overridden, a strobe of 0's is sent. */
@@ -120,33 +117,12 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     run: => Unit = {},
     reset: Boolean = false
   ): Unit = {
-    if (last.isDefined) {
-      x.last.pokePartial(last.get)
-    } /* else {
-      val litVals = Seq.tabulate(x.n)(i => (i -> 0.U))
-      val lastLit = Vec(x.n, UInt(x.d.W)).Lit(litVals: _*)
-      x.last.poke(lastLit)
-    }*/
-    if (strb.isDefined) {
-      x.strb.poke(strb.get)
+    val _strb = if (strb.isDefined) {
+      strb
     } else {
-      x.strb.poke(0.U)
+      Option(0.U)
     }
-    if (stai.isDefined) {
-      x.stai.poke(stai.get)
-    }
-    if (endi.isDefined) {
-      x.endi.poke(endi.get)
-    }
-    x.valid.poke(true)
-    run
-    fork
-      .withRegion(Monitor) {
-        x.ready.expect(true)
-      }
-      .joinAndStep()
-    x.valid.poke(true)
-    if (reset) { initSource() }
+    _enqueueNow(None, last, _strb, stai, endi, run, reset)
   }
 
   def enqueueElNow(elems: (Tel => (Data, Data))*): Unit = {
@@ -216,20 +192,22 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     expectDequeue(litValue)
   }
 
-  def expectDequeueNow(
-    data: Tel,
-    last: Option[Vec[UInt]] = None,
-    strb: Option[UInt] = None,
-    stai: Option[UInt] = None,
-    endi: Option[UInt] = None,
-    run: => Unit = {}
-  ): Unit = {
+  private def _expectDequeueNow(
+                        data: Option[Tel],
+                        last: Option[Vec[UInt]] = None,
+                        strb: Option[UInt] = None,
+                        stai: Option[UInt] = None,
+                        endi: Option[UInt] = None,
+                        run: => Unit = {}
+                      ): Unit = {
     x.ready.poke(true)
     fork
       .withRegion(Monitor) {
         x.valid.expect(true)
         run
-        x.el.expect(data)
+        if (data.isDefined) {
+          x.el.expect(data.get)
+        }
         if (last.isDefined) {
           x.last.expect(last.get)
         }
@@ -247,6 +225,17 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     x.ready.poke(false)
   }
 
+  def expectDequeueNow(
+    data: Tel,
+    last: Option[Vec[UInt]] = None,
+    strb: Option[UInt] = None,
+    stai: Option[UInt] = None,
+    endi: Option[UInt] = None,
+    run: => Unit = {}
+  ): Unit = {
+    _expectDequeueNow(Option(data), last, strb, stai, endi, run)
+  }
+
   /** Expect an empty transfer (no valid data lanes). Unless overridden, a strobe of 0's is expected. */
   def expectDequeueEmptyNow(
     last: Option[Vec[UInt]] = None,
@@ -255,28 +244,12 @@ class TydiStreamDriver[Tel <: TydiEl, Tus <: Data](x: PhysicalStreamDetailed[Tel
     endi: Option[UInt] = None,
     run: => Unit = {}
   ): Unit = {
-    x.ready.poke(true)
-    fork
-      .withRegion(Monitor) {
-        x.valid.expect(true)
-        run
-        if (strb.isDefined) {
-          x.strb.expect(strb.get)
-        } else {
-          x.strb.expect(0.U)
-        }
-        if (last.isDefined) {
-          x.last.expect(last.get)
-        }
-        if (stai.isDefined) {
-          x.stai.expect(stai.get)
-        }
-        if (endi.isDefined) {
-          x.endi.expect(endi.get)
-        }
-      }
-      .joinAndStep()
-    x.ready.poke(false)
+    val _strb = if (strb.isDefined) {
+      strb
+    } else {
+      Option(0.U)
+    }
+    _expectDequeueNow(None, last, _strb, stai, endi, run)
   }
 
   def expectDequeueNow(elems: (Tel => (Data, Data))*): Unit = {
