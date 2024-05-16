@@ -1,5 +1,3 @@
-import com.jsuereth.sbtpgp.PgpKeys.{publishLocalSigned, publishSigned}
-
 val chiselVersion = "6.3.0"
 
 ThisBuild / scalaVersion := "2.13.12"
@@ -21,6 +19,8 @@ ThisBuild / developers := List(
 ThisBuild / publishMavenStyle := true
 //ThisBuild / pomIncludeRepository := { _ => false }
 ThisBuild / versionScheme := Some("early-semver")
+ThisBuild / resolvers += Resolver.mavenLocal
+ThisBuild / publishTo := Some(Resolver.mavenLocal)
 
 lazy val commonSettings = Seq(
   homepage                                   := Some(url("https://github.com/abs-tudelft/tydi-chisel")),
@@ -56,12 +56,7 @@ lazy val testingTools: Project = (project in file("testing"))
 // Aggregate projects to build them together
 lazy val root = (project in file("."))
   .aggregate(library, testingTools)
-//  .settings(
-//    publish      := {}, // Disable publishing for the root project
-//    publishSigned      := {},
-//    publishLocal := {},
-//    publishLocalSigned := {},
-//  )
+  .settings(publish / skip := true)
 
 val CICommands =
   Seq("clean", "compile", "test", "scalafmtCheckAll", "scalafmtSbtCheck", "scalafixAll --check").mkString(";")
