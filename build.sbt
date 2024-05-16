@@ -16,11 +16,13 @@ ThisBuild / developers := List(
   )
 )
 
-ThisBuild / publishMavenStyle := true
-//ThisBuild / pomIncludeRepository := { _ => false }
-ThisBuild / versionScheme := Some("early-semver")
+ThisBuild / publishMavenStyle    := true
+ThisBuild / pomIncludeRepository := { _ => false }
+ThisBuild / versionScheme        := Some("early-semver")
 ThisBuild / resolvers += Resolver.mavenLocal
-ThisBuild / publishTo := Some(Resolver.mavenLocal)
+ThisBuild / githubOwner      := "abs-tudelft"
+ThisBuild / githubRepository := "Tydi-Chisel"
+ThisBuild / publishTo        := githubPublishTo.value
 
 lazy val commonSettings = Seq(
   homepage                                   := Some(url("https://github.com/abs-tudelft/tydi-chisel")),
