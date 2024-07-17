@@ -2,12 +2,13 @@ package nl.tudelft.tydi_chisel
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-
 import chisel3._
 import chisel3.experimental.{BaseModule, ExtModule}
-import chisel3.util.{log2Ceil, Cat}
+import chisel3.util.{Cat, log2Ceil}
 import nl.tudelft.tydi_chisel.ReverseTranspiler._
 import nl.tudelft.tydi_chisel.utils.ComplexityConverter
+
+import scala.reflect.runtime.universe._
 
 trait TranspileExtend {
 
@@ -198,6 +199,14 @@ object BitsEl {
   def apply(width: Width): BitsEl = new BitsEl(width)
 }
 
+object CompatCheck extends Enumeration {
+  type CompatCheckType = Value
+  val Params, Strict = Value
+}
+
+final case class TydiStreamCompatException(private val message: String = "", private val cause: Throwable = None.orNull)
+      extends Exception(message, cause)
+
 /**
  * Physical stream signal definitions.
  * @param e Element type
@@ -209,6 +218,8 @@ object BitsEl {
 abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int, val c: Int, private val u: Data)
       extends TydiEl {
   override val isStream: Boolean = true
+  override val elWidth: Int      = e.getDataElementsRec.map(_.getWidth).sum
+  val userElWidth: Int           = u.getWidth
 
   require(n >= 1)
   require(1 <= c && c <= 8)
@@ -320,6 +331,40 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
   /** [[strb]] signal as a boolean vector */
   def strbVec: Vec[Bool] = VecInit(strb.asBools)
 
+  /**
+   * Check if the parameters of a source and sink stream match.
+   * @param toConnect Source stream to drive this stream with.
+   */
+  def paramCheck(toConnect: PhysicalStreamBase): Unit = {
+    // Number of lanes should be the same
+    if (toConnect.n != this.n) {
+      throw TydiStreamCompatException("Number of lanes between source and sink is not equal")
+    }
+    // Dimensionality should be the same
+    if (toConnect.d != this.d) {
+      throw TydiStreamCompatException("Dimensionality of source and sink is not equal")
+    }
+    // Sink C >= source C for compatibility
+    if (toConnect.c > this.c) {
+      throw TydiStreamCompatException("Complexity of source stream > sink")
+    }
+  }
+
+  /**
+   * Meta-connect function. Connects all metadata signals but not the data or user signals.
+   * @param bundle Source stream to drive this stream with.
+   */
+  def :~=(bundle: PhysicalStreamBase): Unit = {
+    paramCheck(bundle)
+    // This could be done with a :<>= but I like being explicit here to catch possible errors.
+    this.endi    := bundle.endi
+    this.stai    := bundle.stai
+    this.strb    := bundle.strb
+    this.last    := bundle.last.asUInt
+    this.valid   := bundle.valid
+    bundle.ready := this.ready
+  }
+
   def tydiCode: String = {
     val elName = e.fingerprint
     val usName = u.fingerprint
@@ -357,11 +402,9 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
  */
 class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, private val u: Data = Null())
       extends PhysicalStreamBase(e, n, d, c, u) {
-  override val elWidth: Int = e.getDataElementsRec.map(_.getWidth).sum
-  val userElWidth: Int      = u.getWidth
-  val data: UInt            = Output(UInt((elWidth * n).W))
-  val user: UInt            = Output(UInt(userElWidth.W))
-  val last: UInt            = Output(UInt(lastWidth.W))
+  val data: UInt = Output(UInt((elWidth * n).W))
+  val user: UInt = Output(UInt(userElWidth.W))
+  val last: UInt = Output(UInt(lastWidth.W))
 
   def lastVec: Vec[UInt] = {
     if (d > 0)
@@ -370,15 +413,24 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
       VecInit.tabulate(n)(i => 0.U(0.W))
   }
 
-  // Stream mounting function
+  def elementCheck(toConnect: PhysicalStreamBase): Unit = {
+    if (this.elWidth != toConnect.elWidth) {
+      throw TydiStreamCompatException("Size of stream elements is not equal")
+    }
+    if (this.userElWidth != toConnect.userElWidth) {
+      throw TydiStreamCompatException("Size of stream elements is not equal")
+    }
+  }
+
+  /**
+   * Stream mounting function.
+   * @param bundle Source stream to drive this stream with.
+   * @tparam Tel Element signal type.
+   * @tparam Tus User signal type.
+   */
   def :=[Tel <: TydiEl, Tus <: Data](bundle: PhysicalStreamDetailed[Tel, Tus]): Unit = {
-    // This could be done with a :<>= but I like being explicit here to catch possible errors.
-    this.endi    := bundle.endi
-    this.stai    := bundle.stai
-    this.strb    := bundle.strb
-    this.last    := bundle.last.asUInt
-    this.valid   := bundle.valid
-    bundle.ready := this.ready
+    this :~= bundle
+    elementCheck(bundle)
     if (elWidth > 0) {
       this.data := bundle.getDataConcat
     } else {
@@ -391,16 +443,15 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
     }
   }
 
+  /**
+   * Stream mounting function.
+   * @param bundle Source stream to drive this stream with.
+   */
   def :=(bundle: PhysicalStream): Unit = {
-    // This could be done with a :<>= but I like being explicit here to catch possible errors.
-    this.endi    := bundle.endi
-    this.stai    := bundle.stai
-    this.strb    := bundle.strb
-    this.last    := bundle.last
-    this.valid   := bundle.valid
-    bundle.ready := this.ready
-    this.data    := bundle.data
-    this.user    := bundle.user
+    this :~= bundle
+    elementCheck(bundle)
+    this.data := bundle.data
+    this.user := bundle.user
   }
 
   def processWith[T <: SubProcessorSignalDef](module: => T)(implicit parentModule: TydiModuleMixin): PhysicalStream = {
@@ -520,16 +571,45 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
     io
   }
 
-  // Stream mounting function
-  def :=[TBel <: TydiEl, TBus <: Data](bundle: PhysicalStreamDetailed[TBel, TBus]): Unit = {
+  def elementCheck[TBel <: TydiEl: TypeTag, TBus <: Data: TypeTag](
+    toConnect: PhysicalStreamDetailed[TBel, TBus]
+  ): Unit = {
+    /*if (!(typeOf[TBel] =:= typeOf[Tel])) {
+      throw TydiStreamCompatException("Type of stream elements is not equal")
+    }
+    if (!(typeOf[TBus] =:= typeOf[Tus])) {
+      throw TydiStreamCompatException("Type of user elements is not equal")
+    }*/
+    /*if (this.data(0).typeName != toConnect.data(0).typeName) {
+      throw TydiStreamCompatException("Type of stream elements is not equal")
+    }*/
+    /*if (this.user.typeName != toConnect.user.typeName) {
+      throw TydiStreamCompatException("Type of user elements is not equal")
+    }*/
+  }
+
+  def elementCheck2[TAel <: TydiEl: TypeTag, TAus <: Data: TypeTag, TBel <: TydiEl: TypeTag, TBus <: Data: TypeTag](
+    a: PhysicalStreamDetailed[TAel, TAus],
+    toConnect: PhysicalStreamDetailed[TBel, TBus]
+  ): Unit = {
+    if (!(typeOf[TBel] =:= typeOf[TAel])) {
+      throw TydiStreamCompatException("Type of stream elements is not equal")
+    }
+    if (!(typeOf[TBus] =:= typeOf[TAus])) {
+      throw TydiStreamCompatException("Type of user elements is not equal")
+    }
+  }
+
+  // Require the element and user signal types to be the same as this stream in the function signature.
+  /**
+   * Stream mounting function.
+   * @param bundle Source stream to drive this stream with.
+   */
+  def :=(bundle: PhysicalStreamDetailed[Tel, Tus]): Unit = {
+    elementCheck2(this, bundle)
     // This could be done with a :<>= but I like being explicit here to catch possible errors.
     if (bundle.r && !this.r) {
-      this.endi    := bundle.endi
-      this.stai    := bundle.stai
-      this.strb    := bundle.strb
-      this.last    := bundle.last
-      this.valid   := bundle.valid
-      bundle.ready := this.ready
+      this :~= bundle
       // The following would work if we would know with certainty that the signals are oriented the right way,
       // but we do not -.-
       // (this.data: Data) :<>= (bundle.data: Data)
@@ -547,12 +627,7 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
       }
       (this.user: Data) :<>= (bundle.user: Data)
     } else {
-      bundle.endi  := this.endi
-      bundle.stai  := this.stai
-      bundle.strb  := this.strb
-      bundle.last  := this.last
-      bundle.valid := this.valid
-      this.ready   := bundle.ready
+      bundle :~= this
       // The following would work if we would know with certainty that the signals are oriented the right way,
       // but we do not -.-
       // (bundle.data: Data) :<>= (this.data: Data)
@@ -572,7 +647,24 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
     }
   }
 
+//  /**
+//   * @deprecated It seems your element and user types do not match up!
+//   * @param bundle Source stream to drive this stream with.
+//   * @tparam TBel Element signal type.
+//   * @tparam TBus User signal type.
+//   */
+//  def :=[TBel <: TydiEl, TBus <: Data](bundle: PhysicalStreamDetailed[TBel, TBus]): Unit = {
+//    throw TydiStreamCompatException("Stream or user element types do not match up")
+//  }
+
+  /**
+   * Stream mounting function.
+   * @param bundle Source stream to drive this stream with.
+   */
   def :=(bundle: PhysicalStream): Unit = {
+    paramCheck(bundle)
+    bundle.elementCheck(this)
+    // We cannot use the :~= function here since the last vector must be driven by the bitvector
     this.endi := bundle.endi
     this.stai := bundle.stai
     this.strb := bundle.strb
