@@ -350,6 +350,15 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
     }
   }
 
+  def elementCheck(toConnect: PhysicalStreamBase): Unit = {
+    if (this.elWidth != toConnect.elWidth) {
+      throw TydiStreamCompatException("Size of stream elements is not equal")
+    }
+    if (this.userElWidth != toConnect.userElWidth) {
+      throw TydiStreamCompatException("Size of stream elements is not equal")
+    }
+  }
+
   /**
    * Meta-connect function. Connects all metadata signals but not the data or user signals.
    * @param bundle Source stream to drive this stream with.
@@ -411,15 +420,6 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
       VecInit.tabulate(n)(i => last((i + 1) * d - 1, i * d))
     else
       VecInit.tabulate(n)(i => 0.U(0.W))
-  }
-
-  def elementCheck(toConnect: PhysicalStreamBase): Unit = {
-    if (this.elWidth != toConnect.elWidth) {
-      throw TydiStreamCompatException("Size of stream elements is not equal")
-    }
-    if (this.userElWidth != toConnect.userElWidth) {
-      throw TydiStreamCompatException("Size of stream elements is not equal")
-    }
   }
 
   /**
@@ -571,32 +571,19 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
     io
   }
 
-  def elementCheck[TBel <: TydiEl: TypeTag, TBus <: Data: TypeTag](
-    toConnect: PhysicalStreamDetailed[TBel, TBus]
+  def elementCheckTyped[TBel <: TydiEl, TBus <: Data](
+    toConnect: PhysicalStreamDetailed[TBel, TBus],
+    typeCheck: CompatCheck.CompatCheckType = CompatCheck.Strict
   ): Unit = {
-    /*if (!(typeOf[TBel] =:= typeOf[Tel])) {
-      throw TydiStreamCompatException("Type of stream elements is not equal")
-    }
-    if (!(typeOf[TBus] =:= typeOf[Tus])) {
-      throw TydiStreamCompatException("Type of user elements is not equal")
-    }*/
-    /*if (this.data(0).typeName != toConnect.data(0).typeName) {
-      throw TydiStreamCompatException("Type of stream elements is not equal")
-    }*/
-    /*if (this.user.typeName != toConnect.user.typeName) {
-      throw TydiStreamCompatException("Type of user elements is not equal")
-    }*/
-  }
-
-  def elementCheck2[TAel <: TydiEl: TypeTag, TAus <: Data: TypeTag, TBel <: TydiEl: TypeTag, TBus <: Data: TypeTag](
-    a: PhysicalStreamDetailed[TAel, TAus],
-    toConnect: PhysicalStreamDetailed[TBel, TBus]
-  ): Unit = {
-    if (!(typeOf[TBel] =:= typeOf[TAel])) {
-      throw TydiStreamCompatException("Type of stream elements is not equal")
-    }
-    if (!(typeOf[TBus] =:= typeOf[TAus])) {
-      throw TydiStreamCompatException("Type of user elements is not equal")
+    if (typeCheck == CompatCheck.Strict) {
+      if (this.getDataType.getClass != toConnect.getDataType.getClass) {
+        throw TydiStreamCompatException("Type of stream elements is not equal")
+      }
+      if (this.user.getClass != toConnect.user.getClass) {
+        throw TydiStreamCompatException("Type of user elements is not equal")
+      }
+    } else {
+      super.elementCheck(toConnect)
     }
   }
 
@@ -605,8 +592,8 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
    * Stream mounting function.
    * @param bundle Source stream to drive this stream with.
    */
-  def :=(bundle: PhysicalStreamDetailed[Tel, Tus]): Unit = {
-    elementCheck2(this, bundle)
+  def :=(bundle: PhysicalStreamDetailed[Tel, Tus], typeCheck: CompatCheck.CompatCheckType = CompatCheck.Strict): Unit = {
+    elementCheckTyped(bundle, typeCheck)
     // This could be done with a :<>= but I like being explicit here to catch possible errors.
     if (bundle.r && !this.r) {
       this :~= bundle
@@ -646,16 +633,6 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
       (bundle.user: Data) :<>= (this.user: Data)
     }
   }
-
-//  /**
-//   * @deprecated It seems your element and user types do not match up!
-//   * @param bundle Source stream to drive this stream with.
-//   * @tparam TBel Element signal type.
-//   * @tparam TBus User signal type.
-//   */
-//  def :=[TBel <: TydiEl, TBus <: Data](bundle: PhysicalStreamDetailed[TBel, TBus]): Unit = {
-//    throw TydiStreamCompatException("Stream or user element types do not match up")
-//  }
 
   /**
    * Stream mounting function.
