@@ -2,13 +2,12 @@ package nl.tudelft.tydi_chisel
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
+
 import chisel3._
 import chisel3.experimental.{BaseModule, ExtModule}
-import chisel3.util.{Cat, log2Ceil}
+import chisel3.util.{log2Ceil, Cat}
 import nl.tudelft.tydi_chisel.ReverseTranspiler._
 import nl.tudelft.tydi_chisel.utils.ComplexityConverter
-
-import scala.reflect.runtime.universe._
 
 trait TranspileExtend {
 
@@ -338,15 +337,21 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
   def paramCheck(toConnect: PhysicalStreamBase): Unit = {
     // Number of lanes should be the same
     if (toConnect.n != this.n) {
-      throw TydiStreamCompatException("Number of lanes between source and sink is not equal")
+      throw TydiStreamCompatException(
+        s"Number of lanes between source and sink is not equal. ${this.instanceName} has n=${this.n}, ${toConnect} has n=${toConnect.n}"
+      )
     }
     // Dimensionality should be the same
     if (toConnect.d != this.d) {
-      throw TydiStreamCompatException("Dimensionality of source and sink is not equal")
+      throw TydiStreamCompatException(
+        s"Dimensionality of source and sink is not equal. ${this.instanceName} has d=${this.d}, ${toConnect} has d=${toConnect.d}"
+      )
     }
     // Sink C >= source C for compatibility
     if (toConnect.c > this.c) {
-      throw TydiStreamCompatException("Complexity of source stream > sink")
+      throw TydiStreamCompatException(
+        s"Complexity of source stream > sink. ${this.instanceName} has c=${this.c}, ${toConnect} has c=${toConnect.c}"
+      )
     }
   }
 
@@ -369,9 +374,18 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
     this.endi    := bundle.endi
     this.stai    := bundle.stai
     this.strb    := bundle.strb
-    this.last    := bundle.last.asUInt
     this.valid   := bundle.valid
     bundle.ready := this.ready
+
+    if (this.d > 0) {
+      (this.last, bundle.last) match {
+        case (_: UInt, _: UInt) | (_: Vec[_], _: Vec[_]) => this.last := bundle.last
+        case (_: UInt, _: Vec[_])                        => this.last := bundle.last.asUInt
+      }
+    } else {
+      this.last   := DontCare
+      bundle.last := DontCare
+    }
   }
 
   def tydiCode: String = {
@@ -409,7 +423,7 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
  * @param c Complexity
  * @param u User signals
  */
-class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, private val u: Data = Null())
+class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 1, c: Int, private val u: Data = Null())
       extends PhysicalStreamBase(e, n, d, c, u) {
   val data: UInt = Output(UInt((elWidth * n).W))
   val user: UInt = Output(UInt(userElWidth.W))
@@ -479,7 +493,7 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 0, c: Int, priv
 }
 
 object PhysicalStream {
-  def apply(e: TydiEl, n: Int = 1, d: Int = 0, c: Int, u: Data = Null()): PhysicalStream =
+  def apply(e: TydiEl, n: Int = 1, d: Int = 1, c: Int, u: Data = Null()): PhysicalStream =
     new PhysicalStream(e, n, d, c, u)
 }
 
@@ -497,7 +511,7 @@ object PhysicalStream {
 class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
   private val e: Tel,
   n: Int = 1,
-  d: Int = 0,
+  d: Int = 1,
   c: Int,
   var r: Boolean = false,
   private val u: Tus = Null()
@@ -592,7 +606,9 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
    * Stream mounting function.
    * @param bundle Source stream to drive this stream with.
    */
-  def :=(bundle: PhysicalStreamDetailed[Tel, Tus], typeCheck: CompatCheck.CompatCheckType = CompatCheck.Strict): Unit = {
+  def :=[TBel <: TydiEl, TBus <: Data](
+    bundle: PhysicalStreamDetailed[TBel, TBus]
+  )(implicit typeCheck: CompatCheck.CompatCheckType = CompatCheck.Strict): Unit = {
     elementCheckTyped(bundle, typeCheck)
     // This could be done with a :<>= but I like being explicit here to catch possible errors.
     if (bundle.r && !this.r) {
@@ -680,7 +696,7 @@ object PhysicalStreamDetailed {
   def apply[Tel <: TydiEl, Tus <: Data](
     e: Tel,
     n: Int = 1,
-    d: Int = 0,
+    d: Int = 1,
     c: Int,
     r: Boolean = false,
     u: Tus = Null()
