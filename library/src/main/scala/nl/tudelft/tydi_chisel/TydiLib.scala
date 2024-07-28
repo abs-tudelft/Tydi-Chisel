@@ -203,6 +203,11 @@ object CompatCheck extends Enumeration {
   val Params, Strict = Value
 }
 
+object CompatCheckResult extends Enumeration {
+  type Type = Value
+  val Warning, Error = Value
+}
+
 final case class TydiStreamCompatException(private val message: String = "", private val cause: Throwable = None.orNull)
       extends Exception(message, cause)
 
@@ -330,37 +335,70 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
   /** [[strb]] signal as a boolean vector */
   def strbVec: Vec[Bool] = VecInit(strb.asBools)
 
+  protected def printWarning(message: String): Unit = {
+    // ANSI escape codes for bold and orange text
+    val bold   = "\u001b[1m"
+    val orange = "\u001b[38;5;214m"
+    val reset  = "\u001b[0m"
+
+    // Print the formatted message
+    println(s"$bold$orange$message$reset")
+  }
+
+  protected def reportProblem(problemStr: String, typeCheckResult: CompatCheckResult.Type): Unit = {
+    typeCheckResult match {
+      case CompatCheckResult.Error   => throw TydiStreamCompatException(problemStr)
+      case CompatCheckResult.Warning => printWarning(problemStr)
+    }
+  }
+
   /**
    * Check if the parameters of a source and sink stream match.
    * @param toConnect Source stream to drive this stream with.
    */
-  def paramCheck(toConnect: PhysicalStreamBase): Unit = {
+  def paramCheck(
+    toConnect: PhysicalStreamBase,
+    typeCheckResult: CompatCheckResult.Type = CompatCheckResult.Error
+  ): Unit = {
     // Number of lanes should be the same
     if (toConnect.n != this.n) {
-      throw TydiStreamCompatException(
-        s"Number of lanes between source and sink is not equal. ${this} has n=${this.n}, ${toConnect.toString()} has n=${toConnect.n}"
+      reportProblem(
+        s"Number of lanes between source and sink is not equal. ${this} has n=${this.n}, ${toConnect
+            .toString()} has n=${toConnect.n}",
+        typeCheckResult
       )
     }
     // Dimensionality should be the same
     if (toConnect.d != this.d) {
-      throw TydiStreamCompatException(
-        s"Dimensionality of source and sink is not equal. ${this} has d=${this.d}, ${toConnect} has d=${toConnect.d}"
+      reportProblem(
+        s"Dimensionality of source and sink is not equal. ${this} has d=${this.d}, ${toConnect} has d=${toConnect.d}",
+        typeCheckResult
       )
     }
     // Sink C >= source C for compatibility
     if (toConnect.c > this.c) {
-      throw TydiStreamCompatException(
-        s"Complexity of source stream > sink. ${this} has c=${this.c}, ${toConnect} has c=${toConnect.c}"
+      reportProblem(
+        s"Complexity of source stream > sink. ${this} has c=${this.c}, ${toConnect} has c=${toConnect.c}",
+        typeCheckResult
       )
     }
   }
 
-  def elementCheck(toConnect: PhysicalStreamBase): Unit = {
+  def elementCheck(
+    toConnect: PhysicalStreamBase,
+    typeCheckResult: CompatCheckResult.Type = CompatCheckResult.Error
+  ): Unit = {
     if (this.elWidth != toConnect.elWidth) {
-      throw TydiStreamCompatException(s"Size of stream elements is not equal. ${this} has |e|=${this.elWidth}, ${toConnect} has |e|=${toConnect.elWidth}")
+      reportProblem(
+        s"Size of stream elements is not equal. ${this} has |e|=${this.elWidth}, ${toConnect} has |e|=${toConnect.elWidth}",
+        typeCheckResult
+      )
     }
     if (this.userElWidth != toConnect.userElWidth) {
-      throw TydiStreamCompatException(s"Size of stream elements is not equal. ${this} has |u|=${this.userElWidth}, ${toConnect} has |u|=${toConnect.userElWidth}")
+      reportProblem(
+        s"Size of stream elements is not equal. ${this} has |u|=${this.userElWidth}, ${toConnect} has |u|=${toConnect.userElWidth}",
+        typeCheckResult
+      )
     }
   }
 
@@ -587,14 +625,21 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
 
   def elementCheckTyped[TBel <: TydiEl, TBus <: Data](
     toConnect: PhysicalStreamDetailed[TBel, TBus],
-    typeCheck: CompatCheck.CompatCheckType = CompatCheck.Strict
+    typeCheck: CompatCheck.CompatCheckType = CompatCheck.Strict,
+    typeCheckResult: CompatCheckResult.Type = CompatCheckResult.Error
   ): Unit = {
     if (typeCheck == CompatCheck.Strict) {
       if (this.getDataType.getClass != toConnect.getDataType.getClass) {
-        throw TydiStreamCompatException(s"Type of stream elements is not equal. ${this} has e=${this.getDataType.getClass}, ${toConnect} has e=${toConnect.getDataType.getClass}")
+        reportProblem(
+          s"Type of stream elements is not equal. ${this} has e=${this.getDataType.getClass}, ${toConnect} has e=${toConnect.getDataType.getClass}",
+          typeCheckResult
+        )
       }
       if (this.user.getClass != toConnect.user.getClass) {
-        throw TydiStreamCompatException(s"Type of user elements is not equal. ${this} has u=${this.getUserType.getClass}, ${toConnect} has u=${toConnect.getUserType.getClass}")
+        reportProblem(
+          s"Type of user elements is not equal. ${this} has u=${this.getUserType.getClass}, ${toConnect} has u=${toConnect.getUserType.getClass}",
+          typeCheckResult
+        )
       }
     } else {
       super.elementCheck(toConnect)
