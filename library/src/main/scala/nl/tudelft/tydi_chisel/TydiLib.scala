@@ -338,29 +338,29 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
     // Number of lanes should be the same
     if (toConnect.n != this.n) {
       throw TydiStreamCompatException(
-        s"Number of lanes between source and sink is not equal. ${this.instanceName} has n=${this.n}, ${toConnect} has n=${toConnect.n}"
+        s"Number of lanes between source and sink is not equal. ${this} has n=${this.n}, ${toConnect.toString()} has n=${toConnect.n}"
       )
     }
     // Dimensionality should be the same
     if (toConnect.d != this.d) {
       throw TydiStreamCompatException(
-        s"Dimensionality of source and sink is not equal. ${this.instanceName} has d=${this.d}, ${toConnect} has d=${toConnect.d}"
+        s"Dimensionality of source and sink is not equal. ${this} has d=${this.d}, ${toConnect} has d=${toConnect.d}"
       )
     }
     // Sink C >= source C for compatibility
     if (toConnect.c > this.c) {
       throw TydiStreamCompatException(
-        s"Complexity of source stream > sink. ${this.instanceName} has c=${this.c}, ${toConnect} has c=${toConnect.c}"
+        s"Complexity of source stream > sink. ${this} has c=${this.c}, ${toConnect} has c=${toConnect.c}"
       )
     }
   }
 
   def elementCheck(toConnect: PhysicalStreamBase): Unit = {
     if (this.elWidth != toConnect.elWidth) {
-      throw TydiStreamCompatException("Size of stream elements is not equal")
+      throw TydiStreamCompatException(s"Size of stream elements is not equal. ${this} has |e|=${this.elWidth}, ${toConnect} has |e|=${toConnect.elWidth}")
     }
     if (this.userElWidth != toConnect.userElWidth) {
-      throw TydiStreamCompatException("Size of stream elements is not equal")
+      throw TydiStreamCompatException(s"Size of stream elements is not equal. ${this} has |u|=${this.userElWidth}, ${toConnect} has |u|=${toConnect.userElWidth}")
     }
   }
 
@@ -591,10 +591,10 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
   ): Unit = {
     if (typeCheck == CompatCheck.Strict) {
       if (this.getDataType.getClass != toConnect.getDataType.getClass) {
-        throw TydiStreamCompatException("Type of stream elements is not equal")
+        throw TydiStreamCompatException(s"Type of stream elements is not equal. ${this} has e=${this.getDataType.getClass}, ${toConnect} has e=${toConnect.getDataType.getClass}")
       }
       if (this.user.getClass != toConnect.user.getClass) {
-        throw TydiStreamCompatException("Type of user elements is not equal")
+        throw TydiStreamCompatException(s"Type of user elements is not equal. ${this} has u=${this.getUserType.getClass}, ${toConnect} has u=${toConnect.getUserType.getClass}")
       }
     } else {
       super.elementCheck(toConnect)
