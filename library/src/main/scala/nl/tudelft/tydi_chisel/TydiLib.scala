@@ -345,7 +345,9 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
     println(s"$bold$orange$message$reset")
   }
 
-  protected def reportProblem(problemStr: String, typeCheckResult: CompatCheckResult.Type): Unit = {
+  protected def reportProblem(
+    problemStr: String
+  )(implicit typeCheckResult: CompatCheckResult.Type = CompatCheckResult.Error): Unit = {
     typeCheckResult match {
       case CompatCheckResult.Error   => throw TydiStreamCompatException(problemStr)
       case CompatCheckResult.Warning => printWarning(problemStr)
@@ -356,48 +358,33 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
    * Check if the parameters of a source and sink stream match.
    * @param toConnect Source stream to drive this stream with.
    */
-  def paramCheck(
-    toConnect: PhysicalStreamBase,
-    typeCheckResult: CompatCheckResult.Type = CompatCheckResult.Error
-  ): Unit = {
+  def paramCheck(toConnect: PhysicalStreamBase): Unit = {
     // Number of lanes should be the same
     if (toConnect.n != this.n) {
-      reportProblem(
-        s"Number of lanes between source and sink is not equal. ${this} has n=${this.n}, ${toConnect
-            .toString()} has n=${toConnect.n}",
-        typeCheckResult
-      )
+      reportProblem(s"Number of lanes between source and sink is not equal. ${this} has n=${this.n}, ${toConnect
+          .toString()} has n=${toConnect.n}")
     }
     // Dimensionality should be the same
     if (toConnect.d != this.d) {
       reportProblem(
-        s"Dimensionality of source and sink is not equal. ${this} has d=${this.d}, ${toConnect} has d=${toConnect.d}",
-        typeCheckResult
+        s"Dimensionality of source and sink is not equal. ${this} has d=${this.d}, ${toConnect} has d=${toConnect.d}"
       )
     }
     // Sink C >= source C for compatibility
     if (toConnect.c > this.c) {
-      reportProblem(
-        s"Complexity of source stream > sink. ${this} has c=${this.c}, ${toConnect} has c=${toConnect.c}",
-        typeCheckResult
-      )
+      reportProblem(s"Complexity of source stream > sink. ${this} has c=${this.c}, ${toConnect} has c=${toConnect.c}")
     }
   }
 
-  def elementCheck(
-    toConnect: PhysicalStreamBase,
-    typeCheckResult: CompatCheckResult.Type = CompatCheckResult.Error
-  ): Unit = {
+  def elementCheck(toConnect: PhysicalStreamBase): Unit = {
     if (this.elWidth != toConnect.elWidth) {
       reportProblem(
-        s"Size of stream elements is not equal. ${this} has |e|=${this.elWidth}, ${toConnect} has |e|=${toConnect.elWidth}",
-        typeCheckResult
+        s"Size of stream elements is not equal. ${this} has |e|=${this.elWidth}, ${toConnect} has |e|=${toConnect.elWidth}"
       )
     }
     if (this.userElWidth != toConnect.userElWidth) {
       reportProblem(
-        s"Size of stream elements is not equal. ${this} has |u|=${this.userElWidth}, ${toConnect} has |u|=${toConnect.userElWidth}",
-        typeCheckResult
+        s"Size of stream elements is not equal. ${this} has |u|=${this.userElWidth}, ${toConnect} has |u|=${toConnect.userElWidth}"
       )
     }
   }
@@ -625,20 +612,17 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
 
   def elementCheckTyped[TBel <: TydiEl, TBus <: Data](
     toConnect: PhysicalStreamDetailed[TBel, TBus],
-    typeCheck: CompatCheck.CompatCheckType = CompatCheck.Strict,
-    typeCheckResult: CompatCheckResult.Type = CompatCheckResult.Error
+    typeCheck: CompatCheck.CompatCheckType = CompatCheck.Strict
   ): Unit = {
     if (typeCheck == CompatCheck.Strict) {
       if (this.getDataType.getClass != toConnect.getDataType.getClass) {
         reportProblem(
-          s"Type of stream elements is not equal. ${this} has e=${this.getDataType.getClass}, ${toConnect} has e=${toConnect.getDataType.getClass}",
-          typeCheckResult
+          s"Type of stream elements is not equal. ${this} has e=${this.getDataType.getClass}, ${toConnect} has e=${toConnect.getDataType.getClass}"
         )
       }
       if (this.user.getClass != toConnect.user.getClass) {
         reportProblem(
-          s"Type of user elements is not equal. ${this} has u=${this.getUserType.getClass}, ${toConnect} has u=${toConnect.getUserType.getClass}",
-          typeCheckResult
+          s"Type of user elements is not equal. ${this} has u=${this.getUserType.getClass}, ${toConnect} has u=${toConnect.getUserType.getClass}"
         )
       }
     } else {
