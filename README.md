@@ -127,6 +127,7 @@ class TimestampedMessageModule extends TydiModule {
   ...
 }
 ```
+Look through the [examples](library/src/main/scala/nl/tudelft/tydi_chisel/examples) for inspiration for the functionality and syntax.
 
 Testing a TydiModule
 ```scala
@@ -167,6 +168,41 @@ class PipelineExampleTest extends AnyFlatSpec with ChiselScalatestTester {
   }
 }
 ```
+Look through the [test examples](testing/src/test/scala/nl/tudelft/tydi_chisel) for inspiration for the functionality and syntax.
+
+
+## Getting started
+
+### Acquire the lib
+To get started with Tydi-Chisel, you can either run it in your local development environment, or use the [Tydi-tools](https://github.com/abs-tudelft/Tydi-tools) docker container.
+
+For usage with `sbt` or `scala-cli`, the project package must first be built. Make sure you have `git`, `java`, and `sbt` installed and available in your path.
+
+```shell
+git clone https://github.com/abs-tudelft/Tydi-Chisel.git
+sbt publishLocal
+```
+
+### Use the lib
+After this, the library can be added to your project's dependencies in your `build.sbt` like so.
+
+```scala
+libraryDependencies += "nl.tudelft" %% "tydi-chisel" % "0.1.0"
+libraryDependencies += "nl.tudelft" %% "tydi-chisel-test" % "0.1.0" % Test
+```
+
+When using `scala-cli`, use the following directive:
+```scala
+//> using dep "nl.tudelft::tydi-chisel::0.1.0"
+```
+
+Then, one can import the functionality, and start to write Tydi-Chisel code!
+
+```scala
+import nl.tudelft.tydi_chisel._
+```
+
+Look through the [examples](library/src/main/scala/nl/tudelft/tydi_chisel/examples) for inspiration for the functionality and syntax.
 
 ## Features
 
