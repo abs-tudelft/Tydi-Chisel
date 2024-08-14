@@ -4,8 +4,7 @@ import chisel3._
 import circt.stage.ChiselStage.{emitCHIRRTL, emitSystemVerilog}
 import nl.tudelft.tydi_chisel._
 
-//////  End lib, start user code  //////
-
+// Declaration of the data-structure
 class NestedBundle extends Union(2) {
   val a: UInt = UInt(8.W)
   val b: Bool = Bool()
@@ -28,6 +27,7 @@ class TimestampedMessageBundle extends Group {
   val message = new PhysicalStreamDetailed(BitsEl(charWidth), n = 3, d = 1, c = 7)
 }
 
+// Declaration of the module
 class TimestampedMessageModuleOut extends TydiModule {
   private val timestampedMessageBundle = new TimestampedMessageBundle // Can also be inline
 

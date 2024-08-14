@@ -92,9 +92,28 @@ By being a super-set of ready-valid communication, like Chisel's `DecoupledIO`, 
 See the work in [publications](#publications) for more details.
 
 ## Example
+### Using Tydi data-structures and streams
+The following example provides an overview of the declaration of a nested Tydi data structure and its usage in streams.
 
-Using Tydi streams in a components
+In software, the declared data structure would look like
+
+```json
+[
+  {
+    "time": 123456789,
+    "nested": {
+      "a": 5,
+      "b": true
+    },
+    "message": [
+      "Hello", "this", "is", "a", "string."
+    ]
+  }
+]
+```
+
 ```scala
+// Declaration of the data-structure 
 class Character extends BitsEl(8.W)
 
 class NestedBundle extends Group {
@@ -105,9 +124,11 @@ class NestedBundle extends Group {
 class TimestampedMessageBundle extends Group {
   val time: UInt               = UInt(64.W)
   val nested: NestedBundle     = new NestedBundle
+  // Create a 2D sub-stream of character data with 3 data-lanes
   val message = new PhysicalStreamDetailed(Character, n = 3, d = 2, c = 7)
 }
 
+// Declaration of the module
 class TimestampedMessageModule extends TydiModule {
   // Create Tydi logical stream object
   val stream = PhysicalStreamDetailed(new TimestampedMessageBundle, 1, c = 7)
@@ -127,15 +148,20 @@ class TimestampedMessageModule extends TydiModule {
   ...
 }
 ```
-Look through the [examples](library/src/main/scala/nl/tudelft/tydi_chisel/examples) for inspiration for the functionality and syntax.
+See the [timestamped_message](library/src/main/scala/nl/tudelft/tydi_chisel/examples/timestamped_message/TimestampedMessage.scala) file for the full example. This file is just for showing the syntax of declaring and using Tydi-interfaces. It does not contain an implementation. For that, look at the [pipeline examples](library/src/main/scala/nl/tudelft/tydi_chisel/examples/pipeline). There you will also find advanced syntax for the creation of modules and chaining of submodules through their streams:
 
-Testing a TydiModule
 ```scala
-import chisel3._
-import chiseltest._
-import nl.tudelft.tydi_chisel.{TydiProcessorTestWrapper, TydiTestWrapper}
-import nl.tudelft.tydi_chisel_test.Conversions._
-import org.scalatest.flatspec.AnyFlatSpec
+...
+
+class PipelineExampleModule extends SimpleProcessorBase(new NumberGroup, new Stats) {
+  out := in.processWith(new NonNegativeFilter).processWith(new Reducer)
+}
+```
+
+### Testing a TydiModule
+The code below shows a snippet from the [pipeline example test](testing/src/test/scala/nl/tudelft/tydi_chisel/pipeline/PipelineExampleTest.scala) code. It shows how to use the TydiStreamDriver to easily enqueue and dequeue data to sink and from source streams. Currently, this is only available for [ChiselTest](https://github.com/ucb-bar/chiseltest), and not ChiselSim.
+```scala
+// Import stuff
 
 class PipelineExampleTest extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "PipelineExample"
@@ -143,6 +169,7 @@ class PipelineExampleTest extends AnyFlatSpec with ChiselScalatestTester {
   class PipelineWrap extends TydiTestWrapper(new PipelineExampleModule, new NumberGroup, new Stats)
 
   it should "process a sequence" in {
+    // Test code
     test(new PipelineWrap) { c =>
       // Initialize signals
       c.in.initSource()
@@ -168,7 +195,7 @@ class PipelineExampleTest extends AnyFlatSpec with ChiselScalatestTester {
   }
 }
 ```
-Look through the [test examples](testing/src/test/scala/nl/tudelft/tydi_chisel) for inspiration for the functionality and syntax.
+Look through the [test examples](testing/src/test/scala/nl/tudelft/tydi_chisel) for all functionality and syntax.
 
 
 ## Getting started

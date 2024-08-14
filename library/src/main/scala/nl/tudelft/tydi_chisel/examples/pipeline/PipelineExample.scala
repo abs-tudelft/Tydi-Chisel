@@ -109,7 +109,7 @@ class NumberModuleIn extends TydiModule {
 }*/
 
 class PipelineExampleModule extends SimpleProcessorBase(new NumberGroup, new Stats) {
-  out := in.processWith(new NonNegativeFilter).processWith(new Reducer())
+  out := in.processWith(new NonNegativeFilter).processWith(new Reducer)
 }
 
 object PipelineExample extends App {
