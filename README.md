@@ -1,13 +1,95 @@
 # Tydi-Chisel
+
+Tydi-Chisel allows you to transfer simple to very complex nested variable length sequences between components over a stream bus in a structured way, using familiar Chisel concepts.
+
+## What is Tydi?
+Tydi-Chisel is an implementation of Tydi interfaces and concepts in Chisel.
+
 [Tydi](https://abs-tudelft.github.io/tydi) (Typed dataflow interface) is an open specification for streaming dataflow designs in digital circuits, allowing designers to express how composite and variable-length data structures are transferred over streams using clear, data-centric types.
 
 [Chisel](https://www.chisel-lang.org/) (Constructing Hardware in a Scala Embedded Language) is a high-level open-source hardware description language (HDL).
 
 With Tydi as data-streaming communication flow specification and Chisel as flexible implementation, an interface-driven design method can be followed.
 
-Tydi-Chisel is an implementation of Tydi interfaces and concepts in Chisel.
 
-Concretely, it contains:
+## Why Tidy?
+
+Developing hardware is notoriously difficult. Many solutions exist to lighten the load of developing implementations for hardware components. Yet, a gap exists between the easy use of complex nested (sequence) data structures in software and trying to work with them in hardware.
+
+Tydi aims to solve this issue by proposing an open standard for streams of arbitrary variable length data-structures. A data-structure is created by nesting `Bits`, `Group`, `Union` and `Stream` elements. See the following table for the meaning of the used terms.
+
+<style>
+#tydi-terms th:first-child {
+  border-right-width: 3px;
+}
+</style>
+
+<table style="text-align: left" id="tydi-terms">
+<thead>
+  <tr style="border-bottom-width: 3px">
+    <th>Term</th>
+    <th>Type</th>
+    <th>Software equivalent</th>
+    <th>Chisel equivalent</th>
+    <th>Meaning</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <th scope="row">Null</th>
+    <td>Logical type</td>
+    <td><code>Null</code></td>
+    <td><code>Bits(0)</code></td>
+    <td>Empty data</td>
+  </tr>
+  <tr>
+    <th>Bit</th>
+    <td>Logical type</td>
+    <td>Any primary datatype</td>
+    <td>Ground hardware type</td>
+    <td>Primary datatype of <code>x</code> bits</td>
+  </tr>
+  <tr>
+    <th>Group</th>
+    <td>Logical type</td>
+    <td><code>Struct</code>/<code>dict</code>/<code>map</code></td>
+    <td><code>Bundle</code></td>
+    <td>Aggregate of several logic types</td>
+  </tr>
+  <tr>
+    <th>Union</th>
+    <td>Logical type</td>
+    <td><code>Union</code></td>
+    <td><code>Bundle</code> with tag</td>
+    <td>“pick one” of several logic types</td>
+  </tr>
+  <tr style="border-bottom-width: 2px">
+    <th>Stream</th>
+    <td>Logical type</td>
+    <td>Bus to transport sequence of instance</td>
+    <td>–</td>
+    <td>Specify how to transport logic type</td>
+  </tr>
+  <tr>
+    <th>Streamlet</th>
+    <td>Hardware element</td>
+    <td><code>Interface</code></td>
+    <td><code>Trait</code> with IO defs</td>
+    <td>IO specification of component</td>
+  </tr>
+  <tr>
+    <th>Impl</th>
+    <td>Hardware element</td>
+    <td><code>Class</code> with functionality</td>
+    <td><code>Module</code></td>
+    <td>Inner structure of component</td>
+  </tr>
+</tbody>
+</table>
+
+By being a super-set of ready-valid communication, like Chisel's `DecoupledIO`, and the AXI-Stream standard, Tydi-interfaces stay close to existing streaming implementations.
+
+See the work in [publications](#publications) for more details.
 
 ## Example
 
@@ -125,6 +207,16 @@ Concretely, this project contains:
   - Stream protocol compliance verification tooling
   - Enhanced support for [TyWaves](https://github.com/rameloni/tywaves-chisel-demo)
     - Provide more time-domain information
+
+## Publications
+
+- _C. Cromjongh, Y. Tian, Z. Al-Ars and H. P. Hofstee_  
+  **Enabling Collaborative and Interface-Driven Data-Streaming Accelerator Design with Tydi-Chisel**  
+  2023 IEEE Nordic Circuits and Systems Conference (NorCAS), 1 November 2023. DOI: [10.1109/NorCAS58970.2023.10305451](https://doi.org/10.1109/NorCAS58970.2023.10305451).
+
+## License
+
+Tydi and this library are licensed under the [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) license. See [LICENSE](./LICENSE).
 
 ## Related Tools
 * [Tydi-Lang-2](https://github.com/twoentartian/tydi-lang-2)\
