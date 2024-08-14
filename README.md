@@ -18,16 +18,10 @@ Developing hardware is notoriously difficult. Many solutions exist to lighten th
 
 Tydi aims to solve this issue by proposing an open standard for streams of arbitrary variable length data-structures. A data-structure is created by nesting `Bits`, `Group`, `Union` and `Stream` elements. See the following table for the meaning of the used terms.
 
-<style>
-#tydi-terms th:first-child {
-  border-right-width: 3px;
-}
-</style>
-
 <table style="text-align: left" id="tydi-terms">
 <thead>
   <tr style="border-bottom-width: 3px">
-    <th>Term</th>
+    <th style="border-right-width: 3px;">Term</th>
     <th>Type</th>
     <th>Software equivalent</th>
     <th>Chisel equivalent</th>
@@ -36,49 +30,49 @@ Tydi aims to solve this issue by proposing an open standard for streams of arbit
 </thead>
 <tbody>
   <tr>
-    <th scope="row">Null</th>
+    <th scope="row" style="border-right-width: 3px;">Null</th>
     <td>Logical type</td>
     <td><code>Null</code></td>
     <td><code>Bits(0)</code></td>
     <td>Empty data</td>
   </tr>
   <tr>
-    <th>Bit</th>
+    <th scope="row" style="border-right-width: 3px;">Bit</th>
     <td>Logical type</td>
     <td>Any primary datatype</td>
     <td>Ground hardware type</td>
     <td>Primary datatype of <code>x</code> bits</td>
   </tr>
   <tr>
-    <th>Group</th>
+    <th scope="row" style="border-right-width: 3px;">Group</th>
     <td>Logical type</td>
     <td><code>Struct</code>/<code>dict</code>/<code>map</code></td>
     <td><code>Bundle</code></td>
     <td>Aggregate of several logic types</td>
   </tr>
   <tr>
-    <th>Union</th>
+    <th scope="row" style="border-right-width: 3px;">Union</th>
     <td>Logical type</td>
     <td><code>Union</code></td>
     <td><code>Bundle</code> with tag</td>
     <td>“pick one” of several logic types</td>
   </tr>
   <tr style="border-bottom-width: 2px">
-    <th>Stream</th>
+    <th scope="row" style="border-right-width: 3px;">Stream</th>
     <td>Logical type</td>
     <td>Bus to transport sequence of instance</td>
     <td>–</td>
     <td>Specify how to transport logic type</td>
   </tr>
   <tr>
-    <th>Streamlet</th>
+    <th scope="row" style="border-right-width: 3px;">Streamlet</th>
     <td>Hardware element</td>
     <td><code>Interface</code></td>
     <td><code>Trait</code> with IO defs</td>
     <td>IO specification of component</td>
   </tr>
   <tr>
-    <th>Impl</th>
+    <th scope="row" style="border-right-width: 3px;">Impl</th>
     <td>Hardware element</td>
     <td><code>Class</code> with functionality</td>
     <td><code>Module</code></td>
