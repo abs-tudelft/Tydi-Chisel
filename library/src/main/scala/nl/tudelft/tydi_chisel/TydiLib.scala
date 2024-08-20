@@ -733,7 +733,6 @@ object PhysicalStreamDetailed {
 }
 
 trait TydiModuleMixin extends BaseModule with TranspileExtend {
-  implicit val typeCheck: CompatCheck.CompatCheckType = CompatCheck.Strict
   implicit var parentModule: TydiModuleMixin = this
 
   private val moduleList = ListBuffer[TydiModuleMixin]()
