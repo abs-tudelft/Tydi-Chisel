@@ -612,7 +612,7 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
 
   def elementCheckTyped[TBel <: TydiEl, TBus <: Data](
     toConnect: PhysicalStreamDetailed[TBel, TBus],
-    typeCheck: CompatCheck.CompatCheckType = CompatCheck.Strict
+    typeCheck: CompatCheck.CompatCheckType
   ): Unit = {
     if (typeCheck == CompatCheck.Strict) {
       if (this.getDataType.getClass != toConnect.getDataType.getClass) {
@@ -637,7 +637,7 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
    */
   def :=[TBel <: TydiEl, TBus <: Data](
     bundle: PhysicalStreamDetailed[TBel, TBus]
-  )(implicit typeCheck: CompatCheck.CompatCheckType = CompatCheck.Strict): Unit = {
+  )(implicit typeCheck: CompatCheck.CompatCheckType): Unit = {
     elementCheckTyped(bundle, typeCheck)
     // This could be done with a :<>= but I like being explicit here to catch possible errors.
     if (bundle.r && !this.r) {
@@ -733,6 +733,7 @@ object PhysicalStreamDetailed {
 }
 
 trait TydiModuleMixin extends BaseModule with TranspileExtend {
+  implicit val typeCheck: CompatCheck.CompatCheckType = CompatCheck.Strict
   implicit var parentModule: TydiModuleMixin = this
 
   private val moduleList = ListBuffer[TydiModuleMixin]()

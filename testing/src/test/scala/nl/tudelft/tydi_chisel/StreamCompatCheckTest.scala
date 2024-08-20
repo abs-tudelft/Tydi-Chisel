@@ -24,6 +24,7 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
     in: PhysicalStreamDetailed[TIel, TIus],
     out: PhysicalStreamDetailed[TOel, TOus]
   ) extends TydiModule {
+    override implicit val typeCheck: CompatCheck.CompatCheckType = CompatCheck.Params
     val inStream: PhysicalStreamDetailed[TIel, TIus]  = IO(Flipped(in)).flip
     val outStream: PhysicalStreamDetailed[TOel, TOus] = IO(out)
     outStream := inStream
@@ -44,6 +45,12 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
     intercept[TydiStreamCompatException] {
       test(new DetailedStreamConnectMod(myBundleStream, myBundle2Stream)) { _ => }
     }
+  }
+
+  it should "weak check type" in {
+    implicit val typeCheck: CompatCheck.CompatCheckType = CompatCheck.Params
+    implicit val integer: Int = 5
+    test(new DetailedStreamConnectMod(myBundleStream, myBundle2Stream)) { _ => }
   }
 
   it should "check parameters" in {
