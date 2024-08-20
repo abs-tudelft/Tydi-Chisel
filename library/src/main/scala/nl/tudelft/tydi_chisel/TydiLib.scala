@@ -203,7 +203,6 @@ object CompatCheck extends Enumeration {
 }
 
 object CompatCheckResult extends Enumeration {
-  type Type = Value
   val Warning, Error = Value
 }
 
@@ -346,7 +345,7 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
 
   protected def reportProblem(
     problemStr: String
-  )(implicit typeCheckResult: CompatCheckResult.Type = CompatCheckResult.Error): Unit = {
+  )(implicit typeCheckResult: CompatCheckResult.Value): Unit = {
     typeCheckResult match {
       case CompatCheckResult.Error   => throw TydiStreamCompatException(problemStr)
       case CompatCheckResult.Warning => printWarning(problemStr)

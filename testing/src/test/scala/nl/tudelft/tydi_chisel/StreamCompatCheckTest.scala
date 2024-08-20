@@ -14,7 +14,12 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
 
   class MyBundle2 extends MyBundle
 
-  class StreamConnectMod(in: PhysicalStream, out: PhysicalStream) extends TydiModule {
+  class StreamConnectMod(
+    in: PhysicalStream,
+    out: PhysicalStream,
+    errorReporting: CompatCheckResult.Value = CompatCheckResult.Error
+  ) extends TydiModule {
+    implicit val errorReportingImplicit: CompatCheckResult.Value = errorReporting
     val inStream: PhysicalStream  = IO(Flipped(in))
     val outStream: PhysicalStream = IO(out)
     outStream := inStream
@@ -77,5 +82,16 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
     intercept[TydiStreamCompatException] {
       test(new StreamConnectMod(PhysicalStream(new MyBundle, n = 1, d = 2, c = 7, new DataBundle), baseStream)) { _ => }
     }
+  }
+
+  it should "print warnings" in {
+    val baseStream = PhysicalStream(new MyBundle, n = 1, d = 1, c = 1, new DataBundle)
+    class StreamConnectWarningsMod(in: PhysicalStream, out: PhysicalStream)
+          extends StreamConnectMod(in: PhysicalStream, out: PhysicalStream) {
+      implicit val errorReporting: CompatCheckResult.Value = CompatCheckResult.Warning
+    }
+
+    // Same parameters
+    test(new StreamConnectMod(baseStream, PhysicalStream(new MyBundle, n = 2, d = 1, c = 1, new DataBundle), CompatCheckResult.Warning)) { _ => }
   }
 }
