@@ -29,6 +29,11 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
     outStream := inStream
   }
 
+  class DataBundle extends Bundle {
+    val c: UInt = UInt(10.W)
+    val d: Bool = Bool()
+  }
+
   private val myBundleStream  = new PhysicalStreamDetailed(new MyBundle, c = 8)
   private val myBundle2Stream = new PhysicalStreamDetailed(new MyBundle2, c = 8)
 
@@ -38,6 +43,29 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
     test(new DetailedStreamConnectMod(myBundleStream, myBundleStream)) { _ => }
     intercept[TydiStreamCompatException] {
       test(new DetailedStreamConnectMod(myBundleStream, myBundle2Stream)) { _ => }
+    }
+  }
+
+  it should "check parameters" in {
+    val baseStream = PhysicalStream(new MyBundle, n = 1, d = 1, c = 1, new DataBundle)
+
+    // Same parameters
+    test(new StreamConnectMod(baseStream, PhysicalStream(new MyBundle, n = 1, d = 1, c = 1, new DataBundle))) { _ => }
+
+    // Test unequal n parameter
+    intercept[TydiStreamCompatException] {
+      test(new StreamConnectMod(baseStream, PhysicalStream(new MyBundle, n = 2, d = 1, c = 1, new DataBundle))) { _ => }
+    }
+
+    // Test unequal d parameter
+    intercept[TydiStreamCompatException] {
+      test(new StreamConnectMod(baseStream, PhysicalStream(new MyBundle, n = 1, d = 2, c = 1, new DataBundle))) { _ => }
+    }
+
+    // Test c parameter inequality. Csink >= Csource is okay, else an exception is thrown.
+    test(new StreamConnectMod(baseStream, PhysicalStream(new MyBundle, n = 1, d = 1, c = 7, new DataBundle))) { _ => }
+    intercept[TydiStreamCompatException] {
+      test(new StreamConnectMod(PhysicalStream(new MyBundle, n = 1, d = 2, c = 7, new DataBundle), baseStream)) { _ => }
     }
   }
 }
