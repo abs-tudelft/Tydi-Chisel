@@ -199,7 +199,6 @@ object BitsEl {
 }
 
 object CompatCheck extends Enumeration {
-  type CompatCheckType = Value
   val Params, Strict = Value
 }
 
@@ -612,7 +611,7 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
 
   def elementCheckTyped[TBel <: TydiEl, TBus <: Data](
     toConnect: PhysicalStreamDetailed[TBel, TBus],
-    typeCheck: CompatCheck.CompatCheckType
+    typeCheck: CompatCheck.Value
   ): Unit = {
     if (typeCheck == CompatCheck.Strict) {
       if (this.getDataType.getClass != toConnect.getDataType.getClass) {
@@ -637,7 +636,7 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
    */
   def :=[TBel <: TydiEl, TBus <: Data](
     bundle: PhysicalStreamDetailed[TBel, TBus]
-  )(implicit typeCheck: CompatCheck.CompatCheckType): Unit = {
+  )(implicit typeCheck: CompatCheck.Value): Unit = {
     elementCheckTyped(bundle, typeCheck)
     // This could be done with a :<>= but I like being explicit here to catch possible errors.
     if (bundle.r && !this.r) {

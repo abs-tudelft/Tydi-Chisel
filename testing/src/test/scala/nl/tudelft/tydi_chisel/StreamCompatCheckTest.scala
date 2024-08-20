@@ -23,19 +23,14 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
   class DetailedStreamConnectMod[TIel <: TydiEl, TIus <: Data, TOel <: TydiEl, TOus <: Data](
     in: PhysicalStreamDetailed[TIel, TIus],
     out: PhysicalStreamDetailed[TOel, TOus],
-    typeCheck: CompatCheck.CompatCheckType = CompatCheck.Strict
+    typeCheck: CompatCheck.Value = CompatCheck.Strict
   ) extends TydiModule {
-    // The following works for overriding the implicit variable from the package object:
-    // implicit val typeCheck: CompatCheck.CompatCheckType = CompatCheck.Params
     val inStream: PhysicalStreamDetailed[TIel, TIus]  = IO(Flipped(in)).flip
     val outStream: PhysicalStreamDetailed[TOel, TOus] = IO(out)
 
-    // Just to check override
-    implicit val typeCheckImplicit: CompatCheck.CompatCheckType = CompatCheck.Strict
-
     {
       // Value gets correctly overridden
-      implicit val typeCheckImplicit: CompatCheck.CompatCheckType = typeCheck
+      implicit val typeCheckImplicit: CompatCheck.Value = typeCheck
       outStream := inStream
     }
   }
@@ -58,9 +53,6 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   it should "weak check type" in {
-    // The following does not work for overriding the implicit variable from the package object:
-//    implicit val typeCheck: CompatCheck.CompatCheckType = CompatCheck.Params
-//    implicit val integer: Int = 5
     test(new DetailedStreamConnectMod(myBundleStream, myBundle2Stream, CompatCheck.Params)) { _ => }
   }
 
