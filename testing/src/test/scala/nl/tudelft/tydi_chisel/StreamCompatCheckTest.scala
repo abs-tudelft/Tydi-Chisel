@@ -29,14 +29,14 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
   class DetailedStreamConnectMod[TIel <: TydiEl, TIus <: Data, TOel <: TydiEl, TOus <: Data](
     in: PhysicalStreamDetailed[TIel, TIus],
     out: PhysicalStreamDetailed[TOel, TOus],
-    typeCheck: CompatCheck.Value = CompatCheck.Strict
+    typeCheckSelect: CompatCheck.Value = CompatCheck.Strict
   ) extends TydiModule {
     val inStream: PhysicalStreamDetailed[TIel, TIus]  = IO(Flipped(in)).flip
     val outStream: PhysicalStreamDetailed[TOel, TOus] = IO(out)
 
     {
       // Value gets correctly overridden
-      implicit val typeCheckImplicit: CompatCheck.Value = typeCheck
+      implicit val typeCheckImplicit: CompatCheck.Value = typeCheckSelect
       outStream := inStream
     }
   }

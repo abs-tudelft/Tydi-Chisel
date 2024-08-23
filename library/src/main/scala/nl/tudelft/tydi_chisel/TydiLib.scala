@@ -635,7 +635,7 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
    */
   def :=[TBel <: TydiEl, TBus <: Data](
     bundle: PhysicalStreamDetailed[TBel, TBus]
-  )(implicit typeCheck: CompatCheck.Value, typeCheckResult: CompatCheckResult.Value): Unit = {
+  )(implicit typeCheck: CompatCheck.Value = CompatCheck.Strict, typeCheckResult: CompatCheckResult.Value): Unit = {
     elementCheckTyped(bundle, typeCheck)
     // This could be done with a :<>= but I like being explicit here to catch possible errors.
     if (bundle.r && !this.r) {
