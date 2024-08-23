@@ -1,4 +1,4 @@
-val chiselVersion = "6.3.0"
+val chiselVersion = "6.5.0"
 
 ThisBuild / scalaVersion := "2.13.12"
 
