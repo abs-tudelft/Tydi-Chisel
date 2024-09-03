@@ -234,6 +234,7 @@ Concretely, this project contains:
     - Being able to work with the detailed bundles inside your components
     - Compliant with [Tydi-standard](https://abs-tudelft.github.io/tydi/specification/physical.html) for communication with components created outside of Chisel
     - Simple stream connection
+    - Stream compatibility checks
     - Helper functions for common signal use-cases
 - A stream-processing component chaining syntax
 - Testing utilities
@@ -252,7 +253,6 @@ Concretely, this project contains:
   - Create interoperability with [Fletcher](https://github.com/abs-tudelft/fletcher)
   - Investigate adoption of other hardware description languages
 - Library
-  - Stream compatibility checks
   - Better Union support
   - Interoperability with other streaming standards
   - Improved error handling and design rule checks
