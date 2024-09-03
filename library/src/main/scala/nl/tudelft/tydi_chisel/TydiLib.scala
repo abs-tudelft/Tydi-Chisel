@@ -343,7 +343,7 @@ sealed abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val 
     Console.err.println(s"$bold$orange$message$reset")
   }
 
-  protected def reportProblem(problemStr: String): Unit = {
+  protected def reportProblem(problemStr: String, compatCheckResult: CompatCheckResult.Value): Unit = {
     compatCheckResult match {
       case CompatCheckResult.Error   => throw TydiStreamCompatException(problemStr)
       case CompatCheckResult.Warning => printWarning(problemStr)
@@ -354,51 +354,66 @@ sealed abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val 
    * Check if the parameters of a source and sink stream match.
    * @param toConnect Source stream to drive this stream with.
    */
-  def paramCheck(toConnect: PhysicalStreamBase): Unit = {
+  def paramCheck(toConnect: PhysicalStreamBase, compatCheckResult: CompatCheckResult.Value): Unit = {
     // Number of lanes should be the same
     if (toConnect.n != this.n) {
-      reportProblem(s"Number of lanes between source and sink is not equal. ${this} has n=${this.n}, ${toConnect
-          .toString()} has n=${toConnect.n}")
+      reportProblem(
+        s"Number of lanes between source and sink is not equal. ${this} has n=${this.n}, ${toConnect
+            .toString()} has n=${toConnect.n}",
+        compatCheckResult
+      )
     }
     // Dimensionality should be the same
     if (toConnect.d != this.d) {
       reportProblem(
-        s"Dimensionality of source and sink is not equal. ${this} has d=${this.d}, ${toConnect} has d=${toConnect.d}"
+        s"Dimensionality of source and sink is not equal. ${this} has d=${this.d}, ${toConnect} has d=${toConnect.d}",
+        compatCheckResult
       )
     }
     // Sink C >= source C for compatibility
     if (toConnect.c > this.c) {
-      reportProblem(s"Complexity of source stream > sink. ${this} has c=${this.c}, ${toConnect} has c=${toConnect.c}")
+      reportProblem(
+        s"Complexity of source stream > sink. ${this} has c=${this.c}, ${toConnect} has c=${toConnect.c}",
+        compatCheckResult
+      )
     }
   }
 
-  def elementCheck(toConnect: PhysicalStreamBase): Unit = {
+  def elementCheck(toConnect: PhysicalStreamBase, compatCheckResult: CompatCheckResult.Value): Unit = {
     if (this.elWidth != toConnect.elWidth) {
       reportProblem(
-        s"Size of stream elements is not equal. ${this} has |e|=${this.elWidth}, ${toConnect} has |e|=${toConnect.elWidth}"
+        s"Size of stream elements is not equal. ${this} has |e|=${this.elWidth}, ${toConnect} has |e|=${toConnect.elWidth}",
+        compatCheckResult
       )
     }
     if (this.userElWidth != toConnect.userElWidth) {
       reportProblem(
-        s"Size of stream elements is not equal. ${this} has |u|=${this.userElWidth}, ${toConnect} has |u|=${toConnect.userElWidth}"
+        s"Size of stream elements is not equal. ${this} has |u|=${this.userElWidth}, ${toConnect} has |u|=${toConnect.userElWidth}",
+        compatCheckResult
       )
     }
   }
 
-  def elementCheckTyped(toConnect: PhysicalStreamBase, typeCheck: CompatCheck.Value): Unit = {
+  def elementCheckTyped(
+    toConnect: PhysicalStreamBase,
+    typeCheck: CompatCheck.Value,
+    compatCheckResult: CompatCheckResult.Value
+  ): Unit = {
     if (typeCheck == CompatCheck.Strict) {
       if (this.getDataType.getClass != toConnect.getDataType.getClass) {
         reportProblem(
-          s"Type of stream elements is not equal. ${this} has e=${this.getDataType.getClass}, ${toConnect} has e=${toConnect.getDataType.getClass}"
+          s"Type of stream elements is not equal. ${this} has e=${this.getDataType.getClass}, ${toConnect} has e=${toConnect.getDataType.getClass}",
+          compatCheckResult
         )
       }
       if (this.getUserType.getClass != toConnect.getUserType.getClass) {
         reportProblem(
-          s"Type of user elements is not equal. ${this} has u=${this.getUserType.getClass}, ${toConnect} has u=${toConnect.getUserType.getClass}"
+          s"Type of user elements is not equal. ${this} has u=${this.getUserType.getClass}, ${toConnect} has u=${toConnect.getUserType.getClass}",
+          compatCheckResult
         )
       }
     } else {
-      elementCheck(toConnect)
+      elementCheck(toConnect, compatCheckResult)
     }
   }
 
@@ -406,8 +421,10 @@ sealed abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val 
    * Meta-connect function. Connects all metadata signals but not the data or user signals.
    * @param bundle Source stream to drive this stream with.
    */
-  def :~=(bundle: PhysicalStreamBase): Unit = {
-    paramCheck(bundle)
+  def :~=(
+    bundle: PhysicalStreamBase
+  )(implicit compatCheckResult: CompatCheckResult.Value = CompatCheckResult.Error): Unit = {
+    paramCheck(bundle, compatCheckResult)
     // This could be done with a :<>= but I like being explicit here to catch possible errors.
     this.endi    := bundle.endi
     this.stai    := bundle.stai
@@ -426,12 +443,16 @@ sealed abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val 
     }
   }
 
-  def :=(bundle: PhysicalStreamBase)(implicit typeCheck: CompatCheck.Value = CompatCheck.Strict): Unit = {
+  def :=(bundle: PhysicalStreamBase)(implicit
+    typeCheck: CompatCheck.Value = CompatCheck.Strict,
+    errorReporting: CompatCheckResult.Value = CompatCheckResult.Error
+  ): Unit = {
     (this, bundle) match {
-      case (x: PhysicalStream, y: PhysicalStream)                             => x.connectSimple(y, typeCheck)
-      case (x: PhysicalStream, y: PhysicalStreamDetailed[_, _])               => x.connectDetailed(y, typeCheck)
-      case (x: PhysicalStreamDetailed[_, _], y: PhysicalStream)               => x.connectSimple(y, typeCheck)
-      case (x: PhysicalStreamDetailed[_, _], y: PhysicalStreamDetailed[_, _]) => x.connectDetailed(y, typeCheck)
+      case (x: PhysicalStream, y: PhysicalStream)               => x.connectSimple(y, typeCheck, errorReporting)
+      case (x: PhysicalStream, y: PhysicalStreamDetailed[_, _]) => x.connectDetailed(y, typeCheck, errorReporting)
+      case (x: PhysicalStreamDetailed[_, _], y: PhysicalStream) => x.connectSimple(y, typeCheck, errorReporting)
+      case (x: PhysicalStreamDetailed[_, _], y: PhysicalStreamDetailed[_, _]) =>
+        x.connectDetailed(y, typeCheck, errorReporting)
     }
   }
 
@@ -491,10 +512,11 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 1, c: Int, priv
    */
   private[tydi_chisel] def connectDetailed[Tel <: TydiEl, Tus <: Data](
     bundle: PhysicalStreamDetailed[Tel, Tus],
-    typeCheck: CompatCheck.Value = CompatCheck.Strict
+    typeCheck: CompatCheck.Value = CompatCheck.Strict,
+    errorReporting: CompatCheckResult.Value
   ): Unit = {
     this :~= bundle
-    elementCheckTyped(bundle, typeCheck)
+    elementCheckTyped(bundle, typeCheck, errorReporting)
     if (elWidth > 0) {
       this.data := bundle.getDataConcat
     } else {
@@ -513,10 +535,11 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 1, c: Int, priv
    */
   private[tydi_chisel] def connectSimple(
     bundle: PhysicalStream,
-    typeCheck: CompatCheck.Value = CompatCheck.Strict
+    typeCheck: CompatCheck.Value,
+    errorReporting: CompatCheckResult.Value
   ): Unit = {
     this :~= bundle
-    elementCheckTyped(bundle, typeCheck)
+    elementCheckTyped(bundle, typeCheck, errorReporting)
     this.data := bundle.data
     this.user := bundle.user
   }
@@ -645,9 +668,10 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
    */
   private[tydi_chisel] def connectDetailed[TBel <: TydiEl, TBus <: Data](
     bundle: PhysicalStreamDetailed[TBel, TBus],
-    typeCheck: CompatCheck.Value = CompatCheck.Strict
+    typeCheck: CompatCheck.Value = CompatCheck.Strict,
+    errorReporting: CompatCheckResult.Value
   ): Unit = {
-    elementCheckTyped(bundle, typeCheck)
+    elementCheckTyped(bundle, typeCheck, errorReporting)
     // This could be done with a :<>= but I like being explicit here to catch possible errors.
     if (bundle.r && !this.r) {
       this :~= bundle
@@ -694,10 +718,11 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
    */
   private[tydi_chisel] def connectSimple(
     bundle: PhysicalStream,
-    typeCheck: CompatCheck.Value = CompatCheck.Strict
+    typeCheck: CompatCheck.Value = CompatCheck.Strict,
+    errorReporting: CompatCheckResult.Value
   ): Unit = {
-    paramCheck(bundle)
-    elementCheckTyped(bundle, typeCheck)
+    paramCheck(bundle, errorReporting)
+    elementCheckTyped(bundle, typeCheck, errorReporting)
     // We cannot use the :~= function here since the last vector must be driven by the bitvector
     this.endi := bundle.endi
     this.stai := bundle.stai

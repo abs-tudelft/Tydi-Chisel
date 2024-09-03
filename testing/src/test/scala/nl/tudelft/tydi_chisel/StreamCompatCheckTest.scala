@@ -18,12 +18,12 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
     typeCheckSelect: CompatCheck.Value = CompatCheck.Strict,
     errorReporting: CompatCheckResult.Value = CompatCheckResult.Error
   ) extends TydiModule {
-    nl.tudelft.tydi_chisel setCompatCheckResult errorReporting
     val inStream: PhysicalStream  = IO(Flipped(in))
     val outStream: PhysicalStream = IO(out)
 
     {
       implicit val typeCheckImplicit: CompatCheck.Value = typeCheckSelect
+      implicit val typeCheckResultImplicit: CompatCheckResult.Value = errorReporting
       outStream := inStream
     }
   }
