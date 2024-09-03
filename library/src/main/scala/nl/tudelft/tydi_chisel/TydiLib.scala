@@ -426,13 +426,12 @@ sealed abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val 
     }
   }
 
-  def :=[TBel <: TydiEl, TBus <: Data](bundle: PhysicalStreamBase)(implicit typeCheck: CompatCheck.Value = CompatCheck.Strict): Unit = {
-    // TBel and TBus checking is not possible because of erasure.
+  def :=(bundle: PhysicalStreamBase)(implicit typeCheck: CompatCheck.Value = CompatCheck.Strict): Unit = {
     (this, bundle) match {
-      case (x: PhysicalStream, y: PhysicalStream) => x.connectSimple(y, typeCheck)
-      case (x: PhysicalStream, y: PhysicalStreamDetailed[TBel, TBus]) => x.connectDetailed(y, typeCheck)
-      case (x: PhysicalStreamDetailed[TBel, TBus], y: PhysicalStream) => x.connectSimple(y, typeCheck)
-      case (x: PhysicalStreamDetailed[TBel, TBus], y: PhysicalStreamDetailed[TBel, TBus]) => x.connectDetailed(y, typeCheck)
+      case (x: PhysicalStream, y: PhysicalStream)                             => x.connectSimple(y, typeCheck)
+      case (x: PhysicalStream, y: PhysicalStreamDetailed[_, _])               => x.connectDetailed(y, typeCheck)
+      case (x: PhysicalStreamDetailed[_, _], y: PhysicalStream)               => x.connectSimple(y, typeCheck)
+      case (x: PhysicalStreamDetailed[_, _], y: PhysicalStreamDetailed[_, _]) => x.connectDetailed(y, typeCheck)
     }
   }
 
@@ -491,7 +490,9 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 1, c: Int, priv
    * @tparam Tus User signal type.
    */
   private[tydi_chisel] def connectDetailed[Tel <: TydiEl, Tus <: Data](
-    bundle: PhysicalStreamDetailed[Tel, Tus], typeCheck: CompatCheck.Value = CompatCheck.Strict): Unit = {
+    bundle: PhysicalStreamDetailed[Tel, Tus],
+    typeCheck: CompatCheck.Value = CompatCheck.Strict
+  ): Unit = {
     this :~= bundle
     elementCheckTyped(bundle, typeCheck)
     if (elWidth > 0) {
@@ -510,7 +511,10 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 1, c: Int, priv
    * Stream mounting function.
    * @param bundle Source stream to drive this stream with.
    */
-  private[tydi_chisel] def connectSimple(bundle: PhysicalStream, typeCheck: CompatCheck.Value = CompatCheck.Strict): Unit = {
+  private[tydi_chisel] def connectSimple(
+    bundle: PhysicalStream,
+    typeCheck: CompatCheck.Value = CompatCheck.Strict
+  ): Unit = {
     this :~= bundle
     elementCheckTyped(bundle, typeCheck)
     this.data := bundle.data
@@ -640,7 +644,9 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
    * @param bundle Source stream to drive this stream with.
    */
   private[tydi_chisel] def connectDetailed[TBel <: TydiEl, TBus <: Data](
-    bundle: PhysicalStreamDetailed[TBel, TBus], typeCheck: CompatCheck.Value = CompatCheck.Strict): Unit = {
+    bundle: PhysicalStreamDetailed[TBel, TBus],
+    typeCheck: CompatCheck.Value = CompatCheck.Strict
+  ): Unit = {
     elementCheckTyped(bundle, typeCheck)
     // This could be done with a :<>= but I like being explicit here to catch possible errors.
     if (bundle.r && !this.r) {
@@ -686,7 +692,10 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
    * Stream mounting function.
    * @param bundle Source stream to drive this stream with.
    */
-  private[tydi_chisel] def connectSimple(bundle: PhysicalStream, typeCheck: CompatCheck.Value = CompatCheck.Strict): Unit = {
+  private[tydi_chisel] def connectSimple(
+    bundle: PhysicalStream,
+    typeCheck: CompatCheck.Value = CompatCheck.Strict
+  ): Unit = {
     paramCheck(bundle)
     elementCheckTyped(bundle, typeCheck)
     // We cannot use the :~= function here since the last vector must be driven by the bitvector
