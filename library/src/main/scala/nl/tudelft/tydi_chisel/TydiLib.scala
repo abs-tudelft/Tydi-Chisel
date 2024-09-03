@@ -385,6 +385,23 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
     }
   }
 
+  def elementCheckTyped(toConnect: PhysicalStreamBase, typeCheck: CompatCheck.Value): Unit = {
+    if (typeCheck == CompatCheck.Strict) {
+      if (this.getDataType.getClass != toConnect.getDataType.getClass) {
+        reportProblem(
+          s"Type of stream elements is not equal. ${this} has e=${this.getDataType.getClass}, ${toConnect} has e=${toConnect.getDataType.getClass}"
+        )
+      }
+      if (this.user.getClass != toConnect.user.getClass) {
+        reportProblem(
+          s"Type of user elements is not equal. ${this} has u=${this.getUserType.getClass}, ${toConnect} has u=${toConnect.getUserType.getClass}"
+        )
+      }
+    } else {
+      elementCheck(toConnect)
+    }
+  }
+
   /**
    * Meta-connect function. Connects all metadata signals but not the data or user signals.
    * @param bundle Source stream to drive this stream with.
@@ -463,9 +480,11 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 1, c: Int, priv
    * @tparam Tel Element signal type.
    * @tparam Tus User signal type.
    */
-  def :=[Tel <: TydiEl, Tus <: Data](bundle: PhysicalStreamDetailed[Tel, Tus]): Unit = {
+  def :=[Tel <: TydiEl, Tus <: Data](
+    bundle: PhysicalStreamDetailed[Tel, Tus]
+  )(implicit typeCheck: CompatCheck.Value = CompatCheck.Strict): Unit = {
     this :~= bundle
-    elementCheck(bundle)
+    elementCheckTyped(bundle, typeCheck)
     if (elWidth > 0) {
       this.data := bundle.getDataConcat
     } else {
@@ -482,9 +501,9 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 1, c: Int, priv
    * Stream mounting function.
    * @param bundle Source stream to drive this stream with.
    */
-  def :=(bundle: PhysicalStream): Unit = {
+  def :=(bundle: PhysicalStream)(implicit typeCheck: CompatCheck.Value = CompatCheck.Strict): Unit = {
     this :~= bundle
-    elementCheck(bundle)
+    elementCheckTyped(bundle, typeCheck)
     this.data := bundle.data
     this.user := bundle.user
   }
@@ -606,26 +625,6 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
     io
   }
 
-  def elementCheckTyped[TBel <: TydiEl, TBus <: Data](
-    toConnect: PhysicalStreamDetailed[TBel, TBus],
-    typeCheck: CompatCheck.Value
-  ): Unit = {
-    if (typeCheck == CompatCheck.Strict) {
-      if (this.getDataType.getClass != toConnect.getDataType.getClass) {
-        reportProblem(
-          s"Type of stream elements is not equal. ${this} has e=${this.getDataType.getClass}, ${toConnect} has e=${toConnect.getDataType.getClass}"
-        )
-      }
-      if (this.user.getClass != toConnect.user.getClass) {
-        reportProblem(
-          s"Type of user elements is not equal. ${this} has u=${this.getUserType.getClass}, ${toConnect} has u=${toConnect.getUserType.getClass}"
-        )
-      }
-    } else {
-      super.elementCheck(toConnect)
-    }
-  }
-
   // Require the element and user signal types to be the same as this stream in the function signature.
   /**
    * Stream mounting function.
@@ -679,9 +678,9 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
    * Stream mounting function.
    * @param bundle Source stream to drive this stream with.
    */
-  def :=(bundle: PhysicalStream): Unit = {
+  def :=(bundle: PhysicalStream)(implicit typeCheck: CompatCheck.Value = CompatCheck.Strict): Unit = {
     paramCheck(bundle)
-    bundle.elementCheck(this)
+    elementCheckTyped(bundle, typeCheck)
     // We cannot use the :~= function here since the last vector must be driven by the bitvector
     this.endi := bundle.endi
     this.stai := bundle.stai
