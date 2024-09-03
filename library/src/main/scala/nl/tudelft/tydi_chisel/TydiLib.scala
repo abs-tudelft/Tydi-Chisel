@@ -340,7 +340,7 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
     val reset  = "\u001b[0m"
 
     // Print the formatted message
-    println(s"$bold$orange$message$reset")
+    Console.err.println(s"$bold$orange$message$reset")
   }
 
   protected def reportProblem(problemStr: String): Unit = {

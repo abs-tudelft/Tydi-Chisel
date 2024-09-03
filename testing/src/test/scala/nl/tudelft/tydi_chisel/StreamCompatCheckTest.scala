@@ -93,6 +93,11 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
     }
 
     // Same parameters
-    test(new StreamConnectMod(baseStream, PhysicalStream(new MyBundle, n = 2, d = 1, c = 1, new DataBundle), CompatCheckResult.Warning)) { _ => }
+    val stream = new java.io.ByteArrayOutputStream()
+    Console.withErr(stream) {
+      test(new StreamConnectMod(baseStream, PhysicalStream(new MyBundle, n = 2, d = 1, c = 1, new DataBundle), CompatCheckResult.Warning)) { _ => }
+    }
+    // Check if error was written to console
+    assert(stream.toString contains "Number of lanes between source and sink is not equal.")
   }
 }
