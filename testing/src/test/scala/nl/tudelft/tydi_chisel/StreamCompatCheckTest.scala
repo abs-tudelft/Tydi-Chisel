@@ -1,9 +1,7 @@
 package nl.tudelft.tydi_chisel
 
 import chisel3._
-import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chiseltest._
-import nl.tudelft.tydi_chisel_test.Conversions._
 import org.scalatest.flatspec.AnyFlatSpec
 
 class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
@@ -17,7 +15,6 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
   class StreamConnectMod(
     in: PhysicalStream,
     out: PhysicalStream,
-    // This only works if it shadows the name of the package implicit definition
     errorReporting: CompatCheckResult.Value = CompatCheckResult.Error
   ) extends TydiModule {
     nl.tudelft.tydi_chisel setCompatCheckResult errorReporting
@@ -87,12 +84,8 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "print warnings" in {
     val baseStream = PhysicalStream(new MyBundle, n = 1, d = 1, c = 1, new DataBundle)
-    class StreamConnectWarningsMod(in: PhysicalStream, out: PhysicalStream)
-          extends StreamConnectMod(in: PhysicalStream, out: PhysicalStream) {
-      implicit val errorReporting: CompatCheckResult.Value = CompatCheckResult.Warning
-    }
 
-    // Same parameters
+    // Create a module with warning output and give it incompatible streams.
     val stream = new java.io.ByteArrayOutputStream()
     Console.withErr(stream) {
       test(
