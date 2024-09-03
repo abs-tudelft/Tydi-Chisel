@@ -64,7 +64,7 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "weak check type" in {
     test(new DetailedStreamConnectMod(myBundleStream, myBundle2Stream, CompatCheck.Params)) { _ => }
-    test(new StreamConnectMod(PhysicalStream(new MyBundle, c = 1), PhysicalStream(new MyBundle2, c = 1))) { _ => }
+    test(new StreamConnectMod(PhysicalStream(new MyBundle, c = 1), PhysicalStream(new MyBundle2, c = 1), CompatCheck.Params)) { _ => }
   }
 
   it should "check parameters" in {
