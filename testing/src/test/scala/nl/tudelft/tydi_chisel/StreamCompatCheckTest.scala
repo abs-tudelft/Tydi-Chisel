@@ -14,7 +14,13 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
 
   class MyBundle2 extends MyBundle
 
-  class StreamConnectMod(in: PhysicalStream, out: PhysicalStream) extends TydiModule {
+  class StreamConnectMod(
+    in: PhysicalStream,
+    out: PhysicalStream,
+    // This only works if it shadows the name of the package implicit definition
+    errorReporting: CompatCheckResult.Value = CompatCheckResult.Error
+  ) extends TydiModule {
+    nl.tudelft.tydi_chisel setCompatCheckResult errorReporting
     val inStream: PhysicalStream  = IO(Flipped(in))
     val outStream: PhysicalStream = IO(out)
     outStream := inStream
@@ -22,11 +28,17 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
 
   class DetailedStreamConnectMod[TIel <: TydiEl, TIus <: Data, TOel <: TydiEl, TOus <: Data](
     in: PhysicalStreamDetailed[TIel, TIus],
-    out: PhysicalStreamDetailed[TOel, TOus]
+    out: PhysicalStreamDetailed[TOel, TOus],
+    typeCheckSelect: CompatCheck.Value = CompatCheck.Strict
   ) extends TydiModule {
     val inStream: PhysicalStreamDetailed[TIel, TIus]  = IO(Flipped(in)).flip
     val outStream: PhysicalStreamDetailed[TOel, TOus] = IO(out)
-    outStream := inStream
+
+    {
+      // Value gets correctly overridden
+      implicit val typeCheckImplicit: CompatCheck.Value = typeCheckSelect
+      outStream := inStream
+    }
   }
 
   class DataBundle extends Bundle {
@@ -44,6 +56,10 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
     intercept[TydiStreamCompatException] {
       test(new DetailedStreamConnectMod(myBundleStream, myBundle2Stream)) { _ => }
     }
+  }
+
+  it should "weak check type" in {
+    test(new DetailedStreamConnectMod(myBundleStream, myBundle2Stream, CompatCheck.Params)) { _ => }
   }
 
   it should "check parameters" in {
@@ -67,5 +83,16 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
     intercept[TydiStreamCompatException] {
       test(new StreamConnectMod(PhysicalStream(new MyBundle, n = 1, d = 2, c = 7, new DataBundle), baseStream)) { _ => }
     }
+  }
+
+  it should "print warnings" in {
+    val baseStream = PhysicalStream(new MyBundle, n = 1, d = 1, c = 1, new DataBundle)
+    class StreamConnectWarningsMod(in: PhysicalStream, out: PhysicalStream)
+          extends StreamConnectMod(in: PhysicalStream, out: PhysicalStream) {
+      implicit val errorReporting: CompatCheckResult.Value = CompatCheckResult.Warning
+    }
+
+    // Same parameters
+    test(new StreamConnectMod(baseStream, PhysicalStream(new MyBundle, n = 2, d = 1, c = 1, new DataBundle), CompatCheckResult.Warning)) { _ => }
   }
 }

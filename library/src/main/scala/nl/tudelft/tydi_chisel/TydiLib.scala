@@ -199,12 +199,10 @@ object BitsEl {
 }
 
 object CompatCheck extends Enumeration {
-  type CompatCheckType = Value
   val Params, Strict = Value
 }
 
 object CompatCheckResult extends Enumeration {
-  type Type = Value
   val Warning, Error = Value
 }
 
@@ -345,10 +343,8 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
     println(s"$bold$orange$message$reset")
   }
 
-  protected def reportProblem(
-    problemStr: String
-  )(implicit typeCheckResult: CompatCheckResult.Type = CompatCheckResult.Error): Unit = {
-    typeCheckResult match {
+  protected def reportProblem(problemStr: String): Unit = {
+    compatCheckResult match {
       case CompatCheckResult.Error   => throw TydiStreamCompatException(problemStr)
       case CompatCheckResult.Warning => printWarning(problemStr)
     }
@@ -467,7 +463,9 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 1, c: Int, priv
    * @tparam Tel Element signal type.
    * @tparam Tus User signal type.
    */
-  def :=[Tel <: TydiEl, Tus <: Data](bundle: PhysicalStreamDetailed[Tel, Tus]): Unit = {
+  def :=[Tel <: TydiEl, Tus <: Data](
+    bundle: PhysicalStreamDetailed[Tel, Tus]
+  ): Unit = {
     this :~= bundle
     elementCheck(bundle)
     if (elWidth > 0) {
@@ -612,7 +610,7 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
 
   def elementCheckTyped[TBel <: TydiEl, TBus <: Data](
     toConnect: PhysicalStreamDetailed[TBel, TBus],
-    typeCheck: CompatCheck.CompatCheckType = CompatCheck.Strict
+    typeCheck: CompatCheck.Value
   ): Unit = {
     if (typeCheck == CompatCheck.Strict) {
       if (this.getDataType.getClass != toConnect.getDataType.getClass) {
@@ -637,7 +635,7 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
    */
   def :=[TBel <: TydiEl, TBus <: Data](
     bundle: PhysicalStreamDetailed[TBel, TBus]
-  )(implicit typeCheck: CompatCheck.CompatCheckType = CompatCheck.Strict): Unit = {
+  )(implicit typeCheck: CompatCheck.Value = CompatCheck.Strict): Unit = {
     elementCheckTyped(bundle, typeCheck)
     // This could be done with a :<>= but I like being explicit here to catch possible errors.
     if (bundle.r && !this.r) {
