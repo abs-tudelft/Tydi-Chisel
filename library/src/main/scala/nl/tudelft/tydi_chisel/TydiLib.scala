@@ -463,9 +463,7 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 1, c: Int, priv
    * @tparam Tel Element signal type.
    * @tparam Tus User signal type.
    */
-  def :=[Tel <: TydiEl, Tus <: Data](
-    bundle: PhysicalStreamDetailed[Tel, Tus]
-  ): Unit = {
+  def :=[Tel <: TydiEl, Tus <: Data](bundle: PhysicalStreamDetailed[Tel, Tus]): Unit = {
     this :~= bundle
     elementCheck(bundle)
     if (elWidth > 0) {
