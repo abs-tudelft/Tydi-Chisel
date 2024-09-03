@@ -343,8 +343,8 @@ abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val d: Int,
     println(s"$bold$orange$message$reset")
   }
 
-  protected def reportProblem(problemStr: String)(implicit typeCheckResult: CompatCheckResult.Value = CompatCheckResult.Error): Unit = {
-    typeCheckResult match {
+  protected def reportProblem(problemStr: String): Unit = {
+    compatCheckResult match {
       case CompatCheckResult.Error   => throw TydiStreamCompatException(problemStr)
       case CompatCheckResult.Warning => printWarning(problemStr)
     }
