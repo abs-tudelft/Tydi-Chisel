@@ -18,9 +18,9 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
     in: PhysicalStream,
     out: PhysicalStream,
     // This only works if it shadows the name of the package implicit definition
-    typeCheckResult: CompatCheckResult.Value = CompatCheckResult.Error
+    errorReporting: CompatCheckResult.Value = CompatCheckResult.Error
   ) extends TydiModule {
-    implicit val errorReportingImplicit: CompatCheckResult.Value = typeCheckResult
+    implicit val errorReportingImplicit: CompatCheckResult.Value = errorReporting
     val inStream: PhysicalStream  = IO(Flipped(in))
     val outStream: PhysicalStream = IO(out)
     outStream := inStream

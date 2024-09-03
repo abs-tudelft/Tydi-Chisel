@@ -6,5 +6,5 @@ package object tydi_chisel {
   val firReleaseOpts: Array[String]        = Array("-O=release", "-disable-all-randomization", "-strip-debug-info")
 
 //  implicit val typeCheck: CompatCheck.Value = CompatCheck.Strict
-  implicit val typeCheckResult: CompatCheckResult.Value = CompatCheckResult.Error
+//  implicit val typeCheckResult: CompatCheckResult.Value = CompatCheckResult.Error
 }
