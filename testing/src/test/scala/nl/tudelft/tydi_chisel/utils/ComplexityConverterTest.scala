@@ -200,7 +200,7 @@ class ComplexityConverterTest extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   it should "work with fancy wrapper" in {
-    val stream = PhysicalStream(new MyEl, n = 1, d = 1, c = 7)
+    val stream = PhysicalStream(new MyEl, n = 1, d = 1, c = 8)
 
     // test case body here
     test(new ManualComplexityConverterFancyWrapper(new MyEl, stream, 10)) { c =>
