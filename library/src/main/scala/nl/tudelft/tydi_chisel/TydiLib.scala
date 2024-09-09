@@ -436,6 +436,11 @@ sealed abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val 
       (this.last, bundle.last) match {
         case (_: UInt, _: UInt) | (_: Vec[_], _: Vec[_]) => this.last := bundle.last
         case (_: UInt, _: Vec[_])                        => this.last := bundle.last.asUInt
+        case (thisLast: Vec[_], bundleLast: UInt) =>
+          for ((lastLane, i) <- thisLast.zipWithIndex) {
+            // Assign a slice of the bitvector to the respective lane in the vector
+            lastLane := bundleLast((i + 1) * d - 1, i * d)
+          }
       }
     } else {
       this.last   := DontCare
@@ -447,6 +452,8 @@ sealed abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val 
     typeCheck: CompatCheck.Value = CompatCheck.Strict,
     errorReporting: CompatCheckResult.Value = CompatCheckResult.Error
   ): Unit = {
+    this :~= bundle
+    elementCheckTyped(bundle, typeCheck, errorReporting)
     (this, bundle) match {
       case (x: PhysicalStream, y: PhysicalStream)               => x.connectSimple(y, typeCheck, errorReporting)
       case (x: PhysicalStream, y: PhysicalStreamDetailed[_, _]) => x.connectDetailed(y, typeCheck, errorReporting)
@@ -515,8 +522,6 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 1, c: Int, priv
     typeCheck: CompatCheck.Value = CompatCheck.Strict,
     errorReporting: CompatCheckResult.Value
   ): Unit = {
-    this :~= bundle
-    elementCheckTyped(bundle, typeCheck, errorReporting)
     if (elWidth > 0) {
       this.data := bundle.getDataConcat
     } else {
@@ -538,8 +543,6 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 1, c: Int, priv
     typeCheck: CompatCheck.Value,
     errorReporting: CompatCheckResult.Value
   ): Unit = {
-    this :~= bundle
-    elementCheckTyped(bundle, typeCheck, errorReporting)
     this.data := bundle.data
     this.user := bundle.user
   }
@@ -671,45 +674,25 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
     typeCheck: CompatCheck.Value = CompatCheck.Strict,
     errorReporting: CompatCheckResult.Value
   ): Unit = {
-    elementCheckTyped(bundle, typeCheck, errorReporting)
-    // This could be done with a :<>= but I like being explicit here to catch possible errors.
-    if (bundle.r && !this.r) {
-      this :~= bundle
-      // The following would work if we would know with certainty that the signals are oriented the right way,
-      // but we do not -.-
-      // (this.data: Data) :<>= (bundle.data: Data)
-
-      // Using the recursive function leads to duplicate connections when connecting sub-streams, but the non-recursive
-      // version cannot be used, since non-stream elements could still contain stream items.
-      for ((thisData, bundleData) <- this.getDataElementsRec.zip(bundle.getDataElementsRec)) {
-        thisData :<>= bundleData
-      }
-      for (
-        (thisStream: PhysicalStreamDetailed[_, _], bundleStream: PhysicalStreamDetailed[_, _]) <- this.getStreamElements
-          .zip(bundle.getStreamElements)
-      ) {
-        thisStream := bundleStream
-      }
-      (this.user: Data) :<>= (bundle.user: Data)
-    } else {
-      bundle :~= this
-      // The following would work if we would know with certainty that the signals are oriented the right way,
-      // but we do not -.-
-      // (bundle.data: Data) :<>= (this.data: Data)
-
-      // Using the recursive function leads to duplicate connections when connecting sub-streams, but the non-recursive
-      // version cannot be used, since non-stream elements could still contain stream items.
-      for ((thisData, bundleData) <- this.getDataElementsRec.zip(bundle.getDataElementsRec)) {
-        bundleData :<>= thisData
-      }
-      for (
-        (thisStream: PhysicalStreamDetailed[_, _], bundleStream: PhysicalStreamDetailed[_, _]) <- this.getStreamElements
-          .zip(bundle.getStreamElements)
-      ) {
-        bundleStream := thisStream
-      }
-      (bundle.user: Data) :<>= (this.user: Data)
+    if (!bundle.r || this.r) {
+      throw new Exception("Attempting to connect an input to an output. Reverse the connection.")
     }
+    // The following would work if we would know with certainty that the signals are oriented the right way,
+    // but we do not -.-
+    // (this.data: Data) :<>= (bundle.data: Data)
+
+    // Using the recursive function leads to duplicate connections when connecting sub-streams, but the non-recursive
+    // version cannot be used, since non-stream elements could still contain stream items.
+    for ((thisData, bundleData) <- this.getDataElementsRec.zip(bundle.getDataElementsRec)) {
+      thisData :<>= bundleData
+    }
+    for (
+      (thisStream: PhysicalStreamDetailed[_, _], bundleStream: PhysicalStreamDetailed[_, _]) <- this.getStreamElements
+        .zip(bundle.getStreamElements)
+    ) {
+      thisStream := bundleStream
+    }
+    (this.user: Data) :<>= (bundle.user: Data)
   }
 
   /**
@@ -721,22 +704,6 @@ class PhysicalStreamDetailed[Tel <: TydiEl, Tus <: Data](
     typeCheck: CompatCheck.Value = CompatCheck.Strict,
     errorReporting: CompatCheckResult.Value
   ): Unit = {
-    paramCheck(bundle, errorReporting)
-    elementCheckTyped(bundle, typeCheck, errorReporting)
-    // We cannot use the :~= function here since the last vector must be driven by the bitvector
-    this.endi := bundle.endi
-    this.stai := bundle.stai
-    this.strb := bundle.strb
-    // There are only last bits if there is dimensionality
-    if (d > 0) {
-      for ((lastLane, i) <- this.last.zipWithIndex) {
-        lastLane := bundle.last((i + 1) * d - 1, i * d)
-      }
-    } else {
-      this.last := DontCare
-    }
-    this.valid   := bundle.valid
-    bundle.ready := this.ready
     // Connect data bitvector back to bundle
     for ((dataLane, i) <- this.data.zipWithIndex) {
       val dataWidth = bundle.elWidth
