@@ -22,7 +22,7 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
     val outStream: PhysicalStream = IO(out)
 
     {
-      implicit val typeCheckImplicit: CompatCheck.Value = typeCheckSelect
+      implicit val typeCheckImplicit: CompatCheck.Value             = typeCheckSelect
       implicit val typeCheckResultImplicit: CompatCheckResult.Value = errorReporting
       outStream := inStream
     }
@@ -64,7 +64,13 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "weak check type" in {
     test(new DetailedStreamConnectMod(myBundleStream, myBundle2Stream, CompatCheck.Params)) { _ => }
-    test(new StreamConnectMod(PhysicalStream(new MyBundle, c = 1), PhysicalStream(new MyBundle2, c = 1), CompatCheck.Params)) { _ => }
+    test(
+      new StreamConnectMod(
+        PhysicalStream(new MyBundle, c = 1),
+        PhysicalStream(new MyBundle2, c = 1),
+        CompatCheck.Params
+      )
+    ) { _ => }
   }
 
   it should "check parameters" in {
@@ -100,7 +106,7 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
         new StreamConnectMod(
           baseStream,
           PhysicalStream(new MyBundle, n = 2, d = 1, c = 1, new DataBundle),
-          errorReporting=CompatCheckResult.Warning
+          errorReporting = CompatCheckResult.Warning
         )
       ) { _ => }
     }

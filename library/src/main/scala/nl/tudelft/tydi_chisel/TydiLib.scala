@@ -420,8 +420,9 @@ sealed abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val 
   /**
    * Meta-connect function. Connects all metadata signals but not the data or user signals.
    * @param bundle Source stream to drive this stream with.
+   * @param compatCheckResult Whether to report stream compatibility issues as errors or warnings.
    */
-  def :~=(
+  def :@=(
     bundle: PhysicalStreamBase
   )(implicit compatCheckResult: CompatCheckResult.Value = CompatCheckResult.Error): Unit = {
     paramCheck(bundle, compatCheckResult)
@@ -448,18 +449,38 @@ sealed abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val 
     }
   }
 
+  /**
+   * Shortcut for stream mounting with weak type check.
+   * @param bundle Source stream to drive this stream with.
+   * @param errorReporting Whether to report stream compatibility issues as errors or warnings.
+   */
+  def :~=(
+    bundle: PhysicalStreamBase
+  )(implicit errorReporting: CompatCheckResult.Value = CompatCheckResult.Error): Unit = {
+    implicit val errorReporting: CompatCheck.Value = CompatCheck.Params
+    this := bundle
+  }
+
+  /**
+   * Stream mounting function.
+   * @param bundle Source stream to drive this stream with.
+   * @param errorReporting Whether to report stream compatibility issues as errors or warnings.
+   * @param typeCheck Whether to conduct a strong or weak type check. A weak type check only verifies the number of bits.
+   */
   def :=(bundle: PhysicalStreamBase)(implicit
     typeCheck: CompatCheck.Value = CompatCheck.Strict,
     errorReporting: CompatCheckResult.Value = CompatCheckResult.Error
   ): Unit = {
-    this :~= bundle
-    elementCheckTyped(bundle, typeCheck, errorReporting)
+    this :@= bundle                                      // Connect meta signals and check parameters
+    elementCheckTyped(bundle, typeCheck, errorReporting) // Check data types
+    // Call the right connect method
     (this, bundle) match {
       case (x: PhysicalStream, y: PhysicalStream)               => x.connectSimple(y, typeCheck, errorReporting)
       case (x: PhysicalStream, y: PhysicalStreamDetailed[_, _]) => x.connectDetailed(y, typeCheck, errorReporting)
       case (x: PhysicalStreamDetailed[_, _], y: PhysicalStream) => x.connectSimple(y, typeCheck, errorReporting)
       case (x: PhysicalStreamDetailed[_, _], y: PhysicalStreamDetailed[_, _]) =>
         x.connectDetailed(y, typeCheck, errorReporting)
+      case _ => throw new Exception("Could not determine data connection method.")
     }
   }
 
