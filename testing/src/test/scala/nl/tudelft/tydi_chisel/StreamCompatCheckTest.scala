@@ -15,12 +15,17 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
   class StreamConnectMod(
     in: PhysicalStream,
     out: PhysicalStream,
+    typeCheckSelect: CompatCheck.Value = CompatCheck.Strict,
     errorReporting: CompatCheckResult.Value = CompatCheckResult.Error
   ) extends TydiModule {
-    nl.tudelft.tydi_chisel setCompatCheckResult errorReporting
     val inStream: PhysicalStream  = IO(Flipped(in))
     val outStream: PhysicalStream = IO(out)
-    outStream := inStream
+
+    {
+      implicit val typeCheckImplicit: CompatCheck.Value             = typeCheckSelect
+      implicit val typeCheckResultImplicit: CompatCheckResult.Value = errorReporting
+      outStream := inStream
+    }
   }
 
   class DetailedStreamConnectMod[TIel <: TydiEl, TIus <: Data, TOel <: TydiEl, TOus <: Data](
@@ -32,7 +37,6 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
     val outStream: PhysicalStreamDetailed[TOel, TOus] = IO(out)
 
     {
-      // Value gets correctly overridden
       implicit val typeCheckImplicit: CompatCheck.Value = typeCheckSelect
       outStream := inStream
     }
@@ -53,10 +57,20 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
     intercept[TydiStreamCompatException] {
       test(new DetailedStreamConnectMod(myBundleStream, myBundle2Stream)) { _ => }
     }
+    intercept[TydiStreamCompatException] {
+      test(new StreamConnectMod(PhysicalStream(new MyBundle, c = 1), PhysicalStream(new MyBundle2, c = 1))) { _ => }
+    }
   }
 
   it should "weak check type" in {
     test(new DetailedStreamConnectMod(myBundleStream, myBundle2Stream, CompatCheck.Params)) { _ => }
+    test(
+      new StreamConnectMod(
+        PhysicalStream(new MyBundle, c = 1),
+        PhysicalStream(new MyBundle2, c = 1),
+        CompatCheck.Params
+      )
+    ) { _ => }
   }
 
   it should "check parameters" in {
@@ -92,7 +106,7 @@ class StreamCompatCheckTest extends AnyFlatSpec with ChiselScalatestTester {
         new StreamConnectMod(
           baseStream,
           PhysicalStream(new MyBundle, n = 2, d = 1, c = 1, new DataBundle),
-          CompatCheckResult.Warning
+          errorReporting = CompatCheckResult.Warning
         )
       ) { _ => }
     }
