@@ -192,13 +192,8 @@ class MultiProcessorGeneral(
  */
 class StreamDuplicator(val k: Int = 2, template: PhysicalStream) extends TydiModule {
   // Create a new instance so we do not need to worry about directions.
-  private val stream: PhysicalStream = PhysicalStream(
-    new BitsEl(template.elWidth.W),
-    n = template.n,
-    d = template.d,
-    c = template.c,
-    u = UInt(template.userElWidth.W)
-  )
+  private val stream: PhysicalStream =
+    PhysicalStream(template.getDataType, n = template.n, d = template.d, c = template.c, u = template.getUserType)
   val in: PhysicalStream       = IO(Flipped(stream))
   val out: Vec[PhysicalStream] = IO(Vec(k, stream))
 
