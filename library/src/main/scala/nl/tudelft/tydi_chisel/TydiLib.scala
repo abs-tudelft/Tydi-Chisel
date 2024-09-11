@@ -352,7 +352,7 @@ sealed abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val 
     checkResult match {
       case CompatCheckResult.Error => throw TydiStreamCompatException(problemStr)
       case CompatCheckResult.Warning => {
-        val stackTrace = new Exception().getStackTrace.slice(2, 8).mkString(". Trace:\n\t", "\n\t", "\n")
+        val stackTrace = new Exception().getStackTrace.slice(2, 8).mkString("\nTrace:\n\t", "\n\t", "\n")
         printWarning(problemStr + stackTrace)
       }
     }
@@ -366,22 +366,21 @@ sealed abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val 
     // Number of lanes should be the same
     if (toConnect.n != this.n) {
       reportProblem(
-        s"Number of lanes between source and sink is not equal. ${this} has n=${this.n}, ${toConnect
-            .toString()} has n=${toConnect.n}",
+        s"Number of lanes between source and sink is not equal.\n\t- ${this} has n=${this.n}\n\t- ${toConnect} has n=${toConnect.n}",
         compatCheckResult
       )
     }
     // Dimensionality should be the same
     if (toConnect.d != this.d) {
       reportProblem(
-        s"Dimensionality of source and sink is not equal. ${this} has d=${this.d}, ${toConnect} has d=${toConnect.d}",
+        s"Dimensionality of source and sink is not equal.\n\t- ${this} has d=${this.d}\n\t- ${toConnect} has d=${toConnect.d}",
         compatCheckResult
       )
     }
     // Sink C >= source C for compatibility
     if (toConnect.c > this.c) {
       reportProblem(
-        s"Complexity of source stream > sink. ${this} has c=${this.c}, ${toConnect} has c=${toConnect.c}",
+        s"Complexity of source stream > sink.\n\t- ${this} has c=${this.c}\n\t- ${toConnect} has c=${toConnect.c}",
         compatCheckResult
       )
     }
@@ -390,13 +389,13 @@ sealed abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val 
   def elementCheck(toConnect: PhysicalStreamBase, compatCheckResult: CompatCheckResult.Value): Unit = {
     if (this.elWidth != toConnect.elWidth) {
       reportProblem(
-        s"Size of stream elements is not equal. ${this} has |e|=${this.elWidth}, ${toConnect} has |e|=${toConnect.elWidth}",
+        s"Size of stream elements is not equal.\n\t- ${this} has |e|=${this.elWidth}\n\t- ${toConnect} has |e|=${toConnect.elWidth}",
         compatCheckResult
       )
     }
     if (this.userElWidth != toConnect.userElWidth) {
       reportProblem(
-        s"Size of stream elements is not equal. ${this} has |u|=${this.userElWidth}, ${toConnect} has |u|=${toConnect.userElWidth}",
+        s"Size of stream elements is not equal.\n\t- ${this} has |u|=${this.userElWidth}\n\t- ${toConnect} has |u|=${toConnect.userElWidth}",
         compatCheckResult
       )
     }
@@ -415,13 +414,13 @@ sealed abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val 
     if (check == CompatCheck.Strict) {
       if (this.getDataType.getClass != toConnect.getDataType.getClass) {
         reportProblem(
-          s"Type of stream elements is not equal. ${this} has e=${this.getDataType.getClass}, ${toConnect} has e=${toConnect.getDataType.getClass}",
+          s"Type of stream elements is not equal.\n\t- ${this} has e=${this.getDataType.getClass}, |e|=${this.elWidth}\n\t- ${toConnect} has e=${toConnect.getDataType.getClass}, |e|=${toConnect.elWidth}",
           compatCheckResult
         )
       }
       if (this.getUserType.getClass != toConnect.getUserType.getClass) {
         reportProblem(
-          s"Type of user elements is not equal. ${this} has u=${this.getUserType.getClass}, ${toConnect} has u=${toConnect.getUserType.getClass}",
+          s"Type of user elements is not equal.\n\t- ${this} has u=${this.getUserType.getClass}, |u|=${this.userElWidth}\n\t- ${toConnect} has u=${toConnect.getUserType.getClass}, |u|=${toConnect.userElWidth}",
           compatCheckResult
         )
       }
