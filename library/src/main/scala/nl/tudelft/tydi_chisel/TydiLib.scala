@@ -350,8 +350,11 @@ sealed abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val 
     }
 
     checkResult match {
-      case CompatCheckResult.Error   => throw TydiStreamCompatException(problemStr)
-      case CompatCheckResult.Warning => printWarning(problemStr)
+      case CompatCheckResult.Error => throw TydiStreamCompatException(problemStr)
+      case CompatCheckResult.Warning => {
+        val stackTrace = new Exception().getStackTrace.slice(2, 8).mkString(". Trace:\n\t", "\n\t", "\n")
+        printWarning(problemStr + stackTrace)
+      }
     }
   }
 
