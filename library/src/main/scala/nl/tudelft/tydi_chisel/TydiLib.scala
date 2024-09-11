@@ -344,7 +344,12 @@ sealed abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val 
   }
 
   protected def reportProblem(problemStr: String, compatCheckResult: CompatCheckResult.Value): Unit = {
-    compatCheckResult match {
+    val checkResult = nl.tudelft.tydi_chisel.compatCheckResult match {
+      case None       => compatCheckResult
+      case x: Some[_] => x.get
+    }
+
+    checkResult match {
       case CompatCheckResult.Error   => throw TydiStreamCompatException(problemStr)
       case CompatCheckResult.Warning => printWarning(problemStr)
     }
@@ -399,7 +404,12 @@ sealed abstract class PhysicalStreamBase(private val e: TydiEl, val n: Int, val 
     typeCheck: CompatCheck.Value,
     compatCheckResult: CompatCheckResult.Value
   ): Unit = {
-    if (typeCheck == CompatCheck.Strict) {
+    val check = nl.tudelft.tydi_chisel.compatCheck match {
+      case None       => typeCheck
+      case x: Some[_] => x.get
+    }
+
+    if (check == CompatCheck.Strict) {
       if (this.getDataType.getClass != toConnect.getDataType.getClass) {
         reportProblem(
           s"Type of stream elements is not equal. ${this} has e=${this.getDataType.getClass}, ${toConnect} has e=${toConnect.getDataType.getClass}",
