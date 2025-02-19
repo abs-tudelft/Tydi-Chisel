@@ -142,7 +142,7 @@ class TimestampedMessageModule extends TydiModule {
   ...
 }
 ```
-See the [timestamped_message](library/src/main/scala/nl/tudelft/tydi_chisel/examples/timestamped_message/TimestampedMessage.scala) file for the full example. This file is just for showing the syntax of declaring and using Tydi-interfaces. It does not contain an implementation. For that, look at the [pipeline examples](library/src/main/scala/nl/tudelft/tydi_chisel/examples/pipeline). There you will also find advanced syntax for the creation of modules and chaining of submodules through their streams:
+See the [timestamped_message](library/src/main/scala/nl/tudelft/tydi_chisel/examples/timestamped_message/TimestampedMessage.scala) file for the full example. This file is just for showing the syntax of declaring and using Tydi-interfaces. It does not contain an implementation. For that, look at the pipeline examples in [the overview](#examples-overview) below. There you will also find advanced syntax for the creation of modules and chaining of submodules through their streams:
 
 ```scala
 ...
@@ -190,6 +190,18 @@ class PipelineExampleTest extends AnyFlatSpec with ChiselScalatestTester {
 }
 ```
 Look through the [test examples](testing/src/test/scala/nl/tudelft/tydi_chisel) for all functionality and syntax.
+
+### Examples overview
+- [Hello world](library/src/main/scala/nl/tudelft/tydi_chisel/examples/hello_world/HelloWorld.scala) – This example focuses on the **physical interface structure**.\
+It shows the signals of a Tydi interface carrying only a simple character stream. 
+- [Timestamped message](library/src/main/scala/nl/tudelft/tydi_chisel/examples/timestamped_message/TimestampedMessage.scala) – This example focuses on building a **data structure**.\
+It shows advanced/nested usage of Tydi elements (`Group`, `Union`, `Stream`). It shows how a detailed stream with nested representation is broken out to separate standard physical streams.
+- [Pipeline](library/src/main/scala/nl/tudelft/tydi_chisel/examples/pipeline/PipelineExample.scala) – This example focuses on **building modules** with Tydi interfaces.\
+The example shows some implementations for modules in a pipeline executing basic tasks.
+- [Advanced pipeline](library/src/main/scala/nl/tudelft/tydi_chisel/examples/pipeline/PipelineExamplePlus.scala) – This example focuses on **composing systems** with Tydi modules.\
+A more advanced version of the normal pipeline example that uses syntax sugar and utilities to stitch together a higher throughput version of the pipeline.
+- [Big system, toolchain and utilities](https://github.com/ccromjongh/Tydi-TVLSI-example) – Shows composition of a **larger system with many streams and advanced data structures**.\
+The system that is presented in this example uses of various Tydi-related utilities (e.g. [related tools](#related-tools)) to construct a larger system. The example focuses on system composition like the one above and does not contain functionality for most modules. It contains several sections that each execute a common function in data-processing. Macroscopically, this system processes a compressed set of records about students and their grades for different courses and computes their similarity vectors. See the project-link or [publication](#publications).
 
 
 ## Getting started
@@ -267,6 +279,9 @@ Concretely, this project contains:
 
 ## Publications
 
+- _C. Cromjongh, Y. Tian, Z. Al-Ars and H. P. Hofstee_  
+  **Hardware-Accelerator Design by Composition: Dataflow Component Interfaces With Tydi-Chisel**  
+  2024 IEEE Transactions on Very Large Scale Integration (VLSI) Systems, 4 October 2024. DOI: [10.1109/TVLSI.2024.3461330](https://doi.org/10.1109/TVLSI.2024.3461330).
 - _C. Cromjongh, Y. Tian, Z. Al-Ars and H. P. Hofstee_  
   **Enabling Collaborative and Interface-Driven Data-Streaming Accelerator Design with Tydi-Chisel**  
   2023 IEEE Nordic Circuits and Systems Conference (NorCAS), 1 November 2023. DOI: [10.1109/NorCAS58970.2023.10305451](https://doi.org/10.1109/NorCAS58970.2023.10305451).
