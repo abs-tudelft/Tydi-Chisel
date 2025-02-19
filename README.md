@@ -106,6 +106,12 @@ In software, the declared data structure would look like
 ]
 ```
 
+For Tydi, this gives us the following structure
+
+![timestamped-message.svg](figures/timestamped-message.svg)
+
+In Chisel, it can be expressed as follows
+
 ```scala
 // Declaration of the data-structure 
 class Character extends BitsEl(8.W)
@@ -192,16 +198,43 @@ class PipelineExampleTest extends AnyFlatSpec with ChiselScalatestTester {
 Look through the [test examples](testing/src/test/scala/nl/tudelft/tydi_chisel) for all functionality and syntax.
 
 ### Examples overview
-- [Hello world](library/src/main/scala/nl/tudelft/tydi_chisel/examples/hello_world/HelloWorld.scala) – This example focuses on the **physical interface structure**.\
-It shows the signals of a Tydi interface carrying only a simple character stream. 
-- [Timestamped message](library/src/main/scala/nl/tudelft/tydi_chisel/examples/timestamped_message/TimestampedMessage.scala) – This example focuses on building a **data structure**.\
-It shows advanced/nested usage of Tydi elements (`Group`, `Union`, `Stream`). It shows how a detailed stream with nested representation is broken out to separate standard physical streams.
-- [Pipeline](library/src/main/scala/nl/tudelft/tydi_chisel/examples/pipeline/PipelineExample.scala) – This example focuses on **building modules** with Tydi interfaces.\
+- [Hello world](library/src/main/scala/nl/tudelft/tydi_chisel/examples/hello_world/HelloWorld.scala) – This example focuses on the **physical interface structure**.
+<details style="margin: -1em 0 -1em 2em">
+<summary>Details</summary>
+It shows the signals of a Tydi interface carrying only a simple character stream.
+</details>
+
+- [Timestamped message](library/src/main/scala/nl/tudelft/tydi_chisel/examples/timestamped_message/TimestampedMessage.scala) – This example focuses on building a **data structure**.
+<details style="margin: -1em 0 -1em 2em">
+<summary>Details</summary>
+It shows advanced/nested usage of Tydi elements (<code>Group</code>, <code>Union</code>, <code>Stream</code>). It shows how a detailed stream with nested representation is broken out to separate standard physical streams.
+<br><br>
+<img src="figures/timestamped-message.svg" alt="Timestamped message data structure">
+</details>
+
+- [Pipeline](library/src/main/scala/nl/tudelft/tydi_chisel/examples/pipeline/PipelineExample.scala) – This example focuses on **building modules** with Tydi interfaces.
+<details style="margin: -1em 0 -1em 2em">
+<summary>Details</summary>
 The example shows some implementations for modules in a pipeline executing basic tasks.
-- [Advanced pipeline](library/src/main/scala/nl/tudelft/tydi_chisel/examples/pipeline/PipelineExamplePlus.scala) – This example focuses on **composing systems** with Tydi modules.\
+<br><br>
+<img src="figures/number-pipeline-simple.svg" alt="Simple pipeline diagram">
+</details>
+
+- [Advanced pipeline](library/src/main/scala/nl/tudelft/tydi_chisel/examples/pipeline/PipelineExamplePlus.scala) – This example focuses on **composing systems** with Tydi modules.
+<details style="margin: -1em 0 -1em 2em">
+<summary>Details</summary>
 A more advanced version of the normal pipeline example that uses syntax sugar and utilities to stitch together a higher throughput version of the pipeline.
-- [Big system, toolchain and utilities](https://github.com/ccromjongh/Tydi-TVLSI-example) – Shows composition of a **larger system with many streams and advanced data structures**.\
-The system that is presented in this example uses of various Tydi-related utilities (e.g. [related tools](#related-tools)) to construct a larger system. The example focuses on system composition like the one above and does not contain functionality for most modules. It contains several sections that each execute a common function in data-processing. Macroscopically, this system processes a compressed set of records about students and their grades for different courses and computes their similarity vectors. See the project-link or [publication](#publications).
+<br><br>
+<img src="figures/number-pipeline-advanced.svg" alt="Advanced pipeline diagram">
+</details>
+
+- [Big system, toolchain and utilities](https://github.com/ccromjongh/Tydi-TVLSI-example) – Shows composition of a **larger system with many streams and advanced data structures**.
+<details style="margin: -1em 0 -1em 2em">
+<summary>Details</summary>
+The system that is presented in this example uses of various Tydi-related utilities (e.g. <a href="#related-tools">related tools</a> to construct a larger system. The example focuses on system composition like the one above and does not contain functionality for most modules. It contains several sections that each execute a common function in data-processing. Macroscopically, this system processes a compressed set of records about students and their grades for different courses and computes their similarity vectors. See the project-link or <a href="#publications">publication</a>.
+<br><br>
+<img src="figures/VLSI-demo.svg" alt="TVLSI example system diagram">
+</details>
 
 
 ## Getting started
