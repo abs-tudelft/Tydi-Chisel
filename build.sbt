@@ -7,6 +7,23 @@ ThisBuild / semanticdbEnabled          := true
 ThisBuild / semanticdbVersion          := scalafixSemanticdb.revision
 ThisBuild / scalafixScalaBinaryVersion := scalaBinaryVersion.value
 
+ThisBuild / developers := List(
+  Developer(
+    id = "ccromjongh",
+    name = "Casper Cromjongh",
+    email = "C.Cromjongh@tudelft.nl",
+    url = url("https://github.com/abs-tudelft/")
+  )
+)
+
+ThisBuild / publishMavenStyle    := true
+ThisBuild / pomIncludeRepository := { _ => false }
+ThisBuild / versionScheme        := Some("early-semver")
+ThisBuild / resolvers += Resolver.mavenLocal
+ThisBuild / githubOwner      := "abs-tudelft"
+ThisBuild / githubRepository := "Tydi-Chisel"
+ThisBuild / publishTo        := githubPublishTo.value
+
 lazy val commonSettings = Seq(
   homepage                                   := Some(url("https://github.com/abs-tudelft/tydi-chisel")),
   organizationHomepage                       := Some(url("https://github.com/abs-tudelft/")),
@@ -41,10 +58,7 @@ lazy val testingTools: Project = (project in file("testing"))
 // Aggregate projects to build them together
 lazy val root = (project in file("."))
   .aggregate(library, testingTools)
-  .settings(
-    publish      := {}, // Disable publishing for the root project
-    publishLocal := {}
-  )
+  .settings(publish / skip := true)
 
 val CICommands =
   Seq("clean", "compile", "test", "scalafmtCheckAll", "scalafmtSbtCheck", "scalafixAll --check").mkString(";")
