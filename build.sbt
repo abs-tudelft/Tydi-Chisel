@@ -1,6 +1,7 @@
-val chiselVersion = "6.6.0"
+val chiselVersion = "6.7.0"
 
-ThisBuild / scalaVersion := "2.13.12"
+// Currently the latest version is limited by scalafmt
+ThisBuild / scalaVersion := "2.13.13"
 
 // Settings required for scalafix
 ThisBuild / semanticdbEnabled          := true
