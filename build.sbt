@@ -1,12 +1,10 @@
 val chiselVersion = "6.7.0"
 
-// Currently the latest version is limited by scalafmt
-ThisBuild / scalaVersion := "2.13.13"
+ThisBuild / scalaVersion := "2.13.16"
 
 // Settings required for scalafix
 ThisBuild / semanticdbEnabled          := true
 ThisBuild / semanticdbVersion          := scalafixSemanticdb.revision
-ThisBuild / scalafixScalaBinaryVersion := scalaBinaryVersion.value
 
 lazy val commonSettings = Seq(
   homepage                                   := Some(url("https://github.com/abs-tudelft/tydi-chisel")),
