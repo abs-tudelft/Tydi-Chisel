@@ -7,7 +7,7 @@ import chisel3._
 import chisel3.experimental.{BaseModule, ExtModule}
 import chisel3.util.{log2Ceil, Cat}
 import nl.tudelft.tydi_chisel.ReverseTranspiler._
-import nl.tudelft.tydi_chisel.utils.ComplexityConverter
+import nl.tudelft.tydi_chisel.utils.{ComplexityConverter, StreamHold}
 
 trait TranspileExtend {
 
@@ -591,12 +591,35 @@ class PhysicalStream(private val e: TydiEl, n: Int = 1, d: Int = 1, c: Int, priv
     module.out
   }
 
+  /**
+   * Convert a stream of high protocol complexity to a stream with protocol complexity 1.
+   * @param memSize Size of the memory to use for buffering elements.
+   * @param parentModule Module in which the conversion takes place.
+   * @return The same stream at a lower protocol complexity.
+   */
   def convert(memSize: Int)(implicit parentModule: TydiModuleMixin): PhysicalStream = {
     val processingModule = parentModule.Module(new ComplexityConverter(this, memSize))
     processingModule.in := this
     processingModule.out
   }
 
+  /**
+   * Hold a single stream element in a buffer.
+   * @param parentModule Module in which the conversion takes place.
+   * @return The buffered stream.
+   */
+  def hold(implicit parentModule: TydiModuleMixin): PhysicalStream = {
+    val processingModule = parentModule.Module(new StreamHold(this))
+    processingModule.in := this
+    processingModule.out
+  }
+
+  /**
+   * Duplicate a stream k times.
+   * @param k Number of times to duplicate the stream.
+   * @param parentModule Module in which the conversion takes place.
+   * @return Vector of k stream duplicates.
+   */
   def duplicate(k: Int)(implicit parentModule: TydiModuleMixin): Vec[PhysicalStream] = {
     val processingModule = parentModule.Module(new StreamDuplicator(k, this))
     processingModule.in := this
