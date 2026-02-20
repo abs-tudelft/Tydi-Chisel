@@ -85,8 +85,13 @@ abstract class SubProcessorBase[Tinel <: TydiEl, Toutel <: TydiEl, Tinus <: Tydi
   val in: PhysicalStream  = inStream.toPhysical
 
   // Connect streams
-  if (eIn.typeName == eOut.typeName && nIn == nOut && dIn == dOut)
-    outStream := inStream
+  if (nIn == nOut && dIn == dOut) {
+    if (eIn.typeName == eOut.typeName && eIn.getWidth == eOut.getWidth) {
+      outStream := inStream
+    } else {
+      outStream :@= inStream
+    }
+  }
 }
 
 /**
@@ -114,8 +119,13 @@ abstract class SimpleProcessorBase(
   val in: PhysicalStream  = IO(Flipped(PhysicalStream(eIn, n = nIn, d = dIn, c = cIn, u = uIn)))
 
   // Connect streams
-  if (eIn.getWidth == eOut.getWidth && nIn == nOut && dIn == dOut)
-    out := in
+  if (nIn == nOut && dIn == dOut) {
+    if (eIn.getWidth == eOut.getWidth) {
+      out := in
+    } else {
+      out :@= in
+    }
+  }
 
   // Set static signals
   out.strb := 1.U

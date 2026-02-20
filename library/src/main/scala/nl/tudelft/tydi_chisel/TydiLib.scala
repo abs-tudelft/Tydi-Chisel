@@ -806,6 +806,7 @@ trait TydiModuleMixin extends BaseModule with TranspileExtend {
     // If we are actually dealing with a TydiModule, add it to our module list.
     v match {
       case v: TydiModuleMixin => moduleList += v
+      case _                  =>
     }
     v
   }
