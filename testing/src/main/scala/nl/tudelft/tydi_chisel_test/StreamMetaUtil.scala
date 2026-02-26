@@ -5,7 +5,7 @@ import chisel3.simulator.PeekPokeAPI._
 import nl.tudelft.tydi_chisel.{PhysicalStreamDetailed, TydiEl}
 
 trait StreamMetaUtil[Tel <: TydiEl, Tus <: Data] {
-  def printState(x: PhysicalStreamDetailed[Tel, Tus], renderer: Tel => String = _.toString()): String = {
+  def _printState(x: PhysicalStreamDetailed[Tel, Tus], renderer: Tel => String = _.toString()): String = {
     import printUtils2._
     val stringBuilder = new StringBuilder
 
@@ -20,8 +20,10 @@ trait StreamMetaUtil[Tel <: TydiEl, Tus <: Data] {
     stringBuilder.append(s"valid $streamDir: ${logicSymbol(x.valid.peek().litToBoolean)}\t\t\t")
     stringBuilder.append(s"ready $streamAntiDir: ${logicSymbol(x.ready.peek().litToBoolean)}\n")
     // Stai and endi signals
-    stringBuilder.append(s"stai ≥: ${x.stai.peek().litValue}\t\t\t")
-    stringBuilder.append(s"endi ≤: ${x.endi.peek().litValue}\n")
+    if (x.n > 1) {
+      stringBuilder.append(s"stai ≥: ${x.stai.peek().litValue}\t\t\t")
+      stringBuilder.append(s"endi ≤: ${x.endi.peek().litValue}\n")
+    }
 
     // Strobe signal
     if (x.c < 8) {
@@ -31,7 +33,9 @@ trait StreamMetaUtil[Tel <: TydiEl, Tus <: Data] {
       stringBuilder.append(s"strb: ${binaryFromUint(x.strb.peek())}\n")
     }
     // Last signal
-    if (x.c < 8) {
+    if (x.d == 0) {
+      stringBuilder.append("last: -\n")
+    } else if (x.c < 8) {
       stringBuilder.append(s"last: ${binaryFromUint(x.last.last.peek(), empty = "-")}\n")
     } else {
       stringBuilder.append(s"last: ${x.last.map(_.peek()).map(binaryFromUint(_)).mkString("|")}\n")
@@ -52,8 +56,8 @@ trait StreamMetaUtil[Tel <: TydiEl, Tus <: Data] {
 
       // See if a lane is active or not and why
       val active_strobe = x.strb.peekValue().asBigInt.testBit(index)
-      val active_stai   = index >= x.stai.peek().litValue
-      val active_endi   = index <= x.endi.peek().litValue
+      val active_stai   = if (x.n > 1) index >= x.stai.peek().litValue else true
+      val active_endi   = if (x.n > 1) index <= x.endi.peek().litValue else true
       val active        = active_strobe && active_stai && active_endi
       stringBuilder.append(
         s"\tactive: ${logicSymbol(active)} \t\t(strb=${logicSymbol(active_strobe)}; stai=${logicSymbol(active_stai)}; endi=${logicSymbol(active_endi)};)\n"

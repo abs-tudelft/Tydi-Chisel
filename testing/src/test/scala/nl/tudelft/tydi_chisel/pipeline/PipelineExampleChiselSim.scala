@@ -33,64 +33,64 @@ class PipelineExampleChiselSim extends AnyFlatSpec with ChiselSim {
     }
   }
 
-  /*it should "reduce" in {
+  it should "reduce" in {
     simulate(new ReducerWrap) { c =>
       // Initialize signals
-      c.in.initSource()
-      c.out.initSink()
+      val driver  = SyncStreamDriver(c.in)
+      val monitor = SyncStreamMonitor(c.out)
 
-      c.in.enqueueElNow(_.time -> 123976.U, _.value -> 6.S)
-      println(c.out.printState())
-      c.out.expectDequeueNow(_.min -> 6.U, _.max -> 6.U, _.sum -> 6.U, _.average -> 6.U)
+      driver.enqueueElNow(_.time -> 123976.U, _.value -> 6.S)
+      println(monitor.printState)
+      monitor.expect(_.min -> 6.U, _.max -> 6.U, _.sum -> 6.U, _.average -> 6.U)
 
-      c.in.enqueueElNow(_.time -> 124718.U, _.value -> 12.S)
-      println(c.out.printState())
-      c.out.expectDequeueNow(_.min -> 6.U, _.max -> 12.U, _.sum -> 18.U, _.average -> 9.U)
+      driver.enqueueElNow(_.time -> 124718.U, _.value -> 12.S)
+      println(monitor.printState)
+      monitor.expect(_.min -> 6.U, _.max -> 12.U, _.sum -> 18.U, _.average -> 9.U)
 
-      c.in.enqueueElNow(_.time -> 129976.U, _.value -> 15.S)
-      println(c.out.printState())
-      c.out.expectDequeueNow(_.min -> 6.U, _.max -> 15.U, _.sum -> 33.U, _.average -> 11.U)
+      driver.enqueueElNow(_.time -> 129976.U, _.value -> 15.S)
+      println(monitor.printState)
+      monitor.expect(_.min -> 6.U, _.max -> 15.U, _.sum -> 33.U, _.average -> 11.U)
     }
   }
 
-  it should "process a sequence" in {
+  /*it should "process a sequence" in {
     simulate(new PipelineWrap) { c =>
       // Initialize signals
-      c.in.initSource()
-      c.out.initSink()
+      val driver  = SyncStreamDriver(c.in)
+      val monitor = SyncStreamMonitor(c.out)
 
       // Enqueue first value
-      c.in.enqueueElNow(_.time -> 123976.U, _.value -> 6.S)
-      println(c.out.printState())
-      c.out.expectDequeueNow(_.min -> 6.U, _.max -> 6.U, _.sum -> 6.U, _.average -> 6.U)
+      driver.enqueueElNow(_.time -> 123976.U, _.value -> 6.S)
+      println(monitor.printState)
+      monitor.expect(_.min -> 6.U, _.max -> 6.U, _.sum -> 6.U, _.average -> 6.U)
 
       // Enqueue second value that should be filtered out, output remains constant
-      c.in.enqueueElNow(_.time -> 123976.U, _.value -> -6.S)
-      println(c.out.printState())
-      c.out.expectDequeueNow(_.min -> 6.U, _.max -> 6.U, _.sum -> 6.U, _.average -> 6.U)
+      driver.enqueueElNow(_.time -> 123976.U, _.value -> -6.S)
+      println(monitor.printState)
+      monitor.expect(_.min -> 6.U, _.max -> 6.U, _.sum -> 6.U, _.average -> 6.U)
 
       // Enqueue second valid value
-      c.in.enqueueElNow(_.time -> 124718.U, _.value -> 12.S)
-      println(c.out.printState())
-      c.out.expectDequeueNow(_.min -> 6.U, _.max -> 12.U, _.sum -> 18.U, _.average -> 9.U)
+      driver.enqueueElNow(_.time -> 124718.U, _.value -> 12.S)
+      println(monitor.printState)
+      monitor.expect(_.min -> 6.U, _.max -> 12.U, _.sum -> 18.U, _.average -> 9.U)
 
       // Enqueue second invalid value
-      c.in.enqueueElNow(_.time -> 124718.U, _.value -> -12.S)
-      println(c.out.printState())
-      c.out.expectDequeueNow(_.min -> 6.U, _.max -> 12.U, _.sum -> 18.U, _.average -> 9.U)
+      driver.enqueueElNow(_.time -> 124718.U, _.value -> -12.S)
+      println(monitor.printState)
+      monitor.expect(_.min -> 6.U, _.max -> 12.U, _.sum -> 18.U, _.average -> 9.U)
 
       // Enqueue third value
-      c.in.enqueueElNow(_.time -> 129976.U, _.value -> 15.S)
-      println(c.out.printState())
-      c.out.expectDequeueNow(_.min -> 6.U, _.max -> 15.U, _.sum -> 33.U, _.average -> 11.U)
+      driver.enqueueElNow(_.time -> 129976.U, _.value -> 15.S)
+      println(monitor.printState)
+      monitor.expect(_.min -> 6.U, _.max -> 15.U, _.sum -> 33.U, _.average -> 11.U)
     }
   }
 
   it should "process a sequence in parallel" in {
     simulate(new PipelineWrap) { c =>
       // Initialize signals
-      c.in.initSource()
-      c.out.initSink()
+      val driver  = SyncStreamDriver(c.in)
+      val monitor = SyncStreamMonitor(c.out)
 
       // define min and max values numbers are allowed to have
       val rangeMin = BigInt(Long.MinValue)
@@ -134,7 +134,7 @@ class PipelineExampleChiselSim extends AnyFlatSpec with ChiselSim {
       parallel(
         {
           for ((elem, i) <- nums.zipWithIndex) {
-            c.in.enqueueElNow(_.time -> i.U, _.value -> elem.S)
+            driver.enqueueElNow(_.time -> i.U, _.value -> elem.S)
           }
         }, {
           for ((elem, i) <- statsSeq.zipWithIndex) {
