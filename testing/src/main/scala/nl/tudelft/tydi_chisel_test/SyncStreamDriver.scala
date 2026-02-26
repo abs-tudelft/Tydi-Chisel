@@ -8,20 +8,14 @@ import nl.tudelft.tydi_chisel.{PhysicalStreamDetailed, TydiEl}
 
 class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[Tel, Tus]) {
 
-  private def initSource(): this.type = {
-    sink.valid.poke(false)
-    sink.stai.poke(0.U)
-    sink.endi.poke((sink.n - 1).U)
-    sink.strb.poke(((1 << sink.n) - 1).U(sink.n.W)) // Set strobe to all 1's
-    if (sink.d > 0) {
-      val lasts: Seq[UInt] = Seq.fill(sink.n)(0.U(sink.d.W))
-      sink.last.poke(Vec.Lit(lasts: _*))
-    }
+  private val n = sink.n
+
+  private def initSink(): this.type = {
+    sink.ready.poke(false)
     this
   }
 
-  initSource()
-  private val n = sink.n
+  initSink()
 
   def elLit(elems: (Tel => (Data, Data))*): Tel = {
     // Must use datatype instead of just .data or .el because Lit does not accept hardware types.
@@ -80,7 +74,7 @@ class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[
     }
     sink.valid.poke(true)
     run
-    if (reset) { initSource() }
+    if (reset) { initSink() }
   }
 
   def enqueueElNow(

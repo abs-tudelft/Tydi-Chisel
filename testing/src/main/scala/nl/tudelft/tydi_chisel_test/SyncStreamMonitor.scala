@@ -8,10 +8,14 @@ import nl.tudelft.tydi_chisel.{PhysicalStreamDetailed, TydiEl}
 
 class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetailed[Tel, Tus]) {
 
+  private val n = source.n
+
   private def initSource(): this.type = {
     source.valid.poke(false)
-    source.stai.poke(0.U)
-    source.endi.poke((source.n - 1).U)
+    if (n > 1) {
+      source.stai.poke(0.U)
+      source.endi.poke((source.n - 1).U)
+    }
     source.strb.poke(((1 << source.n) - 1).U(source.n.W)) // Set strobe to all 1's
     if (source.d > 0) {
       val lasts: Seq[UInt] = Seq.fill(source.n)(0.U(source.d.W))
@@ -21,7 +25,6 @@ class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetail
   }
 
   initSource()
-  private val n = source.n
 
   def elLit(elems: (Tel => (Data, Data))*): Tel = {
     // Must use datatype instead of just .data or .el because Lit does not accept hardware types.
