@@ -43,8 +43,7 @@ class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetail
     source.valid.expect(true.B)
     run
     if (data.isDefined) {
-      // Fixme uhg this requires an encoder ?
-//      source.el.expect(data.get)
+      source.el.expect(data.get)
     }
     if (last.isDefined) {
       // Todo, should there be a warning when the lengths are not the same?

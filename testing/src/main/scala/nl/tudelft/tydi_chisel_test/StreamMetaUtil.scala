@@ -45,9 +45,8 @@ trait StreamMetaUtil[Tel <: TydiEl, Tus <: Data] {
     stringBuilder.append("Lanes:\n")
     x.data.zipWithIndex.foreach { case (lane, index) =>
       // Print data
-      // Fixme it seems I cannot acquire a literal of complex datatypes
-//      val dataString = renderer(lane.peekValue())
-//      stringBuilder.append(s"$index\tdata: $dataString\n")
+      val dataString = renderer(lane.peek())
+      stringBuilder.append(s"$index\tdata: $dataString\n")
 
       // Last signal for this lane
       if (x.c >= 8) {

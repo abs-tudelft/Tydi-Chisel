@@ -5,8 +5,9 @@ import chisel3.experimental.BundleLiterals.AddBundleLiteralConstructor
 import chisel3.experimental.VecLiterals.{AddObjectLiteralConstructor, AddVecLiteralConstructor}
 import chisel3.simulator.PeekPokeAPI._
 import nl.tudelft.tydi_chisel.{PhysicalStreamDetailed, TydiEl}
+import org.scalatest.run
 
-class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[Tel, Tus]) {
+class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[Tel, Tus]) extends StreamMetaUtil[Tel, Tus] {
 
   private val n = sink.n
 
@@ -40,7 +41,7 @@ class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[
     Vec(sink.n, UInt(sink.d.W)).Lit(elems: _*)
   }
 
-  private def _enqueueNow(
+  private def _poke(
     data: Option[Vec[Tel]],
     last: Option[Vec[UInt]] = None,
     strb: Option[UInt] = None,
@@ -77,10 +78,10 @@ class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[
     if (strb.isDefined) {
       sink.strb.poke(strb.get)
     }
-    if (stai.isDefined) {
+    if (stai.isDefined && n > 1) {
       sink.stai.poke(stai.get)
     }
-    if (endi.isDefined) {
+    if (endi.isDefined && n > 1) {
       sink.endi.poke(endi.get)
     }
     sink.valid.poke(true)
@@ -88,7 +89,7 @@ class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[
     if (reset) { initWithSink() }
   }
 
-  def enqueueElNow(
+  def pokeEl(
     data: Tel,
     last: Option[UInt] = None,
     strb: Option[UInt] = None,
@@ -102,10 +103,10 @@ class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[
     } else {
       None
     }
-    _enqueueNow(Option(dataLit(0 -> data)), lastLit, strb, stai, endi, run, reset)
+    _poke(Option(dataLit(0 -> data)), lastLit, strb, stai, endi, run, reset)
   }
 
-  def enqueueNow(
+  def poke(
     data: Vec[Tel],
     last: Option[Vec[UInt]] = None,
     strb: Option[UInt] = None,
@@ -114,11 +115,11 @@ class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[
     run: => Unit = {},
     reset: Boolean = false
   ): Unit = {
-    _enqueueNow(Option(data), last, strb, stai, endi, run, reset)
+    _poke(Option(data), last, strb, stai, endi, run, reset)
   }
 
   /** Send an empty transfer (no valid data lanes). Unless overridden, a strobe of 0's is sent. */
-  def enqueueEmptyNow(
+  def pokeEmpty(
     last: Option[Vec[UInt]] = None,
     strb: Option[UInt] = None,
     stai: Option[UInt] = None,
@@ -131,13 +132,19 @@ class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[
     } else {
       Option(0.U)
     }
-    _enqueueNow(None, last, _strb, stai, endi, run, reset)
+    _poke(None, last, _strb, stai, endi, run, reset)
   }
 
-  def enqueueElNow(elems: (Tel => (Data, Data))*): Unit = {
+  def pokeEl(elems: (Tel => (Data, Data))*): Unit = {
     val litValue = elLit(elems: _*) // Use splat operator to propagate repeated parameters
-    enqueueElNow(litValue)
+    // Turn on all strobe lanes and limit stai and endi to the first element
+    val strbValue = ((1 << sink.n) - 1).U
+    pokeEl(litValue, strb = Some(strbValue), stai = Some(0.U), endi = Some(0.U))
   }
+
+  var renderer: Tel => String = _.toString()
+
+  def printState: String = _printState(sink, renderer)
 
 }
 

@@ -19,16 +19,16 @@ class PipelineExampleChiselSim extends AnyFlatSpec with ChiselSim {
       val driver  = SyncStreamDriver(c.in)
       val monitor = SyncStreamMonitor(c.out)
 
-//      driver.enqueueElNow(_.time -> 123976.U, _.value -> 6.S)
+//      driver.pokeEl(_.time -> 123976.U, _.value -> 6.S)
       c.in.valid.poke(true.B)
       c.in.data(0).time.poke(123976.U)
       c.in.data(0).value.poke(6.S)
       monitor.expect(_.time -> 123976.U, _.value -> 6.S)
       c.clock.step()
-      driver.enqueueElNow(_.time -> 123976.U, _.value -> 0.S)
+      driver.pokeEl(_.time -> 123976.U, _.value -> 0.S)
       monitor.expect(_.time -> 123976.U, _.value -> 0.S)
       c.clock.step()
-      driver.enqueueElNow(_.time -> 123976.U, _.value -> -7.S)
+      driver.pokeEl(_.time -> 123976.U, _.value -> -7.S)
       monitor.expectEmpty(strb = Some(0.U))
     }
   }
@@ -39,54 +39,64 @@ class PipelineExampleChiselSim extends AnyFlatSpec with ChiselSim {
       val driver  = SyncStreamDriver(c.in)
       val monitor = SyncStreamMonitor(c.out)
 
-      driver.enqueueElNow(_.time -> 123976.U, _.value -> 6.S)
+      driver.pokeEl(_.time -> 123976.U, _.value -> 6.S)
+      println(driver.printState)
+      println(monitor.printState)
+      c.clock.step()
       println(monitor.printState)
       monitor.expect(_.min -> 6.U, _.max -> 6.U, _.sum -> 6.U, _.average -> 6.U)
 
-      driver.enqueueElNow(_.time -> 124718.U, _.value -> 12.S)
+      driver.pokeEl(_.time -> 124718.U, _.value -> 12.S)
+      c.clock.step()
       println(monitor.printState)
       monitor.expect(_.min -> 6.U, _.max -> 12.U, _.sum -> 18.U, _.average -> 9.U)
 
-      driver.enqueueElNow(_.time -> 129976.U, _.value -> 15.S)
+      driver.pokeEl(_.time -> 129976.U, _.value -> 15.S)
+      c.clock.step()
       println(monitor.printState)
       monitor.expect(_.min -> 6.U, _.max -> 15.U, _.sum -> 33.U, _.average -> 11.U)
     }
   }
 
-  /*it should "process a sequence" in {
+  it should "process a sequence" in {
     simulate(new PipelineWrap) { c =>
       // Initialize signals
       val driver  = SyncStreamDriver(c.in)
       val monitor = SyncStreamMonitor(c.out)
 
       // Enqueue first value
-      driver.enqueueElNow(_.time -> 123976.U, _.value -> 6.S)
+      driver.pokeEl(_.time -> 123976.U, _.value -> 6.S)
+      c.clock.step()
       println(monitor.printState)
       monitor.expect(_.min -> 6.U, _.max -> 6.U, _.sum -> 6.U, _.average -> 6.U)
 
       // Enqueue second value that should be filtered out, output remains constant
-      driver.enqueueElNow(_.time -> 123976.U, _.value -> -6.S)
+      driver.pokeEl(_.time -> 123976.U, _.value -> -6.S)
+      c.clock.step()
       println(monitor.printState)
       monitor.expect(_.min -> 6.U, _.max -> 6.U, _.sum -> 6.U, _.average -> 6.U)
 
       // Enqueue second valid value
-      driver.enqueueElNow(_.time -> 124718.U, _.value -> 12.S)
+      driver.pokeEl(_.time -> 124718.U, _.value -> 12.S)
+      c.clock.step()
       println(monitor.printState)
       monitor.expect(_.min -> 6.U, _.max -> 12.U, _.sum -> 18.U, _.average -> 9.U)
 
       // Enqueue second invalid value
-      driver.enqueueElNow(_.time -> 124718.U, _.value -> -12.S)
+      driver.pokeEl(_.time -> 124718.U, _.value -> -12.S)
+      c.clock.step()
       println(monitor.printState)
       monitor.expect(_.min -> 6.U, _.max -> 12.U, _.sum -> 18.U, _.average -> 9.U)
 
       // Enqueue third value
-      driver.enqueueElNow(_.time -> 129976.U, _.value -> 15.S)
+      driver.pokeEl(_.time -> 129976.U, _.value -> 15.S)
+      c.clock.step()
       println(monitor.printState)
       monitor.expect(_.min -> 6.U, _.max -> 15.U, _.sum -> 33.U, _.average -> 11.U)
     }
   }
 
-  it should "process a sequence in parallel" in {
+  /*it should "process a sequence in parallel" in {
     simulate(new PipelineWrap) { c =>
       // Initialize signals
       val driver  = SyncStreamDriver(c.in)
@@ -134,7 +144,7 @@ class PipelineExampleChiselSim extends AnyFlatSpec with ChiselSim {
       parallel(
         {
           for ((elem, i) <- nums.zipWithIndex) {
-            driver.enqueueElNow(_.time -> i.U, _.value -> elem.S)
+            driver.pokeEl(_.time -> i.U, _.value -> elem.S)
           }
         }, {
           for ((elem, i) <- statsSeq.zipWithIndex) {
