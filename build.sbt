@@ -1,10 +1,10 @@
-val chiselVersion = "6.7.0"
+val chiselVersion = "7.9.0"
 
-ThisBuild / scalaVersion := "2.13.16"
+ThisBuild / scalaVersion := "2.13.18"
 
 // Settings required for scalafix
-ThisBuild / semanticdbEnabled          := true
-ThisBuild / semanticdbVersion          := scalafixSemanticdb.revision
+ThisBuild / semanticdbEnabled := true
+ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 
 lazy val commonSettings = Seq(
   homepage                                   := Some(url("https://github.com/abs-tudelft/tydi-chisel")),

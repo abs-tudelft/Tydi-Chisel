@@ -26,7 +26,7 @@ trait StreamMetaUtil[Tel <: TydiEl, Tus <: Data] {
     // Strobe signal
     if (x.c < 8) {
       // For C<8 all `strb` bits should be the same
-      stringBuilder.append(s"strb: ${x.strb.peek()(0).litToBoolean} (${binaryFromUint(x.strb.peek())})\n")
+      stringBuilder.append(s"strb: ${x.strb.peekValue().asBigInt.testBit(0)} (${binaryFromUint(x.strb.peek())})\n")
     } else {
       stringBuilder.append(s"strb: ${binaryFromUint(x.strb.peek())}\n")
     }
@@ -51,7 +51,7 @@ trait StreamMetaUtil[Tel <: TydiEl, Tus <: Data] {
       }
 
       // See if a lane is active or not and why
-      val active_strobe = x.strb.peek()(index).litToBoolean
+      val active_strobe = x.strb.peekValue().asBigInt.testBit(index)
       val active_stai   = index >= x.stai.peek().litValue
       val active_endi   = index <= x.endi.peek().litValue
       val active        = active_strobe && active_stai && active_endi

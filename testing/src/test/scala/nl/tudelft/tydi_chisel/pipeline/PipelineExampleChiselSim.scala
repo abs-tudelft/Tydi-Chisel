@@ -1,13 +1,12 @@
 package nl.tudelft.tydi_chisel.examples.pipeline
 
 import chisel3._
-import chisel3.simulator.EphemeralSimulator.simulate
-import chisel3.simulator.PeekPokeAPI._
+import chisel3.simulator.scalatest.ChiselSim
 import nl.tudelft.tydi_chisel.{TydiProcessorTestWrapper, TydiTestWrapper}
 import nl.tudelft.tydi_chisel_test.{SyncStreamDriver, SyncStreamMonitor}
 import org.scalatest.flatspec.AnyFlatSpec
 
-class PipelineExampleChiselSim extends AnyFlatSpec {
+class PipelineExampleChiselSim extends AnyFlatSpec with ChiselSim {
   behavior of "PipelineExample"
 
   class NonNegativeFilterWrap extends TydiTestWrapper(new NonNegativeFilter, new NumberGroup, new NumberGroup)
@@ -20,7 +19,10 @@ class PipelineExampleChiselSim extends AnyFlatSpec {
       val driver  = SyncStreamDriver(c.in)
       val monitor = SyncStreamMonitor(c.out)
 
-      driver.enqueueElNow(_.time -> 123976.U, _.value -> 6.S)
+//      driver.enqueueElNow(_.time -> 123976.U, _.value -> 6.S)
+      c.in.valid.poke(true.B)
+      c.in.data(0).time.poke(123976.U)
+      c.in.data(0).value.poke(6.S)
       monitor.expect(_.time -> 123976.U, _.value -> 6.S)
       c.clock.step()
       driver.enqueueElNow(_.time -> 123976.U, _.value -> 0.S)

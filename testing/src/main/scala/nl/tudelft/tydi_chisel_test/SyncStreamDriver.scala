@@ -10,12 +10,21 @@ class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[
 
   private val n = sink.n
 
-  private def initSink(): this.type = {
-    sink.ready.poke(false)
+  private def initWithSink(): this.type = {
+    sink.valid.poke(false)
+    if (n > 1) {
+      sink.stai.poke(0.U)
+      sink.endi.poke((sink.n - 1).U)
+    }
+    sink.strb.poke(((1 << sink.n) - 1).U(sink.n.W)) // Set strobe to all 1's
+    if (sink.d > 0) {
+      val lasts: Seq[UInt] = Seq.fill(sink.n)(0.U(sink.d.W))
+      sink.last.poke(Vec.Lit(lasts: _*))
+    }
     this
   }
 
-  initSink()
+  initWithSink()
 
   def elLit(elems: (Tel => (Data, Data))*): Tel = {
     // Must use datatype instead of just .data or .el because Lit does not accept hardware types.
@@ -42,16 +51,18 @@ class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[
     reset: Boolean = false
   ): Unit = {
     if (data.isDefined) {
+      var strbData = 0
       0 until n foreach { i =>
         val lanePacket = if (i < data.get.length) Some(data.get(i)) else None
         if (lanePacket.isDefined) {
           sink.data(i).poke(lanePacket.get)
-          sink.strb(i).poke(true)
+          strbData = strbData << 1 + 1
         } else {
-          sink.data(i).poke(0)
-          sink.strb(i).poke(false)
+//          sink.data(i).poke(0.U)
+          strbData = strbData << 0 + 1
         }
       }
+      sink.strb.poke(strbData)
     }
     if (last.isDefined) {
       0 until n foreach { i =>
@@ -74,7 +85,7 @@ class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[
     }
     sink.valid.poke(true)
     run
-    if (reset) { initSink() }
+    if (reset) { initWithSink() }
   }
 
   def enqueueElNow(

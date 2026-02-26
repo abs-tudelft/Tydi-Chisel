@@ -25,7 +25,7 @@ class AsyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed
           sink.data(i).poke(lanePacket.get)
           sink.strb(i).poke(true)
         } else {
-          sink.data(i).poke(0)
+//          sink.data(i).poke(0)
           sink.strb(i).poke(false)
         }
       }
@@ -34,7 +34,7 @@ class AsyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed
       if (userPacket.isDefined) {
         sink.user.poke(userPacket.get)
       } else {
-        sink.user.poke(0)
+//        sink.user.poke(0.U)
       }
 
       // When the sink is also ready, we remove the element we sent.

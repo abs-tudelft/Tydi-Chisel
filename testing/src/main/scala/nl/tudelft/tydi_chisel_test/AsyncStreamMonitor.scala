@@ -23,12 +23,12 @@ class AsyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetai
 
         // If the lane is valid, we read its value and put it in a `Some`
         if (strb && i >= stai && i <= endi) {
-          Some(source.data(i).peekValue().asBigInt)
+          Some(source.data(i).peek().litValue)
         } else {
           None
         }
       }
-      val userValue                               = source.user.peekValue().asBigInt
+      val userValue                               = source.user.peek().litValue
       val rowValue: (Seq[Option[BigInt]], BigInt) = (dataValues, userValue)
       _received += rowValue
     }
