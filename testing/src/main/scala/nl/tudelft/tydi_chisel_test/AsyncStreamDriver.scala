@@ -1,10 +1,10 @@
 package nl.tudelft.tydi_chisel_test
 
 import chisel3._
-import nl.tudelft.tydi_chisel.{PhysicalStreamDetailed, TydiEl}
 import chisel3.simulator.PeekPokeAPI._
+import nl.tudelft.tydi_chisel.{PhysicalStreamDetailed, TydiEl}
 
-class NewStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[Tel, Tus]) {
+class AsyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[Tel, Tus]) {
   private var remainingData = List.empty[(Seq[Option[Tel]], Option[Tus])]
 
   def enqueueData(data: Seq[Seq[Tel]]): Unit = {

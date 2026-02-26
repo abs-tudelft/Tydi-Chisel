@@ -1,10 +1,10 @@
 package nl.tudelft.tydi_chisel_test
 
 import chisel3.Data
-import nl.tudelft.tydi_chisel.{PhysicalStreamDetailed, TydiEl}
 import chisel3.simulator.PeekPokeAPI._
+import nl.tudelft.tydi_chisel.{PhysicalStreamDetailed, TydiEl}
 
-class NewStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetailed[Tel, Tus]) {
+class AsyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetailed[Tel, Tus]) {
   private val _received = scala.collection.mutable.ListBuffer[(Seq[Option[BigInt]], BigInt)]()
 
   def received: Seq[(Seq[Option[BigInt]], BigInt)] = _received.toSeq
@@ -28,7 +28,7 @@ class NewStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetaile
           None
         }
       }
-      val userValue = source.user.peekValue().asBigInt
+      val userValue                               = source.user.peekValue().asBigInt
       val rowValue: (Seq[Option[BigInt]], BigInt) = (dataValues, userValue)
       _received += rowValue
     }
