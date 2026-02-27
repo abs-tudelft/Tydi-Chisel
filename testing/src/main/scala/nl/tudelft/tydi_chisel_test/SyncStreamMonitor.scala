@@ -6,7 +6,8 @@ import chisel3.experimental.VecLiterals.{AddObjectLiteralConstructor, AddVecLite
 import chisel3.simulator.PeekPokeAPI._
 import nl.tudelft.tydi_chisel.{PhysicalStreamDetailed, TydiEl}
 
-class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetailed[Tel, Tus]) extends StreamMetaUtil[Tel, Tus] {
+class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetailed[Tel, Tus])
+      extends StreamMetaUtil[Tel, Tus] {
 
   private val n = source.n
 

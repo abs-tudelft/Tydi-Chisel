@@ -3,7 +3,7 @@ package nl.tudelft.tydi_chisel.examples.pipeline
 import chisel3._
 import chisel3.simulator.scalatest.ChiselSim
 import nl.tudelft.tydi_chisel.{TydiProcessorTestWrapper, TydiTestWrapper}
-import nl.tudelft.tydi_chisel_test.{SyncStreamDriver, SyncStreamMonitor}
+import nl.tudelft.tydi_chisel_test.{AsyncStreamDriver, AsyncStreamMonitor, SyncStreamDriver, SyncStreamMonitor}
 import org.scalatest.flatspec.AnyFlatSpec
 
 class PipelineExampleChiselSim extends AnyFlatSpec with ChiselSim {
@@ -96,11 +96,11 @@ class PipelineExampleChiselSim extends AnyFlatSpec with ChiselSim {
     }
   }
 
-  /*it should "process a sequence in parallel" in {
+  it should "process a sequence in parallel" in {
     simulate(new PipelineWrap) { c =>
       // Initialize signals
-      val driver  = SyncStreamDriver(c.in)
-      val monitor = SyncStreamMonitor(c.out)
+      val driver  = AsyncStreamDriver(c.in)
+      val monitor = AsyncStreamMonitor(c.out)
 
       // define min and max values numbers are allowed to have
       val rangeMin = BigInt(Long.MinValue)
@@ -140,20 +140,43 @@ class PipelineExampleChiselSim extends AnyFlatSpec with ChiselSim {
         }
         .tail
 
-      // Test component
-      parallel(
-        {
-          for ((elem, i) <- nums.zipWithIndex) {
-            driver.pokeEl(_.time -> i.U, _.value -> elem.S)
-          }
-        }, {
-          for ((elem, i) <- statsSeq.zipWithIndex) {
-            // println(s"$i: $elem")
-            c.out
-              .expectDequeue(_.min -> elem.min.U, _.max -> elem.max.U, _.sum -> elem.sum.U, _.average -> elem.average.U)
-          }
-        }
-      )
+      val numsPackets =
+        nums.zipWithIndex.map { case (elem, i) => driver.elLit(_.time -> i.U, _.value -> elem.S) }.map(Seq(_))
+      driver.enqueueData(numsPackets)
+
+      var cycles = 0
+      while (cycles <= nNumbers) {
+        driver.tick()
+        // println(driver.printState)
+        // println(monitor.printState)
+        monitor.tick()
+        c.clock.step()
+        cycles += 1
+      }
+      println("Cycling done")
+
+      // Check results
+      val result = monitor.received
+      for ((observed, model) <- result.zip(statsSeq)) {
+        // val observedNotNone = observed._1.filterNot { _.isEmpty }.map(_.get) // I'd use this when there are multiple lanes
+        val observedStats = observed._1.head.get
+        assert(
+          observedStats.max.litValue == model.max,
+          s"Observed max ${observedStats.max.litValue} != model max ${model.max}"
+        )
+        assert(
+          observedStats.min.litValue == model.min,
+          s"Observed min ${observedStats.min.litValue} != model min ${model.min}"
+        )
+        assert(
+          observedStats.average.litValue == model.average,
+          s"Observed average ${observedStats.average.litValue} != model average ${model.average}"
+        )
+        assert(
+          observedStats.sum.litValue == model.sum,
+          s"Observed sum ${observedStats.sum.litValue} != model sum ${model.sum}"
+        )
+      }
     }
-  }*/
+  }
 }

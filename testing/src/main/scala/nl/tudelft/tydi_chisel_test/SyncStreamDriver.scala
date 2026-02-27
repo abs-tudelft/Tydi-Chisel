@@ -7,7 +7,8 @@ import chisel3.simulator.PeekPokeAPI._
 import nl.tudelft.tydi_chisel.{PhysicalStreamDetailed, TydiEl}
 import org.scalatest.run
 
-class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[Tel, Tus]) extends StreamMetaUtil[Tel, Tus] {
+class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[Tel, Tus])
+      extends StreamMetaUtil[Tel, Tus] {
 
   private val n = sink.n
 
@@ -57,10 +58,10 @@ class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[
         val lanePacket = if (i < data.get.length) Some(data.get(i)) else None
         if (lanePacket.isDefined) {
           sink.data(i).poke(lanePacket.get)
-          strbData = strbData << 1 + 1
+          strbData = (strbData << 1) + 1
         } else {
 //          sink.data(i).poke(0.U)
-          strbData = strbData << 0 + 1
+          strbData = strbData << 1
         }
       }
       sink.strb.poke(strbData)
