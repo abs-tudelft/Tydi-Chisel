@@ -6,7 +6,7 @@ import chisel3.experimental.VecLiterals.{AddObjectLiteralConstructor, AddVecLite
 import chisel3.simulator.PeekPokeAPI._
 import nl.tudelft.tydi_chisel.{PhysicalStreamDetailed, TydiEl}
 
-class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetailed[Tel, Tus])
+class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetailed[Tel, Tus], clockSig: Option[Clock])
       extends StreamMetaUtil[Tel, Tus] {
 
   private val n = source.n
@@ -17,6 +17,8 @@ class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetail
   }
 
   initWithSource()
+
+  def reset(): SyncStreamMonitor.this.type = initWithSource()
 
   def elLit(elems: (Tel => (Data, Data))*): Tel = {
     // Must use datatype instead of just .data or .el because Lit does not accept hardware types.
@@ -38,7 +40,9 @@ class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetail
     strb: Option[UInt] = None,
     stai: Option[UInt] = None,
     endi: Option[UInt] = None,
-    run: => Unit = {}
+    run: => Unit = {},
+    step: Boolean = false,
+    reset: Boolean = false
   ): Unit = {
     source.ready.poke(true)
     source.valid.expect(true.B)
@@ -64,6 +68,12 @@ class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetail
     if (strb.isDefined) {
       source.strb.expect(strb.get)
     }
+    if (step) {
+      if (clockSig.isDefined) {
+        clockSig.get.step(1)
+      }
+    }
+    if (reset) { this.reset() }
   }
 
   def expect(
@@ -72,9 +82,11 @@ class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetail
     strb: Option[UInt] = None,
     stai: Option[UInt] = None,
     endi: Option[UInt] = None,
-    run: => Unit = {}
+    run: => Unit = {},
+    step: Boolean = false,
+    reset: Boolean = false
   ): Unit = {
-    _expect(Option(data), last, strb, stai, endi, run)
+    _expect(Option(data), last, strb, stai, endi, run, step, reset)
   }
 
   /** Expect an empty transfer (no valid data lanes). Unless overridden, a strobe of 0's is expected. */
@@ -83,14 +95,16 @@ class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetail
     strb: Option[UInt] = None,
     stai: Option[UInt] = None,
     endi: Option[UInt] = None,
-    run: => Unit = {}
+    run: => Unit = {},
+    step: Boolean = false,
+    reset: Boolean = false
   ): Unit = {
     val _strb = if (strb.isDefined) {
       strb
     } else {
       Option(0.U)
     }
-    _expect(None, last, _strb, stai, endi, run)
+    _expect(None, last, _strb, stai, endi, run, step, reset)
   }
 
   def expect(elems: (Tel => (Data, Data))*): Unit = {
@@ -114,5 +128,5 @@ class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetail
 }
 
 object SyncStreamMonitor {
-  def apply[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetailed[Tel, Tus]) = new SyncStreamMonitor(source)
+  def apply[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetailed[Tel, Tus], clockSig: Option[Clock] = None) = new SyncStreamMonitor(source, clockSig)
 }

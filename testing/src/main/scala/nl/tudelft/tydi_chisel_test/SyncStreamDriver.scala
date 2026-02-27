@@ -7,7 +7,7 @@ import chisel3.simulator.PeekPokeAPI._
 import nl.tudelft.tydi_chisel.{PhysicalStreamDetailed, TydiEl}
 import org.scalatest.run
 
-class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[Tel, Tus])
+class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[Tel, Tus], clockSig: Option[Clock])
       extends StreamMetaUtil[Tel, Tus] {
 
   private val n = sink.n
@@ -27,6 +27,8 @@ class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[
   }
 
   initWithSink()
+
+  def reset(): SyncStreamDriver.this.type = initWithSink()
 
   def elLit(elems: (Tel => (Data, Data))*): Tel = {
     // Must use datatype instead of just .data or .el because Lit does not accept hardware types.
@@ -87,7 +89,12 @@ class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[
     }
     sink.valid.poke(true)
     run
-    if (reset) { initWithSink() }
+    if (step) {
+      if (clockSig.isDefined) {
+        clockSig.get.step(1)
+      }
+    }
+    if (reset) { this.reset() }
   }
 
   def pokeEl(
@@ -97,6 +104,7 @@ class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[
     stai: Option[UInt] = None,
     endi: Option[UInt] = None,
     run: => Unit = {},
+    step: Boolean = false,
     reset: Boolean = false
   ): Unit = {
     val lastLit = if (last.isDefined) {
@@ -104,7 +112,7 @@ class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[
     } else {
       None
     }
-    _poke(Option(dataLit(0 -> data)), lastLit, strb, stai, endi, run, reset)
+    _poke(Option(dataLit(0 -> data)), lastLit, strb, stai, endi, run, step, reset)
   }
 
   def poke(
@@ -114,9 +122,10 @@ class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[
     stai: Option[UInt] = None,
     endi: Option[UInt] = None,
     run: => Unit = {},
+    step: Boolean = false,
     reset: Boolean = false
   ): Unit = {
-    _poke(Option(data), last, strb, stai, endi, run, reset)
+    _poke(Option(data), last, strb, stai, endi, run, step, reset)
   }
 
   /** Send an empty transfer (no valid data lanes). Unless overridden, a strobe of 0's is sent. */
@@ -126,6 +135,7 @@ class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[
     stai: Option[UInt] = None,
     endi: Option[UInt] = None,
     run: => Unit = {},
+    step: Boolean = false,
     reset: Boolean = false
   ): Unit = {
     val _strb = if (strb.isDefined) {
@@ -133,7 +143,7 @@ class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[
     } else {
       Option(0.U)
     }
-    _poke(None, last, _strb, stai, endi, run, reset)
+    _poke(None, last, _strb, stai, endi, run, step, reset)
   }
 
   def pokeEl(elems: (Tel => (Data, Data))*): Unit = {
@@ -150,5 +160,5 @@ class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[
 }
 
 object SyncStreamDriver {
-  def apply[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[Tel, Tus]) = new SyncStreamDriver(sink)
+  def apply[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[Tel, Tus], clockSig: Option[Clock] = None) = new SyncStreamDriver(sink, clockSig)
 }
