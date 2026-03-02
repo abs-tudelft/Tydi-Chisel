@@ -27,11 +27,11 @@ class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetail
   }
 
   def dataLit(elems: (Int, Tel)*): Vec[Tel] = {
-    Vec(source.n, source.getDataType).Lit(elems: _*)
+    Vec(elems.length, source.getDataType).Lit(elems: _*)
   }
 
   def lastLit(elems: (Int, UInt)*): Vec[UInt] = {
-    Vec(source.n, UInt(source.d.W)).Lit(elems: _*)
+    Vec(elems.length, UInt(source.d.W)).Lit(elems: _*)
   }
 
   private def _expect(
@@ -71,6 +71,8 @@ class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetail
     if (step) {
       if (clockSig.isDefined) {
         clockSig.get.step(1)
+      } else {
+        throw new RuntimeException("Clock signal not set")
       }
     }
     if (reset) { this.reset() }
@@ -110,6 +112,15 @@ class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetail
   def expect(elems: (Tel => (Data, Data))*): Unit = {
     val litValue = elLit(elems: _*) // Use splat operator to propagate repeated parameters
     expect(litValue)
+  }
+
+  def waitForValid(): Unit = {
+    if (clockSig.isEmpty) {
+      throw new RuntimeException("Clock signal not set")
+    }
+    while (!source.valid.peek().litToBoolean) {
+      clockSig.get.step(1)
+    }
   }
 
   /*def expectPeek(data: Tel): Unit = {

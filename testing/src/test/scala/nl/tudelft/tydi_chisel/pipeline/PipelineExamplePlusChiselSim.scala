@@ -23,7 +23,8 @@ class PipelineExamplePlusChiselSim extends AnyFlatSpec with ChiselSim {
 
   def vecLitFromSeq(s: Seq[BigInt]): Vec[NumberGroup] = {
     val mapping = s.map(c => numberGroup.Lit(_.value -> c.S, _.time -> 0.U)).zipWithIndex.map(v => (v._2, v._1))
-    Vec(n, numberGroup).Lit(mapping: _*)
+    // I used to set the vec length to `n`, but this will create DontCare values that the poke function cannot handle.
+    Vec(s.length, numberGroup).Lit(mapping: _*)
   }
 
   def numRenderer(c: NumberGroup): String = {
@@ -78,29 +79,22 @@ class PipelineExamplePlusChiselSim extends AnyFlatSpec with ChiselSim {
     }
   }
 
-  /*it should "process a sequence in the first half" in {
+  it should "process a sequence in the first half" in {
     simulate(new PipelineStartWrap) { c =>
       // Initialize signals
-      val driver  = SyncStreamDriver(c.in)
+      val driver = SyncStreamDriver(c.in)
       driver.renderer = numRenderer
       val monitor = SyncStreamMonitor(c.out)
       monitor.renderer = numRenderer
 
-      val t1     = vecLitFromSeq(Seq(-3, 6, 9, 28))
+      val t1 = vecLitFromSeq(Seq(-3, 6, 9, 28))
       val t1Last = Vec.Lit(0.U, 0.U, 0.U, 1.U)
 
-      parallel(
-        driver.poke(t1, endi = Some(2.U), last = Some(t1Last)),
-        fork {
-          fork
-            .withRegion(Monitor) {
-              println(driver.printState)
-              println(monitor.printState)
-            }
-            .joinAndStep(c.clock)
-        }
-      )
+      driver.poke(t1, endi = Some(2.U), last = Some(t1Last))
+      println(driver.printState)
+      println(monitor.printState)
       c.clock.step()
+      driver.reset()
       println(monitor.printState)
     }
   }
@@ -115,18 +109,12 @@ class PipelineExamplePlusChiselSim extends AnyFlatSpec with ChiselSim {
       val t1     = vecLitFromSeq(Seq(-3, 6, 9, 28))
       val t1Last = Vec.Lit(0.U, 0.U, 0.U, 1.U)
 
-      parallel(
-        driver.poke(t1, endi = Some(2.U), last = Some(t1Last)),
-        fork {
-          fork
-            .withRegion(Monitor) {
-              println(driver.printState)
-              println(monitor.printState)
-            }
-            .joinAndStep(c.clock)
-        }
-      )
+
+      driver.poke(t1, endi = Some(2.U), last = Some(t1Last))
+      println(driver.printState)
+      println(monitor.printState)
       c.clock.step()
+      driver.reset()
       println(monitor.printState)
     }
   }
@@ -152,8 +140,8 @@ class PipelineExamplePlusChiselSim extends AnyFlatSpec with ChiselSim {
   it should "process a sequence in parallel" in {
     simulate(new PipelineWrap) { c =>
       // Initialize signals
-      val driver  = SyncStreamDriver(c.in)
-      val monitor = SyncStreamMonitor(c.out)
+      val driver  = SyncStreamDriver(c.in, Some(c.clock))
+      val monitor = SyncStreamMonitor(c.out, Some(c.clock))
 
       // define min and max values numbers are allowed to have
       val rangeMin = BigInt(Long.MinValue)
@@ -169,23 +157,19 @@ class PipelineExamplePlusChiselSim extends AnyFlatSpec with ChiselSim {
       println(s"Stats: $stats")
 
       // Test component
-      parallel(
-        {
-          for (elems <- nums.grouped(4)) {
-            driver.poke(vecLitFromSeq(elems), endi = Some((elems.length - 1).U))
-          }
-          driver.enqueueEmptyNow(last = Some(driver.lastLit(0 -> 1.U)))
-        }, {
-          monitor.waitForValid()
-          println(monitor.printState)
-          monitor.expectDequeue(
-            _.min     -> stats.min.U,
-            _.max     -> stats.max.U,
-            _.sum     -> stats.sum.U,
-            _.average -> stats.average.U
-          )
-        }
+      for (elems <- nums.grouped(4)) {
+        driver.poke(vecLitFromSeq(elems), endi = Some((elems.length - 1).U), step = true, reset = true)
+      }
+      driver.pokeEmpty(last = Some(driver.lastLit(0 -> 1.U)), step = true, reset = true)
+
+      monitor.waitForValid()
+      println(monitor.printState)
+      monitor.expect(
+        _.min     -> stats.min.U,
+        _.max     -> stats.max.U,
+        _.sum     -> stats.sum.U,
+        _.average -> stats.average.U
       )
     }
-  }*/
+  }
 }

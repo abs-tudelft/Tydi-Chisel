@@ -37,11 +37,11 @@ class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[
   }
 
   def dataLit(elems: (Int, Tel)*): Vec[Tel] = {
-    Vec(sink.n, sink.getDataType).Lit(elems: _*)
+    Vec(elems.length, sink.getDataType).Lit(elems: _*)
   }
 
   def lastLit(elems: (Int, UInt)*): Vec[UInt] = {
-    Vec(sink.n, UInt(sink.d.W)).Lit(elems: _*)
+    Vec(elems.length, UInt(sink.d.W)).Lit(elems: _*)
   }
 
   private def _poke(
@@ -92,6 +92,8 @@ class SyncStreamDriver[Tel <: TydiEl, Tus <: Data](sink: PhysicalStreamDetailed[
     if (step) {
       if (clockSig.isDefined) {
         clockSig.get.step(1)
+      } else {
+        throw new RuntimeException("Clock signal not set")
       }
     }
     if (reset) { this.reset() }
