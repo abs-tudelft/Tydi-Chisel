@@ -10,7 +10,14 @@ class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetail
       extends StreamMetaUtil[Tel, Tus] {
 
   private val n = source.n
-
+  /**
+   * Initialises/resets the signals of the source in the following way:
+   *
+   * <ul>
+   * <li>Ready: low</li>
+   * </ul>
+   * @return This driver
+   */
   private def initWithSource(): this.type = {
     source.ready.poke(false)
     this
@@ -18,6 +25,14 @@ class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetail
 
   initWithSource()
 
+  /**
+   * Resets the signals of the source in the following way:
+   *
+   * <ul>
+   * <li>Ready: low</li>
+   * </ul>
+   * @return This driver
+   */
   def reset(): SyncStreamMonitor.this.type = initWithSource()
 
   def elLit(elems: (Tel => (Data, Data))*): Tel = {
@@ -34,6 +49,18 @@ class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetail
     Vec(elems.length, UInt(source.d.W)).Lit(elems: _*)
   }
 
+  /**
+   * Checks specified values on the source stream's signals with `expect` calls.
+   *
+   * @param data Vector of `n` stream element literals, one for each lane
+   * @param last Vector of `n` last `d`-bits values, one for each lane
+   * @param strb Strobe value of `n` bits
+   * @param stai Start index of lane validity, inclusive
+   * @param endi End index of lane validity, inclusive
+   * @param run Optional function to run after the `expect` checking
+   * @param step Whether to step the clock after expecting and executing `run`
+   * @param reset Whether to reset the sink signals at the end, check the `reset` method. This usually only makes sense when stepping the clock.
+   */
   private def _expect(
     data: Option[Tel],
     last: Option[Vec[UInt]] = None,
@@ -78,6 +105,19 @@ class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetail
     if (reset) { this.reset() }
   }
 
+  // Fixme, this is inconsistent with the driver
+  /**
+   * Checks specified values on the source stream's signals with `expect` calls, specifically for the first lane.
+   *
+   * @param data Single data element literal
+   * @param last Vector of `n` last `d`-bits values, one for each lane
+   * @param strb Strobe value of `n` bits
+   * @param stai Start index of lane validity, inclusive
+   * @param endi End index of lane validity, inclusive
+   * @param run Optional function to run after the `expect` checking
+   * @param step Whether to step the clock after expecting and executing `run`
+   * @param reset Whether to reset the sink signals at the end, check the `reset` method. This usually only makes sense when stepping the clock.
+   */
   def expect(
     data: Tel,
     last: Option[Vec[UInt]] = None,
@@ -91,7 +131,16 @@ class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetail
     _expect(Option(data), last, strb, stai, endi, run, step, reset)
   }
 
-  /** Expect an empty transfer (no valid data lanes). Unless overridden, a strobe of 0's is expected. */
+  /**
+   * Expect an empty transfer (no valid data lanes). Unless overridden, a strobe of 0's is expected.
+   * @param last Vector of `n` last `d`-bits values, one for each lane
+   * @param strb Strobe value of `n` bits
+   * @param stai Start index of lane validity, inclusive
+   * @param endi End index of lane validity, inclusive
+   * @param run Optional function to run after the `expect` checking
+   * @param step Whether to step the clock after expecting and executing `run`
+   * @param reset Whether to reset the sink signals at the end, check the `reset` method. This usually only makes sense when stepping the clock.
+   */
   def expectEmpty(
     last: Option[Vec[UInt]] = None,
     strb: Option[UInt] = None,
@@ -109,11 +158,21 @@ class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetail
     _expect(None, last, _strb, stai, endi, run, step, reset)
   }
 
+  /**
+   * A shorthand function to check if the source can ''immediately'' dequeue a literal in the first lane with the values
+   * specified as the function arguments.<br>
+   * Note that this function will '''always''' step the `clock` and reset the source, meaning `valid` is turned off.
+   * This is because the splatting disallows other keywords afterwards and before is inconvenient.
+   * @param elems Tuples specifying bundle field values
+   */
   def expect(elems: (Tel => (Data, Data))*): Unit = {
     val litValue = elLit(elems: _*) // Use splat operator to propagate repeated parameters
-    expect(litValue)
+    expect(litValue, step = true, reset = true)
   }
 
+  /**
+   * Steps the clock until the source's `valid` signal is asserted
+   */
   def waitForValid(): Unit = {
     if (clockSig.isEmpty) {
       throw new RuntimeException("Clock signal not set")
@@ -128,6 +187,9 @@ class SyncStreamMonitor[Tel <: TydiEl, Tus <: Data](source: PhysicalStreamDetail
     source.el.expect(data)
   }*/
 
+  /**
+   * Do an `expect` check on the source's `valid` signal, expecting it to be low.
+   */
   def expectInvalid(): Unit = {
     source.valid.expect(false.B)
   }
